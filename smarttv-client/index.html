@@ -1,0 +1,125 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/div/html4/strict.dtd">
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+        <title>Vdr on SmartTV</title>
+
+        <!-- Common widget API -->
+        <script type='text/javascript' language='javascript' src='$MANAGER_WIDGET/Common/API/Widget.js'></script>
+        <script type='text/javascript' language='javascript' src='$MANAGER_WIDGET/Common/API/TVKeyValue.js'></script>
+        <script type="text/javascript" language="javascript" src="$MANAGER_WIDGET/Common/webapi/1.0/serviceapis.js"></script>
+        <script type="text/javascript" language="javascript" src="$MANAGER_WIDGET/Common/webapi/1.0/deviceapis.js"></script>
+		<script type="text/javascript" src="$MANAGER_WIDGET/Common/Plugin/Define.js"></script>
+        
+        <!-- Widget code -->
+        <script language="javascript" type="text/javascript" src="Javascript/Main.js"></script>
+        <script language="javascript" type="text/javascript" src="Javascript/Server.js"></script>
+        <script language="javascript" type="text/javascript" src="Javascript/Data.js"></script>
+        <script language="javascript" type="text/javascript" src="Javascript/Player.js"></script>
+        <script language="javascript" type="text/javascript" src="Javascript/Display.js"></script>
+        <script language="javascript" type="text/javascript" src="Javascript/Audio.js"></script>
+        <script language="javascript" type="text/javascript" src="Javascript/Network.js"></script>
+        <script language="javascript" type="text/javascript" src="Javascript/Config.js"></script>
+        
+        <!-- Style sheets -->
+        <link rel="stylesheet" href="CSS/Main.css" type="text/css">
+
+        <!-- Plugins -->
+        <object id="pluginPlayer" border=0 classid="clsid:SAMSUNG-INFOLINK-PLAYER"></object>
+        <object id="pluginAudio" border=0 classid="clsid:SAMSUNG-INFOLINK-AUDIO"></object>
+        <object id="pluginTVMW" border=0 classid="clsid:SAMSUNG-INFOLINK-TVMW"></object>        
+        <object id="pluginTime" border=0 classid="clsid:SAMSUNG-INFOLINK-TIME"></object>
+        <object id="pluginNetwork" border=0 classid="clsid:SAMSUNG-INFOLINK-NETWORK"></object>
+
+        <object id="pluginTaskmgnt" border=0 classid="clsid:SAMSUNG-INFOLINK-TASKMANAGER"></object>
+        <object id="pluginNNAVI" border=0 classid="clsid:SAMSUNG-INFOLINK-NNAVI"></object>        
+        
+        
+    </head>
+
+    <body onload="Main.onLoad();" onunload="Main.onUnload();">
+        <script type="text/javascript" language="javascript" src="$MANAGER_WIDGET/Common/IME_XT9/ime.js"></script>
+        <script type="text/javascript" src="$MANAGER_WIDGET/Common/IME_XT9/inputCommon/ime_input.js"></script>
+         <script language="javascript" type="text/javascript" src="Javascript/Options.js"></script>
+
+        <!-- Dummy anchor as focus for key events -->
+        <a href='javascript:void(0);' id='anchor' onkeydown='Main.keyDown();'></a>
+
+        <!-- Layout begins -->
+		<div id="splashScreen">
+			<div id="splashStatus"></div>
+		</div>
+		<div id="statusPopup"></div>
+		<div id="popup"></div>
+		<div id="selectScreen">
+			<div id="selectView">
+				<div id="selectItem1">1: Live</div>
+				<div id="selectItem2">2: Recordings</div>
+				<div id="selectItem3">3: Media</div>
+				<div id="selectItem4">4: Options</div>
+				<div id="selectItem5">5: DLNA</div>
+			</div>
+		</div>
+		<div id="optionsScreen">
+			<div id="optionsView">
+			<b>Server Configurations</b><br><br>
+			Address (host:port) http:// <input type="text" id="widgetServerAddr" onkeydown="Options.onInput(this)" maxlength="25">
+		</div>
+		</div>
+		
+        <div id="main">
+            <div id="logo">VDR on SmartTV</div>
+
+            <div id ="rightHalf">
+                <div id="status"></div>
+                <div id="description"></div>
+            </div>
+            <div id="leftHalf">
+                <div id="videoCount"></div>
+                <div id="videoList" class="style_videoList">
+                    <div id="video0"></div>
+                    <div id="video1"></div>
+                    <div id="video2"></div>
+                    <div id="video3"></div>
+                    <div id="video4"></div>
+                    <div id="video5"></div>
+                    <div id="video6"></div>
+                    <div id="video7"></div>
+                    <div id="video8"></div>
+                    <div id="video9"></div>
+                    <div id="video10"></div>
+                    <div id="video11"></div>
+                    <div id="video12"></div>
+                    <div id="video13"></div>
+                    <div id="video14"></div>
+                    <div id="video15"></div>
+                    <div id="video16"></div>
+                </div>
+            </div> 
+        </div>
+        <div id="volume">
+         	<div id="volumeIcon"></div>
+            <div id="volumeBarBG">
+               	<div id="volumeBar"></div>
+           	</div>
+            <div id="volumeInfo"></div>
+        </div>
+        
+		<div id="overlay">
+			<div id="olTitle"></div>
+			<div id="olStartStop"></div>
+			<div id="olNow"></div>
+			<div id="olProgressBarBG">
+				<div id="olRecProgressBar"></div>
+				<div id="olProgressBar"></div>
+			</div>
+			<div id="buffering">
+				<div id="bufferingBG">
+					<div id="bufferingBar"></div>
+				</div>
+			</div>
+			<div id="olTimeInfo"></div>
+		
+		</div>
+    </body>
+</html>
