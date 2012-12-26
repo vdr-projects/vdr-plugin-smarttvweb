@@ -36,9 +36,9 @@ cSmartTvConfig::cSmartTvConfig(string d): mConfigDir(d), mLog(NULL), mCfgFile(NU
   mLiveChannels() {
 
 #ifndef STANDALONE
-  mLogFile= "/multimedia/video/smartvvweblog.txt";
+  mLogFile= "";
 #else
-  mLogFile= "/tmp/smartvvweblog-standalone.txt";
+  mLogFile= "./smartvvweblog-standalone.txt";
 #endif
 
   // Defaults

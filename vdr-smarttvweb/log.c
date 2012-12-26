@@ -23,6 +23,7 @@
 
 #include "log.h"
 #include <time.h>
+#include <cstring>
 
 Log* Log::instance = NULL;
 
@@ -45,20 +46,30 @@ int Log::init(string fileName) {
   time_t now  = time(NULL);
   strftime(timebuf, sizeof(timebuf), "%a, %d %b %Y %H:%M:%S GMT", gmtime(&now));
 
-  mLogFile = new ofstream();
-  mLogFile->open(fileName.c_str(), ios::out );
-  *mLogFile << "Log Created: " << timebuf << endl;
+  if (fileName != "") {
+    mLogFile = new ofstream();
+
+    mLogFile->open(fileName.c_str(), ios::out );
+    *mLogFile << "Log Created: " << timebuf << endl;
+  }
+  else
+    mLogFile = new ofstream("/dev/null");
   return 0;
 }
 
 int Log::init(char* fileName) {
+
   char timebuf[128];
   time_t now  = time(NULL);
   strftime(timebuf, sizeof(timebuf), "%a, %d %b %Y %H:%M:%S GMT", gmtime(&now));
 
-  mLogFile = new ofstream();
-  mLogFile->open(fileName, ios::out );
-  *mLogFile << "Log Created: " << timebuf << endl;
+  if (strcmp(fileName, "") !=0) {
+    mLogFile = new ofstream();
+    mLogFile->open(fileName, ios::out );
+    *mLogFile << "Log Created: " << timebuf << endl;
+  }
+  else
+    mLogFile = new ofstream("/dev/null");
   return 0;
 }
 
