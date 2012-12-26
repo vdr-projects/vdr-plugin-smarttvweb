@@ -1377,6 +1377,10 @@ int cHttpResource::sendChannelsXml (struct stat *statbuf) {
   parseQueryLine(&avps);
   string mode = "";
   bool add_desc = true; 
+
+  string no_channels_str = "";
+  int no_channels = -1;
+
   if (getQueryAttributeValue(&avps, "mode", mode) == OKAY){
     if (mode == "nodesc") {
       add_desc = false;
@@ -1390,6 +1394,10 @@ int cHttpResource::sendChannelsXml (struct stat *statbuf) {
 		    << endl;
     }
   }
+  if (getQueryAttributeValue(&avps, "channels", no_channels_str) == OKAY){
+    no_channels = atoi(no_channels_str.c_str()) ;
+  }
+
   
   sendHeaders(200, "OK", NULL, "application/xml", -1, statbuf->st_mtime);
 
@@ -1401,6 +1409,9 @@ int cHttpResource::sendChannelsXml (struct stat *statbuf) {
   *mResponseMessage += hdr;
 
   int count = mFactory->getLiveChannels();
+  if (no_channels > 0)
+    count = no_channels +1;
+  
   cSchedulesLock * lock = new cSchedulesLock(false, 500);
   const cSchedules *schedules = cSchedules::Schedules(*lock); 
 
@@ -1526,6 +1537,7 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
 
   *mResponseMessage += hdr;
 
+  /*
   if (writeXmlItem("HAS - Big Bugs Bunny", "http://192.168.1.122/sm/BBB-DASH/HAS_BigBuckTS.xml|COMPONENT=HAS", "NA", "Big Bucks Bunny - HAS", 
 		   "-", 0, 0) == ERROR) 
     return ERROR;
@@ -1533,11 +1545,7 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
   if (writeXmlItem("HLS - Big Bugs Bunny", "http://192.168.1.122/sm/BBB-DASH/HLS_BigBuckTS.m3u8|COMPONENT=HLS", "NA", "Big Bucks Bunny - HLS", 
 		   "-", 0, 0) == ERROR) 
     return ERROR;
-
-  if (writeXmlItem("HAS - The Town", "http://192.168.1.122/sm/TheTown/manifest-seg.mpd|COMPONENT=HAS", "NA", "HD Test", 
-		   "-", 0, 0) == ERROR) 
-    return ERROR;
-
+*/
 
   //--------------------
   cRecordings* recordings = &Recordings;
@@ -1587,7 +1595,6 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
   for (cRecording *recording = recordings->First(); recording; recording = recordings->Next(recording)) {
     hdr = "";
 
-  //    if (recording->IsPesRecording() or ((recording->FramesPerSecond() > 30.0) and !(mFactory->getConfig()->useHasForHd()))) 
     if (recording->IsPesRecording() or ((recording->FramesPerSecond() > 30.0) and !has_4_hd )) 
       snprintf(f, sizeof(f), "http://%s:%d%s", mServerAddr.c_str(), mServerPort, 
 	       cUrlEncode::doUrlSaveEncode(recording->FileName()).c_str());
