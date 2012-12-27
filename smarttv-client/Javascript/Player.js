@@ -304,8 +304,9 @@ Player.OnStreamInfoReady = function() {
 	if ((Player.isLive == false) && (Player.isRecording == false)) {
 		Player.totalTime = Player.plugin.GetDuration();
 	}
-    Player.curPlayTimeStr =  Display.durationString(Player.totalTime / 1000.0);
-
+//    Player.curPlayTimeStr =  Display.durationString(Player.totalTime / 1000.0);
+    Player.totalTimeStr =Display.durationString(Player.totalTime / 1000.0);
+    
 /*    var height = Player.plugin.GetVideoHeight();
     var width = Player.GetVideoWidth();
     Display.showPopup("Resolution= " + height + " x " +width);

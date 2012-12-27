@@ -7,6 +7,26 @@ try {
 }
 catch (e) {
 }
+
+/*
+ * Config.deviceType is used to differentiate main devices.
+ * Config.deviceType == 0 is a Samsung ES Series Device (2012)
+ * Config.deviceType != 0 is currently a Chrome Browser (Only GUI, no Video Playback) 
+ * 
+ * In order to adjust to other devices:
+ *  Config.js: realization of persistent storage for variable "Config.serverUrl" (URL of server plugin)
+ * 
+ *  Handle KeyCodes: global variable tvKey holds an enum
+ *  event.keyCode: is used to get the key pressed 
+ *  
+ *  Display.putInnerHTML: Samsung specific way to hanle innerHTML 
+ *  Display.GetEpochTime: returns the current time (UTC) in seconds
+ * 
+ *  Audio: Get and Set Volume
+ *  Player: All operations to get the video playing
+ *   
+ */
+
 //var custom = window.deviceapis.customdevice || {};
 
 
@@ -293,6 +313,8 @@ Main.playItem = function (url) {
 		Player.bufferState = 0;
 		Player.isRecording = false;
 		Player.totalTime = Data.getCurrentItem().childs[Main.selectedVideo].payload.dur * 1000;
+	    Player.totalTimeStr =Display.durationString(Player.totalTime / 1000.0);
+
 //		Display.updateTotalTime(Player.totalTime);
 		var digi = new Date((Data.getCurrentItem().childs[Main.selectedVideo].payload.start*1000));
 		Main.log (" Date(): StartTime= " + digi.getHours() + ":" + digi.getMinutes() + ":" + digi.getSeconds());
@@ -309,13 +331,16 @@ Main.playItem = function (url) {
 		Player.isLive = false;
 		Player.isRecording = false;
     	Main.log(" playItem: now= " + now + " start_time= " + start_time + " dur= " + duration + " (Start + Dur - now)= " + ((start_time + duration) -now));
-		if ((now - (start_time + duration)) < 0) {
+
+    	Player.totalTime = Data.getCurrentItem().childs[Main.selectedVideo].payload.dur * 1000;
+	    Player.totalTimeStr =Display.durationString(Player.totalTime / 1000.0);
+
+    	if ((now - (start_time + duration)) < 0) {
 			// still recording
 			Main.log("*** Still Recording! ***");
 			Player.isRecording = true;
 			Player.startTime = start_time;
 			Player.duration = duration;
-			Player.totalTime = Data.getCurrentItem().childs[Main.selectedVideo].payload.dur * 1000;
 			document.getElementById("olRecProgressBar").style.display="block";
 
 			Display.updateRecBar(start_time, duration);

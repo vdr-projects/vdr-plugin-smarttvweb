@@ -2,7 +2,7 @@ var Config = {
 	cfgFileName : "",
 	XHRObj : null,
 	xmlDocument : null,
-	serverUrl : "http://192.168.1.122:8000",  // Will become the main URL for contacting the server. Form "http://<server>:port"
+	serverUrl : "",  // Will become the main URL for contacting the server. Form "http://<server>:port"
 	serverAddr : "",
 	serverAddrDefault: "192.168.1.122:8000", 
 	format :"has",
@@ -46,14 +46,13 @@ Config.init = function () {
 			this.cfgFileName = curWidget.id + "/config.dta";
 		}
 		catch (e) {		
-			Main.log("curWidget.id does not exists. Is that a Samsung?");
+			Main.log("curWidget.id does not exists. Is that really a Samsung?");
 			return;
 		};
 		
 		var fileSystemObj = new FileSystem();
 	    
 		if (fileSystemObj.isValidCommonPath(curWidget.id) == 0){
-//			Display.showPopup ("First Launch of the Widget --> Launching Config Menu");
 			Main.log("First Launch of the Widget");
 			// should switch to the config screen here
 			var res = fileSystemObj.createCommonDir(curWidget.id);
