@@ -25,14 +25,16 @@ var Display =
 Display.init = function()
 {
     var success = true;
-    
+
+    // Samsung specific object
+    this.pluginTime = document.getElementById("pluginTime");
+
     this.statusDiv = document.getElementById("status");
     this.statusPopup = document.getElementById("statusPopup");
     
-    this.pluginTime = document.getElementById("pluginTime");
     this.bufferingElm = document.getElementById("bufferingBar");
     
-    alert("Display.init now=" + this.pluginTime.GetEpochTime());
+//    Main.log("Display.init now=" + this.pluginTime.GetEpochTime());
 
     this.progOlHandler = new OverlayHandler("ProgHndl");
     this.volOlHandler = new OverlayHandler("VolHndl");
@@ -41,7 +43,6 @@ Display.init = function()
     this.volOlHandler.init(Display.handlerShowVolume, Display.handlerHideVolume);
     this.popupOlHandler.init(Display.handlerShowPopup, Display.handlerHidePopup);
     
-    Display.status("Stop");
     if (!this.statusDiv)
     {
         success = false;
@@ -60,7 +61,7 @@ Display.init = function()
     	var elm = document.getElementById("selectItem"+i);
     	if (elm == null) {
     		done = true;
-    		alert( " only found to selectItem"+ (i-1));
+    		Main.log( " only found to selectItem"+ (i-1));
     		break;
     	}
     	elm.style.paddingBottom = "3px";
@@ -69,8 +70,38 @@ Display.init = function()
     	elm.style.textAlign = "center";
     }    
     
-    alert("Display initialized" );
+    Main.log("Display initialized" );
     return success;
+};
+
+Display.putInnerHTML = function (elm, val) {
+	
+	switch (Config.deviceType) {
+	case 0:
+		// Samsung specific handling of innerHtml
+		widgetAPI.putInnerHTML(elm, val);
+		break;
+	default:
+		elm.innerHTML = val;
+		break;
+	}
+	
+};
+
+Display.GetEpochTime = function() {
+	var res = 0;
+	switch (Config.deviceType) {
+	case 0:
+		// Samsung specific UTC time function
+		res = Display.pluginTime.GetEpochTime();
+		break;
+	default:
+		var now_millis = ((new Date).getTime());
+		res =   (now_millis /1000.0);
+	break;
+	}
+
+	return res;
 };
 
 Display.resetSelectItems = function (itm) {
@@ -81,7 +112,7 @@ Display.resetSelectItems = function (itm) {
 		var elm = document.getElementById("selectItem"+i);
 		if (elm == null) {
 			done = true;
-			alert( " only found to selectItem"+ (i-1));
+			Main.log( " only found to selectItem"+ (i-1));
 			break;
 	    }
 		Display.unselectItem(elm);	
@@ -100,7 +131,7 @@ Display.resetVideoList = function () {
 			break;
 	    }
 		Display.unselectItem(elm);	
-	    widgetAPI.putInnerHTML(elm, "");
+		Display.putInnerHTML(elm, "");
 	}    
 	
 };
@@ -108,7 +139,7 @@ Display.resetVideoList = function () {
 Display.setOlTitle = function (title) {
 	this.olTitle = title;
 	var elm = document.getElementById("olTitle");
-    widgetAPI.putInnerHTML(elm, Display.olTitle);    
+	Display.putInnerHTML(elm, Display.olTitle);    
 };
 
 Display.setStartStop = function(start, stop) {
@@ -129,73 +160,10 @@ Display.setStartStop = function(start, stop) {
     this.olStartStop = this.olStartStop + hours + ":" + minutes;    
 
     var elm = document.getElementById("olStartStop");
-    widgetAPI.putInnerHTML(elm, Display.olStartStop);    
+    Display.putInnerHTML(elm, Display.olStartStop);    
 };
 
 /*
-//obsolete?
-Display.setTotalTime = function(total) {
-    this.totalTime = total;
-};
-*/
-/*
-
-// Player.OnCurrentPlayTime
-Display.setTime = function(time) {
-    var timePercent = (100 * time) / this.totalTime;
-    var timeHTML = "";
-    var timeHour = 0; var timeMinute = 0; var timeSecond = 0;
-    var totalTimeHour = 0; var totalTimeMinute = 0; 
-    var totalTimesecond = 0;
-    
-    if(Player.state == Player.PLAYING)
-    {
-        totalTimeHour = Math.floor(this.totalTime/3600000);
-        timeHour = Math.floor(time/3600000);
-        
-        totalTimeMinute = Math.floor((this.totalTime%3600000)/60000);
-        timeMinute = Math.floor((time%3600000)/60000);
-        
-        totalTimeSecond = Math.floor((this.totalTime%60000)/1000);
-        timeSecond = Math.floor((time%60000)/1000);
-        
-        timeHTML = timeHour + ":";
-        
-        if(timeMinute == 0)
-            timeHTML += "00:";
-        else if(timeMinute <10)
-            timeHTML += "0" + timeMinute + ":";
-        else
-            timeHTML += timeMinute + ":";
-            
-        if(timeSecond == 0)
-            timeHTML += "00/";
-        else if(timeSecond <10)
-            timeHTML += "0" + timeSecond + "/";
-        else
-            timeHTML += timeSecond + "/";
-            
-        timeHTML += totalTimeHour + ":";
-        
-        if(totalTimeMinute == 0)
-            timeHTML += "00:";
-        else if(totalTimeMinute <10)
-            timeHTML += "0" + totalTimeMinute;
-        else
-            timeHTML += totalTimeMinute;
-            
-        if(totalTimeSecond == 0)
-            timeHTML += "00";
-        else if(totalTimeSecond <10)
-            timeHTML += "0" + totalTimeSecond;
-        else
-            timeHTML += totalTimeSecond;
-    }
-    else
-        timeHTML = "0:00:00/0:00:00";        
-};
-*/
-
 Display.getHumanTimeRepresentation = function(time) {
 	var totalTimeHour = 0; 
 	var totalTimeMinute = 0; 
@@ -223,7 +191,7 @@ Display.getHumanTimeRepresentation = function(time) {
 
 	return totalTimeStr;
 };
-
+*/
 /*
 // called by Player.OnStreamInfoReady
 Display.updateTotalTime = function(time) {
@@ -235,7 +203,7 @@ Display.updateTotalTime = function(time) {
 Display.updatePlayTime = function() {
 //    Player.curPlayTimeStr =  Display.getHumanTimeRepresentation(Player.curPlayTime);
     var timeElement = document.getElementById("olTimeInfo");
-    widgetAPI.putInnerHTML(timeElement,  Player.curPlayTimeStr + " / " + Player.totalTimeStr);    
+    Display.putInnerHTML(timeElement,  Player.curPlayTimeStr + " / " + Player.totalTimeStr);    
 };
 
 Display.updateProgressBar = function () {
@@ -244,10 +212,10 @@ Display.updateProgressBar = function () {
 };
 
 Display.updateRecBar = function (start_time, duration){
-	var now = Display.pluginTime.GetEpochTime();
+	var now = Display.GetEpochTime();
 
 	var remaining = Math.round(((start_time + duration) - now) * 100/ duration);
-//    alert (" remaining= " + remaining + " start= " + start_time + " dur= " + duration);
+//    Main.log (" remaining= " + remaining + " start= " + start_time + " dur= " + duration);
 	var elm = document.getElementById("olRecProgressBar");
     elm.style.display="block";
     elm.style.width = remaining + "%";
@@ -256,9 +224,9 @@ Display.updateRecBar = function (start_time, duration){
 
 
 Display.status = function(status) {
-    alert(status);
-    widgetAPI.putInnerHTML(this.statusDiv, status);
-    widgetAPI.putInnerHTML(this.statusPopup, status);
+    Main.log(status);
+    Display.putInnerHTML(this.statusDiv, status);
+    Display.putInnerHTML(this.statusPopup, status);
 };
 
 Display.showStatus = function() {
@@ -271,7 +239,7 @@ Display.hideStatus = function() {
 
 
 Display.progress = function(status) {
-    widgetAPI.putInnerHTML(this.statusDiv, status);
+	Display.putInnerHTML(this.statusDiv, status);
 };
 
 
@@ -308,6 +276,7 @@ Display.durationString = function(time) {
 
 
 Display.handleDescription =function (selected) {
+	Main.log("Display.handleDescription ");
 	
 	if (Data.getCurrentItem().childs[selected].isFolder == true) {
         Display.setDescription( "Dir: " +Data.getCurrentItem().childs[selected].title );
@@ -326,11 +295,11 @@ Display.handleDescription =function (selected) {
     	var min = Display.getNumString (digi.getMinutes(), 2);
 
     	var d_str ="";
-//    	alert("handleDescription: " +Data.getCurrentItem().childs[selected].payload.desc);
+//    	Main.log("handleDescription: " +Data.getCurrentItem().childs[selected].payload.desc);
     	var msg = "";
     	if (Main.state == 1) {
     		// Live
-    		var now = pluginTime.GetEpochTime();
+    		var now = Display.GetEpochTime();
 
         	d_str = hour + ":" + min;
 
@@ -338,7 +307,10 @@ Display.handleDescription =function (selected) {
         	msg += "<b>"+ prog + "</b><br>";
         	msg += "<br>Start: " + d_str + "<br>";
         	msg += "Duration: " + Display.durationString(length) + "h<br>";
+        	Main.log("itm.payload.start= " + itm.payload.start + " length= " + length + " now= " +now);
         	msg += "Remaining: " + Display.durationString((itm.payload.start + length - now));
+        	
+        	
     	}
     	else {
     		// on-demand
@@ -399,7 +371,7 @@ Display.getDisplayTitle = function(item) {
 		}
 		break;
 	default:
-		alert("ERROR: Shall be in state 1 or 2. State= " + Main.state);
+		Main.log("ERROR: Shall be in state 1 or 2. State= " + Main.state);
 		break;
 	}
 	return res;
@@ -409,25 +381,22 @@ Display.setVideoList = function(selected, first) {
 	// 
     var listHTML = "";
     var first_item = selected;
-    if(typeof first !='undefined') {
-    	first_item = first;
-    	alert("Display.setVideoList first_item= " + first_item);
-    }
-    	
+
     var i=0;
-    alert("Display.setVideoList title= " +Data.getCurrentItem().childs[selected].title + " selected= " + selected + " first_item= " + first_item);
+    Main.log("Display.setVideoList title= " +Data.getCurrentItem().childs[selected].title + " selected= " + selected + " first_item= " + first_item);
     this.handleDescription(selected);
-    
+
     for (i = 0; i <= this.LASTIDX; i++) {
     	if ((first_item+i) >= Data.getVideoCount()) {
     		listHTML = "";
     	}
     	else {
-//            alert(" - title[first_item+i]= " +Data.getCurrentItem().childs[(first_item +i)].title + " i= " + i);
             listHTML = Display.getDisplayTitle (Data.getCurrentItem().childs[first_item+i]); 
+//            Main.log(" - title[first_item+i]= " +Data.getCurrentItem().childs[(first_item +i)].title + " i= " + i + " listHTML= " + listHTML);
+//            Main.log(" - listHTML= " + listHTML);
     	}
         this.videoList[i] = document.getElementById("video"+i);
-        widgetAPI.putInnerHTML(this.videoList[i], listHTML);
+        Display.putInnerHTML(this.videoList[i], listHTML);
         this.unselectItem(this.videoList[i]);
     }
     
@@ -436,7 +405,7 @@ Display.setVideoList = function(selected, first) {
     
     listHTML = (selected +1) + " / " + Data.getVideoCount();
     
-    widgetAPI.putInnerHTML(document.getElementById("videoCount"), listHTML);
+    Display.putInnerHTML(document.getElementById("videoCount"), listHTML);
 };
 
 Display.selectItem = function (item) {
@@ -463,12 +432,12 @@ Display.unselectItem = function (item) {
 Display.setVideoListPosition = function(position, move)
 {    
     var listHTML = "";
-    alert ("Display.setVideoListPosition title= " +Data.getCurrentItem().childs[position].title + " move= " +move);
+    Main.log ("Display.setVideoListPosition title= " +Data.getCurrentItem().childs[position].title + " move= " +move);
 
     this.handleDescription(position);
     
     listHTML = (position + 1) + " / " + Data.getVideoCount();
-    widgetAPI.putInnerHTML(document.getElementById("videoCount"), listHTML);
+    Display.putInnerHTML(document.getElementById("videoCount"), listHTML);
     
     
     if(Data.getVideoCount() < this.LASTIDX) {
@@ -505,7 +474,7 @@ Display.setVideoListPosition = function(position, move)
             for(i = 0; i <= this.LASTIDX; i++) {
                 listHTML = Display.getDisplayTitle (Data.getCurrentItem().childs[i]); 
 //            	listHTML = Data.getCurrentItem().childs[i].title;
-                widgetAPI.putInnerHTML(this.videoList[i], listHTML);
+                Display.putInnerHTML(this.videoList[i], listHTML);
                 
                 if(i == this.currentWindow)
                 	this.selectItem(this.videoList[i]);
@@ -517,7 +486,7 @@ Display.setVideoListPosition = function(position, move)
             for(i = 0; i <= this.LASTIDX; i++) {
                 listHTML = Display.getDisplayTitle (Data.getCurrentItem().childs[i + position - this.currentWindow]); 
 //                listHTML = Data.getCurrentItem().childs[i + position - this.currentWindow].title;
-                widgetAPI.putInnerHTML(this.videoList[i], listHTML);
+                Display.putInnerHTML(this.videoList[i], listHTML);
             }
         }
     }
@@ -530,7 +499,7 @@ Display.setVideoListPosition = function(position, move)
             for(i = 0; i <= this.LASTIDX; i++) {
                 listHTML = Display.getDisplayTitle (Data.getCurrentItem().childs[i + position - this.currentWindow]); 
 //            	listHTML = Data.getCurrentItem().childs[i + position - this.currentWindow].title;               
-                widgetAPI.putInnerHTML(this.videoList[i], listHTML);
+                Display.putInnerHTML(this.videoList[i], listHTML);
                 
                 if(i == this.currentWindow)
                 	this.selectItem(this.videoList[i]);
@@ -542,7 +511,7 @@ Display.setVideoListPosition = function(position, move)
             for(i = 0; i <= this.LASTIDX; i++) {
                 listHTML = Display.getDisplayTitle (Data.getCurrentItem().childs[i + position]); 
 //                listHTML = Data.getCurrentItem().childs[i + position].title;
-                widgetAPI.putInnerHTML(this.videoList[i], listHTML);
+                Display.putInnerHTML(this.videoList[i], listHTML);
             }
         }
     }
@@ -551,7 +520,7 @@ Display.setVideoListPosition = function(position, move)
 Display.setDescription = function(description) {
     var descriptionElement = document.getElementById("description");
     
-    widgetAPI.putInnerHTML(descriptionElement, description);
+    Display.putInnerHTML(descriptionElement, description);
 };
 
 //--------------------------------------------------------
@@ -583,7 +552,7 @@ Display.setVolume = function(level)
     
     var volumeElement = document.getElementById("volumeInfo");
 
-    widgetAPI.putInnerHTML(volumeElement, "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + Audio.getVolume());
+    Display.putInnerHTML(volumeElement, "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + Audio.getVolume());
 };
 
 // Called by main
@@ -606,7 +575,7 @@ Display.handlerHideVolume = function() {
 //---------------------------------------------------------
 Display.showPopup = function(text) {
 	var oldHTML = document.getElementById("popup").innerHTML;
-	widgetAPI.putInnerHTML(document.getElementById("popup"), oldHTML + "<br>" + text);
+	Display.putInnerHTML(document.getElementById("popup"), oldHTML + "<br>" + text);
 	this.popupOlHandler.show();
 };
 
@@ -617,7 +586,7 @@ Display.handlerShowPopup = function() {
 
 Display.handlerHidePopup = function() {
     document.getElementById("popup").style.display="none";
-	widgetAPI.putInnerHTML(document.getElementById("popup"), "");
+    Display.putInnerHTML(document.getElementById("popup"), "");
 };
 
 //---------------------------------------------------------
@@ -635,9 +604,9 @@ Display.handlerShowProgress = function() {
 	document.getElementById("overlay").style.display="block";
 	if (Player.isRecording == true) {
 	    document.getElementById("olRecProgressBar").style.display="block";
-	    var now = pluginTime.GetEpochTime();
+	    var now = Display.GetEpochTime();
 	    var remaining = Math.round(((Player.startTime + Player.duration) - now) * 100/ Player.duration);
-	    alert (" remaining= " + remaining);
+	    Main.log (" remaining= " + remaining);
     	var elm = document.getElementById("olRecProgressBar");
 	    elm.style.display="block";
 	    elm.style.width = remaining + "%";
@@ -648,12 +617,12 @@ Display.handlerShowProgress = function() {
     
     var timePercent = (Player.curPlayTime *100)/ Player.totalTime;
     
-	alert("show OL Progress timePercent= " + timePercent);
+	Main.log("show OL Progress timePercent= " + timePercent);
 
     document.getElementById("olProgressBar").style.width = timePercent + "%";
 
     var timeElement = document.getElementById("olTimeInfo");
-    widgetAPI.putInnerHTML(timeElement,  Player.curPlayTimeStr + " / " + Player.totalTimeStr);    
+    Display.putInnerHTML(timeElement,  Player.curPlayTimeStr + " / " + Player.totalTimeStr);    
 
     var nowElement = document.getElementById("olNow");
     var Digital=new Date();
@@ -661,14 +630,14 @@ Display.handlerShowProgress = function() {
     var minutes=Digital.getMinutes();
     if (minutes<=9)
     	   minutes='0'+minutes;
-    widgetAPI.putInnerHTML(nowElement, hours + ':' + minutes);    
+    Display.putInnerHTML(nowElement, hours + ':' + minutes);    
 };
 
 
 
 //----------------------------------------
 function OverlayHandler (n) {
-	this.pluginTime = null;
+//	this.pluginTime = null;
 	this.active = false;
 	this.startTime = 0;
 	this.hideTime = 0;
@@ -684,34 +653,34 @@ OverlayHandler.prototype.init = function(showcb, hidecb) {
 	var success = true;
 	this.showCallback = showcb;
 	this.hideCallback = hidecb;
-	this.pluginTime = document.getElementById("pluginTime");
+/*	this.pluginTime = document.getElementById("pluginTime");
 	if (!this.pluginTime) {
-        alert(this.handlerName + " cannot aquire time plugin :  " + success);    
+        Main.log(this.handlerName + " cannot aquire time plugin :  " + success);    
         success = false;
 	}
-//	alert(this.handlerName + " is initialized");	
+*/
+	//	Main.log(this.handlerName + " is initialized");	
 	return success;
 };
 
 OverlayHandler.prototype.checkHideCallback = function () {
-	var pluginTime = document.getElementById("pluginTime");
-	var now = pluginTime.GetEpochTime();
-//	alert(that.handlerName + "checkHideCallback: now= " + now + " hideTime= " +  that.hideTime +  " delta= " + (now - that.hideTime));
+	var now = Display.GetEpochTime();
+	//	Main.log(that.handlerName + "checkHideCallback: now= " + now + " hideTime= " +  that.hideTime +  " delta= " + (now - that.hideTime));
 	if (now >= this.hideTime) {
-//		alert(this.handlerName + "hiding " + this.handlerName + " howDur: act= " + (now - this.startTime) + " int= " + (this.hideTime-this.startTime));
+//		Main.log(this.handlerName + "hiding " + this.handlerName + " howDur: act= " + (now - this.startTime) + " int= " + (this.hideTime-this.startTime));
 
 		this.olDelay = 3000;
 		if (this.hideCallback) {
 			this.hideCallback();			
 		}
 		else
-			alert(this.handlerName + ": No hideCallback defined - ignoring " );
+			Main.log(this.handlerName + ": No hideCallback defined - ignoring " );
 		
 		this.active = false;
 		return;
 	}
 	var delay = (this.hideTime - now) * 1000;
-//	alert(this.handlerName + "checkHideCallback: new timeout= " +delay);
+//	Main.log(this.handlerName + "checkHideCallback: new timeout= " +delay);
 
 	// pass an anonymous function
 	var self = this;
@@ -720,10 +689,12 @@ OverlayHandler.prototype.checkHideCallback = function () {
 
 OverlayHandler.prototype.show = function() {
 	if (!this.active ) {
-		this.startTime = this.pluginTime.GetEpochTime();
+//		this.startTime = this.pluginTime.GetEpochTime();
+		this.startTime = Display.GetEpochTime();
+		
 		this.hideTime = this.startTime + (this.olDelay / 1000);
 
-//		alert(this.handlerName + " showing " + this.handlerName + " from= " + this.startTime + " to at least= " + this.hideTime);
+//		Main.log(this.handlerName + " showing " + this.handlerName + " from= " + this.startTime + " to at least= " + this.hideTime);
 		if (this.showCallback) {
 			this.showCallback();
 			
@@ -732,11 +703,12 @@ OverlayHandler.prototype.show = function() {
 			this.active = true;
 		}
 		else
-			alert(this.handlerName + ": No showCallback defined - ignoring " );
+			Main.log(this.handlerName + ": No showCallback defined - ignoring " );
 	}
 	else {
-//		alert(this.handlerName + " extending showtime for " + this.handlerName + " for another " + (this.olDelay /1000)+ "sec");
-		this.hideTime = this.pluginTime.GetEpochTime() + (this.olDelay /1000);
+//		Main.log(this.handlerName + " extending showtime for " + this.handlerName + " for another " + (this.olDelay /1000)+ "sec");
+//		this.hideTime = this.pluginTime.GetEpochTime() + (this.olDelay /1000);
+		this.hideTime = Display.GetEpochTime() + (this.olDelay /1000);
 	}
 };
 
@@ -745,12 +717,12 @@ OverlayHandler.prototype.cancel = function () {
 	if (!this.active)
 		return;
 	
-//	alert("cancel for handler " + this.handlerName);
+//	Main.log("cancel for handler " + this.handlerName);
 	if (this.hideCallback) {
 		this.hideCallback();			
 	}
 	else
-		alert(this.handlerName + ": No hideCallback defined - ignoring " );
+		Main.log(this.handlerName + ": No hideCallback defined - ignoring " );
 	
 	this.active = false;
 	window.clearTimeout(this.timeoutObj);

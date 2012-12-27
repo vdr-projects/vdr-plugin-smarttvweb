@@ -13,7 +13,7 @@ Server.init = function()
     var success = true;
     
     var splashElement = document.getElementById("splashStatus");  
-    widgetAPI.putInnerHTML(splashElement, "Starting Up");
+    Display.putInnerHTML(splashElement, "Starting Up");
 
     if (this.XHRObj) {
         this.XHRObj.destroy();  
@@ -28,7 +28,7 @@ Server.setSort = function (val) {
 };
 
 Server.fetchVideoList = function(url) {
-	alert("fetching Videos url= " + url);
+	Main.log("fetching Videos url= " + url);
     if (this.XHRObj == null) {
         this.XHRObj = new XMLHttpRequest();
     }
@@ -37,7 +37,7 @@ Server.fetchVideoList = function(url) {
         this.XHRObj.onreadystatechange = function()
             {
             var splashElement = document.getElementById("splashStatus");  
-            widgetAPI.putInnerHTML(splashElement, "State" + Server.XHRObj.readyState);
+            Display.putInnerHTML(splashElement, "State" + Server.XHRObj.readyState);
 
         	if (Server.XHRObj.readyState == 4) {
                     Server.createVideoList();
@@ -49,7 +49,7 @@ Server.fetchVideoList = function(url) {
     }
     else {
         var splashElement = document.getElementById("splashStatus");  
-        widgetAPI.putInnerHTML(splashElement, "Failed !!!" );
+        Display.putInnerHTML(splashElement, "Failed !!!" );
     	Display.showPopup("Failed to create XHR");
 
         if (this.errorCallback != null) {
@@ -59,14 +59,14 @@ Server.fetchVideoList = function(url) {
 };
 
 Server.createVideoList = function() {
-	alert ("creating Video list now");
-	Main.log("creating Video list now");
+	Main.log ("creating Video list now");
+	Main.logToServer("creating Video list now");
 	
     var splashElement = document.getElementById("splashStatus");  
-    widgetAPI.putInnerHTML(splashElement, "Creating Video list now" );
+    Display.putInnerHTML(splashElement, "Creating Video list now" );
 
 	if (this.XHRObj.status != 200) {
-        widgetAPI.putInnerHTML(splashElement, "XML Server Error " + this.XHRObj.status);
+		Display.putInnerHTML(splashElement, "XML Server Error " + this.XHRObj.status);
         Display.status("XML Server Error " + this.XHRObj.status);
     	Display.showPopup("XML Server Error " + this.XHRObj.status);
         if (this.errorCallback != null) {
@@ -78,7 +78,7 @@ Server.createVideoList = function() {
     	var xmlResponse = this.XHRObj.responseXML;
     	if (xmlResponse == null) {
             Display.status("xmlResponse == null" );
-            widgetAPI.putInnerHTML(splashElement, "Error in XML File ");
+            Display.putInnerHTML(splashElement, "Error in XML File ");
         	Display.showPopup("Error in XML File");
             if (this.errorCallback != null) {
             	this.errorCallback("XmlError");
@@ -89,18 +89,18 @@ Server.createVideoList = function() {
 //    	var xmlElement = this.XHRObj.responseXML.documentElement;
         
         if (!xmlElement) {
-            widgetAPI.putInnerHTML(splashElement, "Failed to get valid XML!!!");
+        	Display.putInnerHTML(splashElement, "Failed to get valid XML!!!");
             Display.status("Failed to get valid XML");
         	Display.showPopup("Failed to get valid XML");
             return;
         }
         else
         {
-            widgetAPI.putInnerHTML(splashElement, "Parsing ...");
+        	Display.putInnerHTML(splashElement, "Parsing ...");
             var items = xmlElement.getElementsByTagName("item");          
             if (items.length == 0) {
             	Display.showPopup("Something wrong. Response does not contain any item");
-            	Main.log("Something wrong. Response does not contain any item");
+            	Main.logToServer("Something wrong. Response does not contain any item");
             	
             };
             
@@ -120,7 +120,7 @@ Server.createVideoList = function() {
             	}
             	catch (e) {
             		
-            	    alert("ERROR: "+e);
+            	    Main.log("ERROR: "+e);
             	}        
            	
             	var desc = descriptionElement.firstChild.data;
@@ -137,7 +137,7 @@ Server.createVideoList = function() {
                 
             }
             Data.completed(this.doSort);
-            widgetAPI.putInnerHTML(splashElement, "Done...");
+            Display.putInnerHTML(splashElement, "Done...");
 
             if (this.dataReceivedCallback)
             {

@@ -1,8 +1,8 @@
 var Config = {
-	cfgFileName : curWidget.id + "/config.dta",
+	cfgFileName : "",
 	XHRObj : null,
 	xmlDocument : null,
-	serverUrl : "",  // Will become the main URL for contacting the server
+	serverUrl : "http://192.168.1.122:8000",  // Will become the main URL for contacting the server. Form "http://<server>:port"
 	serverAddr : "",
 	serverAddrDefault: "192.168.1.122:8000", 
 	format :"has",
@@ -13,7 +13,11 @@ var Config = {
 	initialTimeOut: 3, // sec
 	skipDuration : 30, // sec
 	noLiveChannels : 30, 
-	firstLaunch : false
+	firstLaunch : false,
+
+	deviceType : 0   // Used to differentiate between browsers and platforms
+	// 0: Samsung
+
 };
 
 
@@ -24,32 +28,53 @@ var Config = {
  * Come back here, read the file and continue
  */
 
-
 Config.init = function () {
-    var fileSystemObj = new FileSystem();
-    
-	if (fileSystemObj.isValidCommonPath(curWidget.id) == 0){
-//		Display.showPopup ("First Launch of the Widget --> Launching Config Menu");
-		alert("First Launch of the Widget");
-		// should switch to the config screen here
-		var res = fileSystemObj.createCommonDir(curWidget.id);
-		if (res == true) {
-			Config.firstLaunch = true;
 
-			Main.init();
 
-			Main.changeState(4);
+/*	Main.logToServer ("navigator.appCodeName= " + navigator.appCodeName);
+	Main.logToServer ("navigator.appName= " + navigator.appName);
+	Main.logToServer ("navigator.platform= " + navigator.platform);
+
+	Main.logToServer ("modelName= " + deviceapis.tv.info.getModel());
+	Main.logToServer ("productType= " + deviceapis.tv.info.getProduct());
+*/
+	
+	if (this.deviceType == 0) {
+		// This is a Samsung Smart TV
+
+		try {
+			this.cfgFileName = curWidget.id + "/config.dta";
+		}
+		catch (e) {		
+			Main.log("curWidget.id does not exists. Is that a Samsung?");
+			return;
+		};
+		
+		var fileSystemObj = new FileSystem();
+	    
+		if (fileSystemObj.isValidCommonPath(curWidget.id) == 0){
+//			Display.showPopup ("First Launch of the Widget --> Launching Config Menu");
+			Main.log("First Launch of the Widget");
+			// should switch to the config screen here
+			var res = fileSystemObj.createCommonDir(curWidget.id);
+			if (res == true) {
+				Config.firstLaunch = true;
+
+				Main.init(); // Obsolete? 
+
+				Main.changeState(4);
+				return;
+			}
+			else {
+				Main.init();
+				Display.showPopup ("ERROR: Cannot create widget folder");
+				Main.logToServer("ERROR: Cannot create widget folder curWidget.id= " +curWidget.id);
+			}
 			return;
 		}
 		else {
-			Main.init();
-			Display.showPopup ("ERROR: Cannot create widget folder");
-			Main.log("ERROR: Cannot create widget folder curWidget.id= " +curWidget.id);
-		}
-		return;
-	}
-	else {
-		Config.readContext();
+			Config.readContext();
+		}		
 	}
 
 	Config.fetchConfig();
@@ -118,16 +143,16 @@ Config.readContext = function () {
 		
 	}
 	catch (e) {
-		Main.log("Config.readContext: Error while reading: e= " +e);
+		Main.logToServer("Config.readContext: Error while reading: e= " +e);
 		var res = fileSystemObj.createCommonDir(curWidget.id);
 		if (res == true) {
-			Main.log("Config.readContext: Widget Folder created");
+			Main.logToServer("Config.readContext: Widget Folder created");
 			Display.showPopup ("Config Read Error:  Try widget restart");  
 		}
 		else {
-			Main.log("Config.readContext: Widget Folder creation failed");
+			Main.logToServer("Config.readContext: Widget Folder creation failed");
 			Display.showPopup ("Config Read Error:  Try re-installing the widget");  
-			alert("-------------- Error: res = false ------------------------");			
+			Main.log("-------------- Error: res = false ------------------------");			
 		}
 
 		Config.firstLaunch = true;
@@ -144,8 +169,8 @@ Config.getXmlValue = function (itm) {
 		res = val[0].firstChild.data;
 	}
 	catch (e) {
-		Main.log("parsing widget.conf: Item= " + itm + " not found" + e);
-		alert ("parsing widget.conf: Item= " + itm + " not found e= " + e);
+		Main.logToServer("parsing widget.conf: Item= " + itm + " not found" + e);
+		Main.log ("parsing widget.conf: Item= " + itm + " not found e= " + e);
 	}
 	return res;
 
@@ -159,8 +184,8 @@ Config.getXmlString = function (itm) {
 		res = val[0].firstChild.data;
 	}
 	catch (e) {
-		Main.log("parsing widget.conf: Item= " + itm + " not found" + e);
-		alert ("parsing widget.conf: Item= " + itm + " not found e= " + e);
+		Main.logToServer("parsing widget.conf: Item= " + itm + " not found" + e);
+		Main.log ("parsing widget.conf: Item= " + itm + " not found e= " + e);
 	};
 
 	return res;
@@ -168,28 +193,28 @@ Config.getXmlString = function (itm) {
 
 Config.processConfig = function () {
 	if (this.XHRObj.status != 200) {
-    	alert ("Config Server Error");  	
+    	Main.log ("Config Server Error");  	
     	Display.showPopup("Config Server Error " + this.XHRObj.status);
-    	Main.log("Config Server Error " + this.XHRObj.status);
+    	Main.logToServer("Config Server Error " + this.XHRObj.status);
     }
     else {
     	var xmlResponse = this.XHRObj.responseXML;
     	if (xmlResponse == null) {
-    		alert ("xml error");
+    		Main.log ("xml error");
         	Display.showPopup("Error in XML Config File");
-        	Main.log("Error in XML Config File");
+        	Main.logToServer("Error in XML Config File");
             return;
     	}
     	this.xmlDocument = xmlResponse.documentElement;
         if (!this.xmlDocument ) {
-            alert("Failed to get valid Config XML");
+            Main.log("Failed to get valid Config XML");
         	Display.showPopup("Failed to get valid Config XML");
-        	Main.log("Failed to get valid Config XML");
+        	Main.logToServer("Failed to get valid Config XML");
             return;
         }
         else  {
-        	alert ("Paring config XML now");
-        	Main.log("Paring config XML now");
+        	Main.log ("Parsing config XML now");
+        	Main.logToServer("Parsing config XML now");
         	this.format = Config.getXmlString("format");
         	var res = Config.getXmlValue("tgtBufferBitrate");
         	if (res != 0)
@@ -212,16 +237,16 @@ Config.processConfig = function () {
         	res = Config.getXmlValue("liveChannels");
         	if (res != 0) noLiveChannels = res;
         	
-        	alert("**** Config ****");
-        	alert("serverUrl= " + Config.serverUrl);
-        	alert("format= " + Config.format);
-        	alert("tgtBufferBitrate= " + Config.tgtBufferBitrate);
-        	alert("totalBufferDuration= " + Config.totalBufferDuration);
-        	alert("initialBuffer= " + Config.initialBuffer);
-        	alert("pendingBuffer= " + Config.pendingBuffer);
-        	alert("skipDuration= " + Config.skipDuration);
-        	alert("initialTimeOut= " + Config.initialTimeOut);
-        	alert("**** /Config ****");      	
+        	Main.log("**** Config ****");
+        	Main.log("serverUrl= " + Config.serverUrl);
+        	Main.log("format= " + Config.format);
+        	Main.log("tgtBufferBitrate= " + Config.tgtBufferBitrate);
+        	Main.log("totalBufferDuration= " + Config.totalBufferDuration);
+        	Main.log("initialBuffer= " + Config.initialBuffer);
+        	Main.log("pendingBuffer= " + Config.pendingBuffer);
+        	Main.log("skipDuration= " + Config.skipDuration);
+        	Main.log("initialTimeOut= " + Config.initialTimeOut);
+        	Main.log("**** /Config ****");      	
         };
     	
     };

@@ -10,11 +10,11 @@ Options.init = function() {
 };
 
 Options.onComplete = function () {
-	alert("Completed");
+	Main.log("Completed");
 };
 
 Options.onEnter = function () {
-	alert("Enter: " + document.getElementById("widgetServerAddr").value );
+	Main.log("Enter: " + document.getElementById("widgetServerAddr").value );
 
 	Config.updateContext(document.getElementById("widgetServerAddr").value);
 	
@@ -38,7 +38,7 @@ Options.onBlue = function () {
 Options.onImeCreated = function(obj) {
 //	_g_ime.keySet ("12key");
 //	obj.setKeySetFunc('12key');
-	Main.log ("Options.onImeCreated()");
+	Main.logToServer ("Options.onImeCreated()");
 
 	obj.setKeyFunc(tvKey.KEY_RETURN, function(keyCode) { widgetAPI.sendReturnEvent(); return false; } );
 	obj.setKeyFunc(tvKey.KEY_EXIT, function(keyCode) { widgetAPI.sendExitEvent(); return false; } );
@@ -51,7 +51,7 @@ Options.onImeCreated = function(obj) {
 	obj.setEnterFunc(Options.onEnter);
 
 	if (obj.setMode("_num") == false) {
-		Main.log("obj.setMode(\"_num\") returns false"); 
+		Main.logToServer("obj.setMode(\"_num\") returns false"); 
 	}
 
 	Options.imeBox.setOnCompleteFunc(Options.onComplete);
@@ -61,8 +61,8 @@ Options.onImeCreated = function(obj) {
 
 Options.onReady = function () {
 	document.getElementById('widgetServerAddr').focus();
-	Main.log ("Options.onReady()");
-	alert ("KeySet= " + this.imeBox.getKeySet());
+	Main.logToServer ("Options.onReady()");
+	Main.log ("KeySet= " + this.imeBox.getKeySet());
 };
 
 
