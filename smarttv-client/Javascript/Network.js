@@ -1,18 +1,25 @@
 var Network = {
 	plugin : null,
 	ownMac : "",
-	ownGw : ""
+	ownGw : "",
+	isInited: false
 };
 
 Network.init = function () {
     this.plugin = document.getElementById("pluginNetwork");
-    var nw_type = this.plugin.GetActiveType();
-    if ((nw_type == 0) ||  (nw_type == 1)) {
-		this.ownMac = this.plugin.GetMAC(nw_type);
-		this.ownGw = this.plugin.GetGateway(nw_type);
+    try {
+        var nw_type = this.plugin.GetActiveType();
+        if ((nw_type == 0) ||  (nw_type == 1)) {
+    		this.ownMac = this.plugin.GetMAC(nw_type);
+    		this.ownGw = this.plugin.GetGateway(nw_type);
+        }
+        Main.log( "ownMac= " +  this.ownMac);
+        Main.log ("ownGw= " + this.ownGw);
+        this.isInited = true;
     }
-    alert( "ownMac= " +  this.ownMac);
-    alert ("ownGw= " + this.ownGw);
+    catch (e) {
+    	// Code for Non Samsung SmartTV here
+    }
 } ;
 
 

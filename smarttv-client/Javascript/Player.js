@@ -1,3 +1,7 @@
+/*
+ * This module only works with the Samsung Media Players. For other player objects, the code need to be adjusted
+ */
+
 var Player =
 {
     plugin : null,
@@ -29,19 +33,19 @@ var Player =
 
 Player.init = function() {
     var success = true;
-          alert("success vale :  " + success);    
+          Main.log("success vale :  " + success);    
     this.state = this.STOPPED;
     
     this.plugin = document.getElementById("pluginPlayer");
     
     if (!this.plugin)
     {
-          alert("success vale this.plugin :  " + success);    
+          Main.log("success vale this.plugin :  " + success);    
          success = false;
     }
 
-    var vermsg = this.plugin.GetPlayerVersion();
-    alert ("player plugin version: " +vermsg);
+//    var vermsg = this.plugin.GetPlayerVersion();
+//    Main.log ("player plugin version: " +vermsg);
    
     this.plugin.OnCurrentPlayTime = 'Player.OnCurrentPlayTime';
     this.plugin.OnStreamInfoReady = 'Player.OnStreamInfoReady';
@@ -53,13 +57,13 @@ Player.init = function() {
     this.plugin.OnNetworkDisconnected = 'Player.OnNetworkDisconnected'; //  when the ethernet is disconnected or the streaming server stops supporting the content in the middle of streaming.
     this.plugin.OnRenderingComplete = 'Player.OnRenderingComplete';
     
-    alert("success= " + success);       
+    Main.log("success= " + success);       
     return success;
 };
 
 Player.deinit = function()
 {
-      alert("Player deinit !!! " );       
+      Main.log("Player deinit !!! " );       
       
       if (this.plugin)
       {
@@ -77,47 +81,42 @@ Player.setFullscreen = function() {
 
 Player.setBuffer = function (btr){
 	var res = true;
-//	var m_bitrate = Config.tgtBufferBitrate; 
-//	var buffer_sec = Config.totalBufferDuration;
-//	var init_buffer_perc = Config.initialBuffer;
-//	var pend_buffer_perc = Config.pendingBuffer;
-
 	var buffer_byte = (Config.totalBufferDuration * Config.tgtBufferBitrate) / 8.0;
 
-	Main.log("Seting TotalBufferSize to " + Math.round(buffer_byte) +"Byte dur= " +Config.totalBufferDuration + "sec init_buffer_perc= " +Config.initialBuffer +"% pend_buffer_perc= " +Config.pendingBuffer + "% initialTimeOut= " +Config.initialTimeOut + "sec");
+	Main.logToServer("Seting TotalBufferSize to " + Math.round(buffer_byte) +"Byte dur= " +Config.totalBufferDuration + "sec init_buffer_perc= " +Config.initialBuffer +"% pend_buffer_perc= " +Config.pendingBuffer + "% initialTimeOut= " +Config.initialTimeOut + "sec");
 	
 	//The SetTotalBufferSize function sets the streaming buffer size of media player.
 	res = this.plugin.SetTotalBufferSize(Math.round(buffer_byte));
 	if (res == false) {
 		Display.showPopup("SetTotalBufferSize(" + Math.round(buffer_byte) +") returns error");
-		Main.log("SetTotalBufferSize(" + Math.round(buffer_byte) +") returns error");
+		Main.logToServer("SetTotalBufferSize(" + Math.round(buffer_byte) +") returns error");
 	}
   
 	// The SetInitialBuffer function sets the first buffering size as percentage of buffer size before starting playback.
 	res = this.plugin.SetInitialBuffer(Math.round( buffer_byte * Config.initialBuffer/ 100.0));
 	if (res == false) {
 		Display.showPopup("SetInitialBuffer(" + Math.round(buffer_byte * Config.initialBuffer/ 100.0) +") returns error");
-		Main.log("SetInitialBuffer(" + Math.round(buffer_byte * Config.initialBuffer/ 100.0) +") returns error");
+		Main.logToServer("SetInitialBuffer(" + Math.round(buffer_byte * Config.initialBuffer/ 100.0) +") returns error");
 	}	
 	//he SetInitialTimeOut function sets the maximum time out value for initial buffering before starting playback.
 	res = this.plugin.SetInitialTimeOut(Config.initialTimeOut);
 	if (res == false) {
 		Display.showPopup("SetInitialTimeOut(" + 2 +") returns error");
-		Main.log("SetInitialTimeOut(" + 2 +") returns error");
+		Main.logToServer("SetInitialTimeOut(" + 2 +") returns error");
 	}
 
 	// The SetPendingBuffer function sets the size of a buffer as percentage of total buffer size that media player goes out from buffering status.
 	res = this.plugin.SetPendingBuffer(Math.round(buffer_byte * Config.pendingBuffer /100.0)); 
 	if (res == false) {
 		Display.showPopup("SetPendingBuffer(" + Math.round(buffer_byte * Config.pendingBuffer /100.0) +") returns error");
-		Main.log("SetPendingBuffer(" + Math.round(buffer_byte * Config.pendingBuffer /100.0) +") returns error");
+		Main.logToServer("SetPendingBuffer(" + Math.round(buffer_byte * Config.pendingBuffer /100.0) +") returns error");
 	}
 
 };
 
 Player.setVideoURL = function(url) {
     this.url = url;
-    alert("URL = " + this.url);
+    Main.log("URL = " + this.url);
 };
 
 Player.setCurrentPlayTimeOffset = function(val) {
@@ -127,8 +126,12 @@ Player.setCurrentPlayTimeOffset = function(val) {
 };
 
 Player.playVideo = function() {
+	if (Config.deviceType != 0) {
+		Display.showPopup ("Only supported for TVs");
+		return;
+	}
     if (this.url == null) {
-        alert("No videos to play");
+        Main.log("No videos to play");
     }
     else
     {
@@ -146,7 +149,7 @@ Player.playVideo = function() {
 
         Player.setBuffer(15000000.0);
 
-        alert ("StartPlayback for " + this.url);
+        Main.log ("StartPlayback for " + this.url);
 //        if (this.plugin.StartPlayback() == false)
 //        	Display.showPopup("StartPlayback returns false");
         
@@ -157,7 +160,7 @@ Player.playVideo = function() {
 
 Player.pauseVideo = function() {
 	Display.showProgress();
-	Main.log("pauseVideo");
+	Main.logToServer("pauseVideo");
 
     this.state = this.PAUSED;
     Display.status("Pause");
@@ -179,12 +182,12 @@ Player.stopVideo = function() {
         }
     }
     else {
-        alert("Ignoring stop request, not in correct state");
+        Main.log("Ignoring stop request, not in correct state");
     }
 };
 
 Player.resumeVideo = function() {
-	Main.log("resumeVideo");
+	Main.logToServer("resumeVideo");
 	Display.showProgress();
     this.state = this.PLAYING;
     Display.status("Play");
@@ -201,14 +204,14 @@ Player.jumpToVideo = function(percent) {
     Player.bufferState = 0;
 	Display.showProgress();
     if (this.state != this.PLAYING) {
-    	alert ("Player not Playing");
+    	Main.log ("Player not Playing");
     	return;
     }
 	if (this.totalTime == -1 && this.isLive == false) 
 		this.totalTime = this.plugin.GetDuration();
 	var tgt = Math.round(((percent-2)/100.0) *  this.totalTime/ 1000.0);
 	
-	alert("jumpToVideo= " + percent + "% of " + (this.totalTime/1000) + "sec tgt = " + tgt + "sec curPTime= " + (this.curPlayTime/1000) +"sec");	
+	Main.log("jumpToVideo= " + percent + "% of " + (this.totalTime/1000) + "sec tgt = " + tgt + "sec curPTime= " + (this.curPlayTime/1000) +"sec");	
 //    Display.showPopup("jumpToVideo= " + percent + "% of " + (this.totalTime/1000) + "sec<br>--> tgt = " + tgt + "sec curPTime= " + (this.curPlayTime/1000)+"sec");
 	this.plugin.Stop();
 	
@@ -240,7 +243,7 @@ Player.getState = function() {
 //------------------------------------------------
 
 Player.onBufferingStart = function() {
-	Main.log("Buffer Start: " + Player.curPlayTime);
+	Main.logToServer("Buffer Start: " + Player.curPlayTime);
 	Player.bufferStartTime = new Date().getTime();
 
 	Player.bufferState = 0;
@@ -265,7 +268,7 @@ Player.onBufferingComplete = function() {
     Display.status("Play");
 	Display.hideStatus();
 
-	Main.log("Buffer Completed - Buffering Duration= " + (new Date().getTime() - Player.bufferStartTime) + " ms");
+	Main.logToServer("Buffer Completed - Buffering Duration= " + (new Date().getTime() - Player.bufferStartTime) + " ms");
 
     Player.bufferState = 100;
 	Display.bufferUpdate();
@@ -274,7 +277,7 @@ Player.onBufferingComplete = function() {
     Player.setFullscreen();
     Display.hide();   
     
-	Main.log("onBufferingComplete ");
+	Main.logToServer("onBufferingComplete ");
 /*	Player.pauseVideo();
 	window.setTimeout(Player.resumeVideo, 1000);	*/
 };
@@ -283,40 +286,30 @@ Player.onBufferingComplete = function() {
 Player.OnCurrentPlayTime = function(time) {
 	Player.curPlayTime = parseInt(time) + parseInt(Player.cptOffset);
 	
-//	alert ("OnCurrentPlayTime time= " + time + " this.curPlayTime= " +this.curPlayTime );
-//    Display.setTime(Player.curPlayTime);
-   
     // Update the Current Play Progress Bar 
     Display.updateProgressBar();
     
     if (Player.isRecording == true) {
     	Display.updateRecBar(Player.startTime, Player.duration);
     }
-    Player.curPlayTimeStr =  Display.getHumanTimeRepresentation(Player.curPlayTime);
+    Player.curPlayTimeStr =  Display.durationString(Player.curPlayTime / 1000.0);
+
     Display.updatePlayTime();
 };
 
 
 Player.OnStreamInfoReady = function() {
-    alert("*** OnStreamInfoReady ***");
-//	Display.showPopup("*** OnStreamInfoReady *** ");
-//	Display.showPopup("GetCurrentBitrates= " + Player.plugin.GetCurrentBitrates());
-	Main.log("GetCurrentBitrates= " + Player.plugin.GetCurrentBitrates());
+    Main.log("*** OnStreamInfoReady ***");
+	Main.logToServer("GetCurrentBitrates= " + Player.plugin.GetCurrentBitrates());
 	if ((Player.isLive == false) && (Player.isRecording == false)) {
 		Player.totalTime = Player.plugin.GetDuration();
 	}
-//	Display.updateTotalTime (Player.totalTime);
-    Player.totalTimeStr = Display.getHumanTimeRepresentation(Player.totalTime);
-
-	
-//	alert("totalTime= " + Player.totalTime + " totalTimeStr= " +Player.totalTimeStr);
-//    Display.setTotalTime(totalTime);
-    
+    Player.curPlayTimeStr =  Display.durationString(Player.totalTime / 1000.0);
 
 /*    var height = Player.plugin.GetVideoHeight();
     var width = Player.GetVideoWidth();
     Display.showPopup("Resolution= " + height + " x " +width);
-    alert("Resolution= " + height + " x " +width);
+    Main.log("Resolution= " + height + " x " +width);
 */
 };
 
@@ -327,14 +320,14 @@ Player.OnRenderingComplete = function() {
 
 Player.OnConnectionFailed = function() {
 	// fails to connect to the streaming server
-	alert ("ERROR: Failed to connect to the streaming server");
+	Main.log ("ERROR: Failed to connect to the streaming server");
 //	widgetAPI.putInnerHTML(document.getElementById("popup"), "Failed to connect to the streaming server");
 	Display.showPopup("Failed to connect to the streaming server");
 };
 
 Player.OnStreamNotFound = function() {
 // 404 file not found   
-	alert ("ERROR: Stream Not Found");
+	Main.log ("ERROR: Stream Not Found");
 //	widgetAPI.putInnerHTML(document.getElementById("popup"), "Stream Not Found");
 	Display.showPopup("Stream Not Found");
 
@@ -342,7 +335,7 @@ Player.OnStreamNotFound = function() {
 
 Player.OnNetworkDisconnected = function() {
 //  when the ethernet is disconnected or the streaming server stops supporting the content in the middle of streaming.
-	alert ("ERROR: Lost Stream (Unavailable?)");
+	Main.log ("ERROR: Lost Stream (Unavailable?)");
 
 //	widgetAPI.putInnerHTML(document.getElementById("popup"), "Lost Stream (Unavailable?)");
 	Display.showPopup("Lost Stream (Unavailable?)");

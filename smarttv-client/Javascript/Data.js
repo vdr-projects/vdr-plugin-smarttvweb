@@ -18,7 +18,7 @@ Data.completed= function(sort) {
 		this.assets.sortPayload();
 	
 	this.folderList.push({item : this.assets, id: 0});
-	alert ("Data.completed()= " +this.folderList.length);
+	Main.log ("Data.completed()= " +this.folderList.length);
 
 };
 
@@ -43,9 +43,9 @@ Data.addItem = function(t_list, pyld) {
 };
 
 Data.dumpFolderStruct = function(){
-    alert("---------- dumpFolderStruct ------------");    
+    Main.log("---------- dumpFolderStruct ------------");    
     this.assets.print(0);
-    alert("---------- dumpFolderStruct Done -------");    
+    Main.log("---------- dumpFolderStruct Done -------");    
 };
 
 Data.getCurrentItem = function () {
@@ -76,7 +76,7 @@ Item.prototype.getTitle = function () {
 
 Item.prototype.getPayload = function () {
 	if (this.isFolder == true) {
-		alert("WARNING: getting payload on a folder title=" +this.title);
+		Main.log("WARNING: getting payload on a folder title=" +this.title);
 	}
 	return this.payload;
 };
@@ -102,7 +102,7 @@ Item.prototype.addChild = function (key, pyld, level) {
     }
     else {
     	if (level > 10) {
-    		alert(" too many levels");
+    		Main.log(" too many levels");
     		return;
     	}
     	var t = key.shift();
@@ -129,9 +129,9 @@ Item.prototype.print = function(level) {
     	prefix += " ";
     
     for (var i = 0; i < this.childs.length; i++) {
-    	alert(prefix + this.childs[i].title);
+    	Main.log(prefix + this.childs[i].title);
     	if (this.childs[i].isFolder == true) {
-    		alert(prefix+"Childs:");
+    		Main.log(prefix+"Childs:");
         	this.childs[i].print(level +1);
     	}
     }
