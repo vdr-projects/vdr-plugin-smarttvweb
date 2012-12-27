@@ -3,7 +3,8 @@ var Config = {
 	XHRObj : null,
 	xmlDocument : null,
 	serverUrl : "",  // Will become the main URL for contacting the server
-	serverAddr : "192.168.1.122:8000",
+	serverAddr : "",
+	serverAddrDefault: "192.168.1.122:8000", 
 	format :"has",
 	tgtBufferBitrate : 6000, // kbps
 	totalBufferDuration : 30, // sec
@@ -26,25 +27,27 @@ var Config = {
 
 Config.init = function () {
     var fileSystemObj = new FileSystem();
-	
+    
 	if (fileSystemObj.isValidCommonPath(curWidget.id) == 0){
-		Display.showPopup ("First Launch of the Widget --> Launching Config Menu");
+//		Display.showPopup ("First Launch of the Widget --> Launching Config Menu");
 		alert("First Launch of the Widget");
 		// should switch to the config screen here
 		var res = fileSystemObj.createCommonDir(curWidget.id);
 		if (res == true) {
 			Config.firstLaunch = true;
-		    
-//			Config.writeContext("192.168.1.122:8000");
+
+			Main.init();
+
 			Main.changeState(4);
 			return;
 		}
 		else {
+			Main.init();
 			Display.showPopup ("ERROR: Cannot create widget folder");
+			Main.log("ERROR: Cannot create widget folder curWidget.id= " +curWidget.id);
 		}
 		return;
 	}
-
 	else {
 		Config.readContext();
 	}
@@ -94,8 +97,6 @@ Config.updateContext = function (addr) {
 Config.readContext = function () {
 	var fileSystemObj = new FileSystem();
 
-//	Display.showPopup ("Reading Config file for curWidget.id= " + curWidget.id);  
-
 	try {
 		var fd = fileSystemObj.openCommonFile(Config.cfgFileName, "r");
 
@@ -109,23 +110,28 @@ Config.readContext = function () {
 		    	Config.serverUrl = "http://" + Config.serverAddr;
 		    }
 		    else {
-		    	Display.showPopup ("WARNING: Error in Config File");
+		    	Display.showPopup ("WARNING: Error in Config File. Try widget restart.");    	
+		    	// TODO: I should re-write the config file
 		    }
 		}
-		fileSystemObj.closeCommonFile(fd);		
+		fileSystemObj.closeCommonFile(fd);	
+		
 	}
 	catch (e) {
+		Main.log("Config.readContext: Error while reading: e= " +e);
 		var res = fileSystemObj.createCommonDir(curWidget.id);
 		if (res == true) {
-			Display.showPopup ("*** Read Error and Widget Folder successfully created ***");  
-			alert("-------------- Error: res = true ------------------------");
+			Main.log("Config.readContext: Widget Folder created");
+			Display.showPopup ("Config Read Error:  Try widget restart");  
 		}
 		else {
-			Display.showPopup ("*** Read Error and Widget Folder creation failed ***");  
+			Main.log("Config.readContext: Widget Folder creation failed");
+			Display.showPopup ("Config Read Error:  Try re-installing the widget");  
 			alert("-------------- Error: res = false ------------------------");			
 		}
 
 		Config.firstLaunch = true;
+		Main.init();
 		Main.changeState(4);
 	}
 };
@@ -171,16 +177,19 @@ Config.processConfig = function () {
     	if (xmlResponse == null) {
     		alert ("xml error");
         	Display.showPopup("Error in XML Config File");
+        	Main.log("Error in XML Config File");
             return;
     	}
     	this.xmlDocument = xmlResponse.documentElement;
         if (!this.xmlDocument ) {
             alert("Failed to get valid Config XML");
         	Display.showPopup("Failed to get valid Config XML");
+        	Main.log("Failed to get valid Config XML");
             return;
         }
         else  {
         	alert ("Paring config XML now");
+        	Main.log("Paring config XML now");
         	this.format = Config.getXmlString("format");
         	var res = Config.getXmlValue("tgtBufferBitrate");
         	if (res != 0)
