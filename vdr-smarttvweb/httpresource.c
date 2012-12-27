@@ -347,6 +347,14 @@ int cHttpResource::processRequest() {
 
   if (mPath.compare("/widget.conf") == 0) {
     mPath = mFactory->getConfigDir() + "/widget.conf";
+
+    if (stat(mPath.c_str(), &statbuf) < 0) {
+      sendError(404, "Not Found", NULL, "File not found.");
+      return OKAY;
+    }
+    mFileSize = statbuf.st_size;
+    mContentType = SINGLEFILE;
+    return sendFile(&statbuf);
   }
 
   if (mPath.size() > 8) {
