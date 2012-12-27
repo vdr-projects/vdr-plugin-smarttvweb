@@ -310,7 +310,7 @@ int cHttpResource::processRequest() {
 
   if (strcasecmp(mMethod.c_str(), "GET") != 0){
     sendError(501, "Not supported", NULL, "Method is not supported.");
-    return ERROR;
+    return OKAY;
   }
 
 #ifndef STANDALONE
@@ -323,8 +323,8 @@ int cHttpResource::processRequest() {
     ret = sendRecordingsHtml( &statbuf);
     return OKAY;
   }
-  if (mPath.compare("/recordings.xml") == 0) {
 
+  if (mPath.compare("/recordings.xml") == 0) {
     ret = sendRecordingsXml( &statbuf);
     return OKAY;
   }
@@ -339,23 +339,9 @@ int cHttpResource::processRequest() {
     return OKAY;
   }
 #endif
+
   if (mPath.compare("/media.xml") == 0) {
     ret = sendMediaXml( &statbuf);
-    return OKAY;
-  }
-
-  if (mPath.compare(mPath.size() -8, 8, "-seg.mpd") == 0) {
-    ret = sendManifest( &statbuf, false);
-    return OKAY;
-  }
-
-  if (mPath.compare(mPath.size() -9, 9, "-seg.m3u8") == 0) {
-    ret = sendManifest( &statbuf, true);
-    return OKAY;
-  }
-
-  if (mPath.compare(mPath.size() -7, 7, "-seg.ts") == 0) {
-    ret = sendMediaSegment( &statbuf);
     return OKAY;
   }
 
@@ -363,43 +349,79 @@ int cHttpResource::processRequest() {
     mPath = mFactory->getConfigDir() + "/widget.conf";
   }
 
+  if (mPath.size() > 8) {
+    if (mPath.compare(mPath.size() -8, 8, "-seg.mpd") == 0) {
+      ret = sendManifest( &statbuf, false);
+      return OKAY;
+    }
+  }
+
+  if (mPath.size() > 9) {
+    if (mPath.compare(mPath.size() -9, 9, "-seg.m3u8") == 0) {
+      ret = sendManifest( &statbuf, true);
+      return OKAY;
+    }
+  }
+
+  if (mPath.size() > 7) {
+    if (mPath.compare(mPath.size() -7, 7, "-seg.ts") == 0) {
+      ret = sendMediaSegment( &statbuf);
+      return OKAY;
+    }
+  }
+
   if (stat(mPath.c_str(), &statbuf) < 0) {
+    // checking, whether the file or directory exists 
     sendError(404, "Not Found", NULL, "File not found.");
-    return ERROR;
+    return OKAY;
   }
 
   if (S_ISDIR(statbuf.st_mode)) {
-
+    // Do Folder specific checkings
 #ifndef DEBUG
     *(mLog->log())<< DEBUGPREFIX
 		  << " processRequest: isDir - mPath: " <<  mPath.c_str() << endl;
 #endif    
-
     
     if (mPath.size() >4) {
       if (mPath.compare(mPath.size() - 4, 4, ".rec") == 0) {
+	// Handle any recording directory specifically
 	mContentType = VDRDIR;
 	return sendVdrDir( &statbuf);
       }
     }
-    //    else {
+
+    if (mPath.compare(0, (mFactory->getConfig()->getMediaFolder()).size(), mFactory->getConfig()->getMediaFolder()) != 0) {
+      // No directory access outside of MediaFolder
+      *(mLog->log())<< DEBUGPREFIX
+		    << " Directory request is not for MediaFolde (" 
+		    << mFactory->getConfig()->getMediaFolder() << ")"
+		    << endl;
+      sendError(404, "Not Found", NULL, "File not found.");
+      return OKAY;
+    }
+
     sendDir( &statbuf);
     mContentType = MEMBLOCK;
-    return OKAY;
-      //    }
+    return OKAY;    
   }
   else {
+    // mPath is not a folder, thus it is a file
 #ifndef DEBUG
     *(mLog->log())<< DEBUGPREFIX
 		  << " processRequest: file send\n";
 #endif
 
+    // Check, if requested file is in Media Directory
+    if (mPath.compare(0, (mFactory->getConfig()->getMediaFolder()).size(), mFactory->getConfig()->getMediaFolder()) != 0) {
+      sendError(404, "Not Found", NULL, "File not found.");
+      return OKAY;
+    }
     mFileSize = statbuf.st_size;
-
     mContentType = SINGLEFILE;
-
     return sendFile(&statbuf);
   }
+
 #ifndef DEBUG
   *(mLog->log())<< DEBUGPREFIX
 		  << " processRequest: Not Handled SHOULD not be here\n";
@@ -523,8 +545,10 @@ int cHttpResource::fillDataBlk() {
   case MEMBLOCK:
     int rem_len = mResponseMessage->size() - mResponseMessagePos;
     if (rem_len == 0) {
-      *(mLog->log())<< DEBUGPREFIX
-      		    << " fillDataBlock: MEMBLOCK done" << endl;
+
+#ifndef DEBUG
+      *(mLog->log())<< DEBUGPREFIX << " fillDataBlock: MEMBLOCK done" << endl;
+#endif
       delete mResponseMessage;
       mResponseMessagePos = 0;
       mConnState = TOCLOSE;
@@ -857,12 +881,14 @@ int cHttpResource::parseFiles(vector<sFileEntry> *entries, string prefix, string
   string dir_comp;
   dir_comp = dir_base + dir_name + "/";
 
+#ifndef DEBUG
   *(mLog->log()) << DEBUGPREFIX 
 		 << " parseFiles: Prefix= " << prefix 
 		 << " base= " << dir_base
 		 << " dir= " << dir_name 
 		 << " comp= " << dir_comp
 		 << endl;
+#endif
 
   dir = opendir(dir_comp.c_str());
   while ((de = readdir(dir)) != NULL) {
@@ -870,7 +896,6 @@ int cHttpResource::parseFiles(vector<sFileEntry> *entries, string prefix, string
       continue;
     } 
 
-    //    *(mLog->log()) << DEBUGPREFIX << " " << de->d_name << endl;
     strcpy(pathbuf, dir_comp.c_str());
     strcat(pathbuf, de->d_name);
     
@@ -890,8 +915,10 @@ int cHttpResource::parseFiles(vector<sFileEntry> *entries, string prefix, string
 	t.tm_sec = 0;
 	start = mktime(&t);
 	
+#ifndef DEBUG
 	*(mLog->log()) << DEBUGPREFIX 
 		       << " Vdr Folder Found: " << pathbuf << " start= " << start << endl;
+#endif
 
 	entries->push_back(sFileEntry(dir_name, pathbuf, start));
       }
@@ -1237,8 +1264,10 @@ int cHttpResource::sendMediaXml (struct stat *statbuf) {
 
   mConnState = SERVING;
 
-  *(mLog->log()) << DEBUGPREFIX << " sendMedia "  << endl;
-  
+#ifndef DEBUG
+  *(mLog->log()) << DEBUGPREFIX << " sendMedia "  << endl;  
+#endif
+
   vector<sFileEntry> entries;
   parseFiles(&entries, "", media_folder, "", statbuf);
     
@@ -1586,10 +1615,12 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
     }
   }
 
+#ifndef DEBUG
   *(mLog->log())<< DEBUGPREFIX
 		<< " Found " << act_rec.size()
 		<< " running timers"
 		<< endl;
+#endif
 
   int rec_dur = 0;
   for (cRecording *recording = recordings->First(); recording; recording = recordings->Next(recording)) {
