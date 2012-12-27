@@ -60,6 +60,8 @@ Server.fetchVideoList = function(url) {
 
 Server.createVideoList = function() {
 	alert ("creating Video list now");
+	Main.log("creating Video list now");
+	
     var splashElement = document.getElementById("splashStatus");  
     widgetAPI.putInnerHTML(splashElement, "Creating Video list now" );
 
@@ -96,6 +98,11 @@ Server.createVideoList = function() {
         {
             widgetAPI.putInnerHTML(splashElement, "Parsing ...");
             var items = xmlElement.getElementsByTagName("item");          
+            if (items.length == 0) {
+            	Display.showPopup("Something wrong. Response does not contain any item");
+            	Main.log("Something wrong. Response does not contain any item");
+            	
+            };
             
             for (var index = 0; index < items.length; index++) {
             	

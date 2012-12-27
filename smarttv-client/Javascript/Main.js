@@ -38,8 +38,6 @@ var Main = {
 };
 
 Main.onLoad = function() {
-	
-//	Config.init("http://192.168.1.122:8000/widget.conf");
 	Network.init();
 	Display.init(); 
 	
@@ -55,6 +53,7 @@ Main.onLoad = function() {
 };
 
 // Called by Config, when done
+// TODO: Send sendReadyEvent early and show a splash screen during startup
 Main.init = function () {
 	alert("Main.init()");
     if ( Player.init() && Audio.init() && Server.init() ) {
@@ -77,7 +76,7 @@ Main.init = function () {
         
 		document.getElementById("splashScreen").style.display="none";
 		
-		widgetAPI.sendReadyEvent();    
+		widgetAPI.sendReadyEvent();    		
     }
     else {
        alert("Failed to initialise");
@@ -86,7 +85,10 @@ Main.init = function () {
 };
 
 Main.log = function (msg) {
-    var XHRObj = new XMLHttpRequest();
+	if (Config.serverUrl == "" )
+		return;
+
+	var XHRObj = new XMLHttpRequest();
     XHRObj.open("POST", Config.serverUrl + "/log", true);
     XHRObj.send("CLOG: " + msg);
 };
