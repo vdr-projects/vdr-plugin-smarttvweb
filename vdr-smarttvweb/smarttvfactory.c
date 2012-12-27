@@ -144,7 +144,8 @@ void SmartTvServer::loop() {
     write_set = mWriteState;
 
     if (ret != handeled_fds) {
-      *(mLog.log()) << "ERROR: Select-ret= " << ret 
+      // Only ok, when the server has closed a handing HTTP connection
+      *(mLog.log()) << "WARNING: Select-ret= " << ret 
 		    << " != handeled_fds= " << handeled_fds << endl;
       /*      FD_ZERO(&mReadState);
       FD_ZERO(&mWriteState);
@@ -168,10 +169,10 @@ void SmartTvServer::loop() {
     timeout.tv_sec = 5;
     timeout.tv_usec = 0;
 
-
     ret = select(maxfd + 1, &read_set, &write_set, NULL, &timeout);
     
     if (ret == 0) {
+      // timeout: Check for dead TCP connections
       for (uint idx= 0; idx < clientList.size(); idx++) {
 	if (clientList[idx] != NULL)
 	  if (clientList[idx]->checkStatus() == ERROR) {
@@ -194,9 +195,9 @@ void SmartTvServer::loop() {
 
     // new accept
     if (FD_ISSET(mServerFd, &read_set)) {
+      handeled_fds ++;
       if((rfd = accept(mServerFd, (sockaddr*)&sadr, &addr_size))!= -1){
 	req_id ++;
-	handeled_fds ++;
 
 #ifndef DEBUG
 	*(mLog.log()) << "fd= " << rfd
@@ -268,7 +269,9 @@ void SmartTvServer::loop() {
 	  continue;
 	}
 	if ( clientList[rfd]->handleWrite() < 0){
+#ifndef DEBUG
 	  *(mLog.log()) << "fd= " << rfd << " --------------------- Check Write: Closing ---------------------" << endl;
+#endif
 	  close(rfd);
 	  delete clientList[rfd];
 	  clientList[rfd] = NULL;
