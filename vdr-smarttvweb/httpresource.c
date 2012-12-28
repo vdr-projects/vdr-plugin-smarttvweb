@@ -1574,7 +1574,7 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
 
   *mResponseMessage += hdr;
 
-  /*
+  
   if (writeXmlItem("HAS - Big Bugs Bunny", "http://192.168.1.122/sm/BBB-DASH/HAS_BigBuckTS.xml|COMPONENT=HAS", "NA", "Big Bucks Bunny - HAS", 
 		   "-", 0, 0) == ERROR) 
     return ERROR;
@@ -1582,7 +1582,7 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
   if (writeXmlItem("HLS - Big Bugs Bunny", "http://192.168.1.122/sm/BBB-DASH/HLS_BigBuckTS.m3u8|COMPONENT=HLS", "NA", "Big Bucks Bunny - HLS", 
 		   "-", 0, 0) == ERROR) 
     return ERROR;
-*/
+
 
   //--------------------
   cRecordings* recordings = &Recordings;
@@ -1668,7 +1668,7 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
     }
 
     if (writeXmlItem(cUrlEncode::doXmlSaveEncode(recording->Name()), link, "NA", desc, "-", 
-		     recording->start, rec_dur) == ERROR) 
+		     recording->Start(), rec_dur) == ERROR) 
       return ERROR;
 
   }
