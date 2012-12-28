@@ -1707,7 +1707,8 @@ int cHttpResource::sendRecordingsHtml(struct stat *statbuf) {
   char f[400];
   for (cRecording *recording = Recordings.First(); recording; recording = Recordings.Next(recording)) {
     hdr = "";
-    strftime(buff, 20, "%Y-%m-%d %H:%M:%S", localtime(&recording->start));
+    time_t start_time = recording->Start();
+    strftime(buff, 20, "%Y-%m-%d %H:%M:%S", localtime(&start_time));
     snprintf(f, sizeof(f), "%s - %d <A HREF=\"%s\">%s</A>\r\n", buff, recording->HierarchyLevels(), recording->FileName(),  recording->Name());
     hdr += f;
     *mResponseMessage += hdr;
