@@ -42,6 +42,13 @@ Config.init = function () {
 	if (this.deviceType == 0) {
 		// This is a Samsung Smart TV
 
+		if (this.serverUrl != "") {
+			// Hardcoded server URL. Done with config
+			Main.log ("Hardcoded server URL. Done with config");
+			Config.fetchConfig();
+			return;
+		}
+		
 		try {
 			this.cfgFileName = curWidget.id + "/config.dta";
 		}

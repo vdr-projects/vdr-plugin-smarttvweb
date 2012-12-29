@@ -37,7 +37,16 @@ Player.init = function() {
     this.state = this.STOPPED;
     
     this.plugin = document.getElementById("pluginPlayer");
-    
+
+/*    var pl_version = "";
+    try {
+    	pl_version = this.plugin.GetPlayerVersion();
+    }
+    catch (e) {
+    	Main.logToServer("Error while getting player version: " +e);
+    }
+    Main.logToServer("PlayerVersion= " + pl_version);
+*/    
     if (!this.plugin)
     {
           Main.log("success vale this.plugin :  " + success);    
