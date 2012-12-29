@@ -474,7 +474,7 @@ Main.getKeyCode = function(code) {
 	
 	if (Config.deviceType != 0) {
 		// Not a Samsung
-    	res = "Unknown Key (" + code + ")";
+    	res = "Unknown Key (KeyCode= " + code + ")";
     	return res;
 	}
 	switch(code) {
