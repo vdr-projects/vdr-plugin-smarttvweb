@@ -69,12 +69,12 @@ using namespace std;
 
 
 struct sVdrFileEntry {
-  unsigned long long sSize;
-  unsigned long long sFirstOffset;
+  uint64_t sSize;
+  uint64_t sFirstOffset;
   int sIdx;
 
   sVdrFileEntry () {}; 
-  sVdrFileEntry (off_t s, off_t t, int i) 
+  sVdrFileEntry (uint64_t s, uint64_t t, int i) 
   : sSize(s), sFirstOffset(t), sIdx(i) {};
 };
 
@@ -88,7 +88,7 @@ sTimerEntry(string t, time_t s, int d) :  name(t), startTime(s), duration(d) {};
 
 // 8 Byte per entry
 struct tIndexTs {
-  uint64_t offset:40; // up to 1TB per file (not using off_t here - must definitely be exactly 64 bit!)
+  uint64_t offset:40; // up to 1TB per file (not using long long int here - must definitely be exactly 64 bit!)
   int reserved:7; // reserved for future use
   int independent:1; // marks frames that can be displayed by themselves (for trick modes)
   uint16_t number:16; // up to 64K files per recording
@@ -142,6 +142,7 @@ int cHttpResource::checkStatus() {
   time_t now = time(NULL);
 
   switch (mConnState) {
+  case SERVING:
   case WAITING:
   case READHDR:
   case READPAYLOAD:
@@ -194,7 +195,7 @@ int cHttpResource::handleRead() {
   int buflen = sizeof(buf);
 
   int line_count = 0;
-  bool is_req = true;
+  //  bool is_req = true;
   string rem_hdr = "";
 
   buflen = read(mFd, buf, sizeof(buf));
@@ -283,7 +284,7 @@ int cHttpResource::handleRead() {
 #ifndef DEBUG
 	*(mLog->log())<< " parsing Request Line= " << line << endl;
 #endif	
-	is_req = false;
+	//	is_req = false;
 	// Parse the request line
 	if (parseHttpRequestLine(line) != OKAY) {
 	  return ERROR;
@@ -302,7 +303,7 @@ int cHttpResource::processRequest() {
   *(mLog->log())<< DEBUGPREFIX << " processRequest for mPath= " << mPath << DEBUGHDR << endl;
 #endif
   struct stat statbuf;
-  int ret = OKAY;
+  //  int ret = OKAY;
 
   if (mMethod.compare("POST")==0) {
     return handlePost();
@@ -320,28 +321,29 @@ int cHttpResource::processRequest() {
 		  << " generating /recordings.html" 
 		  << DEBUGHDR << endl;
 #endif
-    ret = sendRecordingsHtml( &statbuf);
+    //    ret = sendRecordingsHtml( &statbuf);
+    sendRecordingsHtml( &statbuf);
     return OKAY;
   }
 
   if (mPath.compare("/recordings.xml") == 0) {
-    ret = sendRecordingsXml( &statbuf);
+    sendRecordingsXml( &statbuf);
     return OKAY;
   }
 
   if (mPath.compare("/channels.xml") == 0) {
-    ret = sendChannelsXml( &statbuf);
+    sendChannelsXml( &statbuf);
     return OKAY;
   }
 
   if (mPath.compare("/epg.xml") == 0) {
-    ret = sendEpgXml( &statbuf);
+    sendEpgXml( &statbuf);
     return OKAY;
   }
 #endif
 
   if (mPath.compare("/media.xml") == 0) {
-    ret = sendMediaXml( &statbuf);
+    sendMediaXml( &statbuf);
     return OKAY;
   }
 
@@ -359,21 +361,21 @@ int cHttpResource::processRequest() {
 
   if (mPath.size() > 8) {
     if (mPath.compare(mPath.size() -8, 8, "-seg.mpd") == 0) {
-      ret = sendManifest( &statbuf, false);
+      sendManifest( &statbuf, false);
       return OKAY;
     }
   }
 
   if (mPath.size() > 9) {
     if (mPath.compare(mPath.size() -9, 9, "-seg.m3u8") == 0) {
-      ret = sendManifest( &statbuf, true);
+      sendManifest( &statbuf, true);
       return OKAY;
     }
   }
 
   if (mPath.size() > 7) {
     if (mPath.compare(mPath.size() -7, 7, "-seg.ts") == 0) {
-      ret = sendMediaSegment( &statbuf);
+      sendMediaSegment( &statbuf);
       return OKAY;
     }
   }
@@ -917,7 +919,8 @@ int cHttpResource::parseFiles(vector<sFileEntry> *entries, string prefix, string
 	t.tm_isdst = -1; 
 	//	char [20] rest;
 	int start = -1;
-	sscanf(de->d_name, "%4d-%02d-%02d.%02d%.%02d", &t.tm_year, &t.tm_mon, &t.tm_mday, &t.tm_hour, &t.tm_min);
+	sscanf(de->d_name, "%4d-%02d-%02d.%02d.%02d", &t.tm_year, &t.tm_mon, &t.tm_mday, &t.tm_hour, &t.tm_min);
+	//	sscanf(de->d_name, "%4d-%02d-%02d.%02d%.%02d", &t.tm_year, &t.tm_mon, &t.tm_mday, &t.tm_hour, &t.tm_min);
 	t.tm_year -= 1900;
 	t.tm_mon--;
 	t.tm_sec = 0;
@@ -1574,7 +1577,7 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
 
   *mResponseMessage += hdr;
 
-  
+  /*
   if (writeXmlItem("HAS - Big Bugs Bunny", "http://192.168.1.122/sm/BBB-DASH/HAS_BigBuckTS.xml|COMPONENT=HAS", "NA", "Big Bucks Bunny - HAS", 
 		   "-", 0, 0) == ERROR) 
     return ERROR;
@@ -1582,7 +1585,7 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
   if (writeXmlItem("HLS - Big Bugs Bunny", "http://192.168.1.122/sm/BBB-DASH/HLS_BigBuckTS.m3u8|COMPONENT=HLS", "NA", "Big Bucks Bunny - HLS", 
 		   "-", 0, 0) == ERROR) 
     return ERROR;
-
+*/
 
   //--------------------
   cRecordings* recordings = &Recordings;
@@ -1726,7 +1729,7 @@ int cHttpResource::sendVdrDir(struct stat *statbuf) {
   char pathbuf[4096];
   char f[400];
   int vdr_idx = 0;
-  off_t total_file_size = 0; 
+  uint64_t total_file_size = 0; 
   //  int ret = OKAY;
   string vdr_dir = mPath;
   vector<sVdrFileEntry> file_sizes;
@@ -1880,7 +1883,7 @@ int cHttpResource::sendVdrDir(struct stat *statbuf) {
 }
 
 void cHttpResource::sendHeaders(int status, const char *title, const char *extra, const char *mime,
-				off_t length, time_t date) {
+				long long int length, time_t date) {
 
   time_t now;
   char timebuf[128];

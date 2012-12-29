@@ -161,7 +161,7 @@ class cHttpResource {
   int sendMediaSegment (struct stat *statbuf);
 
   void sendHeaders(int status, const char *title, const char *extra, const char *mime,
-		   off_t length, time_t date);
+		   long long int length, time_t date);
 
   int sendFile(struct stat *statbuf);
 
