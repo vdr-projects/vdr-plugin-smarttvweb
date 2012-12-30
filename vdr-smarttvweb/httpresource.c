@@ -142,7 +142,6 @@ int cHttpResource::checkStatus() {
   time_t now = time(NULL);
 
   switch (mConnState) {
-  case SERVING:
   case WAITING:
   case READHDR:
   case READPAYLOAD:
@@ -156,6 +155,8 @@ int cHttpResource::checkStatus() {
     break;
   case TOCLOSE:
     return ERROR;
+    break;
+  case SERVING:
     break;
   }
 
