@@ -1,9 +1,11 @@
 var widgetAPI = null;
 var tvKey = null;
+var pluginObj = null;
 
 try {
 	widgetAPI = new Common.API.Widget();
 	tvKey = new Common.API.TVKeyValue();
+	pluginObj = new Common.API.Plugin();
 }
 catch (e) {
 }
@@ -64,9 +66,12 @@ var Main = {
 };
 
 Main.onLoad = function() {
+	window.onShow = showHandler;
+
 	Network.init();
     try {
-		widgetAPI.sendReadyEvent();    					
+		widgetAPI.sendReadyEvent();    	
+		
 	}
 	catch (e) {
 		Config.deviceType = 1;
@@ -77,7 +82,7 @@ Main.onLoad = function() {
 	}
 
 	Display.init(); 
-	
+
     this.defKeyHndl = new cDefaulKeyHndl;
     this.playStateKeyHndl = new cPlayStateKeyHndl(this.defKeyHndl);
     this.livePlayStateKeyHndl = new cLivePlayStateKeyHndl(this.defKeyHndl);
@@ -89,11 +94,23 @@ Main.onLoad = function() {
 	Config.init();
 };
 
+showHandler = function() {
+	NNaviPlugin = document.getElementById("pluginObjectNNavi");
+	NNaviPlugin.SetBannerState(2);
+	
+	pluginObj.unregistKey(tvKey.KEY_VOL_UP);
+	pluginObj.unregistKey(tvKey.KEY_VOL_DOWN);
+	pluginObj.unregistKey(tvKey.KEY_MUTE);
+	pluginObj.unregistKey(tvKey.KEY_PANEL_VOL_UP);
+	pluginObj.unregistKey(tvKey.KEY_PANEL_VOL_DOWN);
+};
+
+
 // Called by Config, when done
 // TODO: Send sendReadyEvent early and show a splash screen during startup
 Main.init = function () {
 	Main.log("Main.init()");
-    if ( Player.init() && Audio.init() && Server.init() ) {
+    if ( Player.init() && Server.init() && Audio.init()) {
     	Display.setVolume( Audio.getVolume() );
 
         // Start retrieving data from server
@@ -116,7 +133,16 @@ Main.init = function () {
     else {
        Main.log("Failed to initialise");
     }
-   
+    /*
+     * 
+     * Fetch JS file
+	xhttp=new XMLHttpRequest();
+	xhttp.open("GET","$MANAGER_WIDGET/Common/API/Plugin.js",false);
+	xhttp.send("");
+	xmlDoc=xhttp.responseText;
+	Main.logToServer (xmlDoc);
+*/
+
 };
 
 Main.log = function (msg) {
@@ -145,6 +171,7 @@ Main.onUnload = function()
 {
     Player.deinit();
 };
+
 
 Main.changeState = function (state) {
 	Main.log("change state: new state= " + state);
@@ -698,6 +725,65 @@ Main.getKeyCode = function(code) {
 	return res;
 };
 
+Main.tvKeys = {
+		KEY_UP :38,
+		KEY_DOWN :40,
+		KEY_LEFT :37,
+		KEY_RIGHT :39,
+		KEY_ENTER :13,
+
+		KEY_STOP :27, // ESC
+//		KEY_MUTE :27,
+
+		// Un-used keycodes
+		KEY_RETURN :88,
+		KEY_EXIT :45,
+		KEY_RED :108,
+		KEY_GREEN :20,
+		KEY_YELLOW :21,
+		KEY_BLUE :22,
+		KEY_RW :69,
+		KEY_PAUSE :74,
+		KEY_FF :72,
+		KEY_PLAY :71,
+		KEY_STOP :70,
+		KEY_1 :101,
+		KEY_2 :98,
+		KEY_3 :6,
+		KEY_4 :8,
+		KEY_5 :9,
+		KEY_6 :10,
+		KEY_7 :12,
+		KEY_8 :13,
+		KEY_9 :14,
+		KEY_0 :17,
+
+		KEY_PANEL_CH_UP :104,
+		KEY_PANEL_CH_DOWN :106,
+		KEY_PANEL_VOL_UP :203,
+		KEY_PANEL_VOL_DOWN :204,
+		KEY_PANEL_ENTER :309,
+		KEY_PANEL_SOURCE :612,
+		KEY_PANEL_MENU :613,
+		KEY_PANEL_POWER :614,
+
+		KEY_POWER :76,
+		KEY_VOL_UP :7,
+		KEY_VOL_DOWN :11,
+		KEY_CH_UP :68,
+		KEY_CH_DOWN :65,
+		KEY_MTS :655,
+		KEY_12 :1057,
+		KEY_AD :1039,
+		KEY_FF_ :1078,
+		KEY_REWIND_ :1080,
+		KEY_SLEEP :1097,
+		KEY_STEP :1023, 		
+		KEY_HOME :1118
+	
+};
+
+
 //---------------------------------------------------
 // PlayState Key Handler
 //---------------------------------------------------
@@ -768,20 +854,33 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function () {
         	Player.jumpToVideo(90);
         	break;
            
-        case tvKey.KEY_RIGHT:
         case tvKey.KEY_FF:
-            Main.log("FF");
+        case tvKey.KEY_RIGHT:
+            Main.log("Right: Skip Forward");
             Display.showProgress();
             Player.skipForwardVideo();
             break;
         
-        case tvKey.KEY_LEFT:
         case tvKey.KEY_RW:
-            Main.log("RW");
+        case tvKey.KEY_LEFT:
+            Main.log("Left: Skip Backward");
             Display.showProgress();
             Player.skipBackwardVideo();
             break;
 
+/* Works only for progressive streams, not Adaptive HTTP */
+/*        case tvKey.KEY_FF:
+            Main.log("FF");
+            Display.showProgress();
+            Player.fastForwardVideo();
+
+            break;
+        case tvKey.KEY_RW:
+            Main.log("RW");
+            Display.showProgress();
+            Player.RewindVideo();
+            break;
+*/           
         case tvKey.KEY_ENTER:
         case tvKey.KEY_PLAY:
         case tvKey.KEY_PANEL_ENTER:
@@ -789,6 +888,7 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function () {
             if(Player.getState() == Player.PAUSED) {
                 Player.resumeVideo();
             }
+            Player.ResetTrickPlay();
             Display.showProgress();
             break;
         case tvKey.KEY_RETURN:
@@ -797,13 +897,15 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function () {
         	Main.log("STOP");
 //        	Player.setWindow();
         	Player.stopVideo();
+			widgetAPI.blockNavigation(event);
+
             break;           
         case tvKey.KEY_PAUSE:
             Main.log("PAUSE");
             Player.pauseVideo();
             break;
 
-        case tvKey.KEY_UP:
+/*        case tvKey.KEY_UP:
         case tvKey.KEY_PANEL_VOL_UP:
         case tvKey.KEY_VOL_UP:
             Main.log("VOL_UP");
@@ -820,70 +922,12 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function () {
             if(Main.mute == 0)
                 Audio.setRelativeVolume(1);
             break;      
-
+*/
         default:
             Main.log("Calling Default Key Hanlder");
         	this.defaultKeyHandler.handleDefKeyDown(keyCode);
             break;
     }
-};
-
-Main.tvKeys = {
-		KEY_UP :38,
-		KEY_DOWN :40,
-		KEY_LEFT :37,
-		KEY_RIGHT :39,
-		KEY_ENTER :13,
-
-		KEY_STOP :27, // ESC
-//		KEY_MUTE :27,
-
-		// Un-used keycodes
-		KEY_RETURN :88,
-		KEY_EXIT :45,
-		KEY_RED :108,
-		KEY_GREEN :20,
-		KEY_YELLOW :21,
-		KEY_BLUE :22,
-		KEY_RW :69,
-		KEY_PAUSE :74,
-		KEY_FF :72,
-		KEY_PLAY :71,
-		KEY_STOP :70,
-		KEY_1 :101,
-		KEY_2 :98,
-		KEY_3 :6,
-		KEY_4 :8,
-		KEY_5 :9,
-		KEY_6 :10,
-		KEY_7 :12,
-		KEY_8 :13,
-		KEY_9 :14,
-		KEY_0 :17,
-
-		KEY_PANEL_CH_UP :104,
-		KEY_PANEL_CH_DOWN :106,
-		KEY_PANEL_VOL_UP :203,
-		KEY_PANEL_VOL_DOWN :204,
-		KEY_PANEL_ENTER :309,
-		KEY_PANEL_SOURCE :612,
-		KEY_PANEL_MENU :613,
-		KEY_PANEL_POWER :614,
-
-		KEY_POWER :76,
-		KEY_VOL_UP :7,
-		KEY_VOL_DOWN :11,
-		KEY_CH_UP :68,
-		KEY_CH_DOWN :65,
-		KEY_MTS :655,
-		KEY_12 :1057,
-		KEY_AD :1039,
-		KEY_FF_ :1078,
-		KEY_REWIND_ :1080,
-		KEY_SLEEP :1097,
-		KEY_STEP :1023, 		
-		KEY_HOME :1118
-	
 };
 
 
@@ -945,12 +989,14 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function () {
      	Player.stopVideo();
      	Display.setVideoList(Main.selectedVideo);
      	Display.show();
+		widgetAPI.blockNavigation(event);
+
         break;           
      case tvKey.KEY_PAUSE:
          Main.log("PAUSE");
          break;
 
-     case tvKey.KEY_UP:
+/*     case tvKey.KEY_UP:
      case tvKey.KEY_PANEL_VOL_UP:
      case tvKey.KEY_VOL_UP:
          Main.log("VOL_UP");
@@ -967,7 +1013,7 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function () {
          if(Main.mute == 0)
              Audio.setRelativeVolume(1);
          break;      
-
+*/
      default:
      	this.defaultKeyHandler.handleDefKeyDown(keyCode);
          break;
@@ -1020,7 +1066,7 @@ cMenuKeyHndl.prototype.handleKeyDown = function () {
      	}
         break;
 
-     case tvKey.KEY_EXIT:
+//     case tvKey.KEY_EXIT:
      case tvKey.KEY_RETURN:
      case tvKey.KEY_PANEL_RETURN:
     	 if (Data.isRootFolder() == true) {
@@ -1032,9 +1078,9 @@ cMenuKeyHndl.prototype.handleKeyDown = function () {
     		 Main.log("folderUp selectedVideo= " + Main.selectedVideo);
     		 Display.setVideoList(Main.selectedVideo);
     	 }
-         break;
-         
+    	 widgetAPI.blockNavigation(event);
 
+         break;
      case tvKey.KEY_DOWN:
          Main.log("DOWN");
          Main.selectNextVideo(Main.DOWN);
@@ -1069,7 +1115,29 @@ cSelectMenuKeyHndl.prototype.handleKeyDown = function () {
     Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
     
     switch(keyCode) {
-      	
+    case tvKey.KEY_1:
+    	Main.log("KEY_1 pressed");
+    	this.select = 1;
+        Main.changeState (this.select);
+    	break;
+    case tvKey.KEY_2:
+    	Main.log("KEY_2 pressed");
+    	this.select = 2;
+        Main.changeState (this.select);
+
+        break;
+    case tvKey.KEY_3:
+    	Main.log("KEY_3 pressed");
+    	this.select = 3;
+        Main.changeState (this.select);
+
+    	break;
+    case tvKey.KEY_4:
+    	Main.log("KEY_4 pressed");
+    	this.select = 4;
+        Main.changeState (this.select);
+    	break;
+    	
         case tvKey.KEY_ENTER:
         case tvKey.KEY_PLAY:
         case tvKey.KEY_PANEL_ENTER:
@@ -1116,12 +1184,19 @@ cDefaulKeyHndl.prototype.handleDefKeyDown = function (keyCode) {
     
     switch(keyCode) {
         case tvKey.KEY_EXIT:
-            Main.log(this.handlerName +"Exit");
-            Player.stopVideo();
-            widgetAPI.sendReturnEvent(); 
+        	Main.log(this.handlerName +"Exit");
+        	if (Main.state != 0) {
+                Player.stopVideo();
+                Main.changeState(0);
+                widgetAPI.blockNavigation(event);
+        	}
+        	else {
+                widgetAPI.sendReturnEvent(); 
+        		
+        	}
             break;
 
-        case tvKey.KEY_VOL_UP:
+/*        case tvKey.KEY_VOL_UP:
             Main.log(this.handlerName + "VOL_UP");
         	Display.showVolume();
             if(Main.mute == 0)
@@ -1138,6 +1213,7 @@ cDefaulKeyHndl.prototype.handleDefKeyDown = function (keyCode) {
             Main.log(this.handlerName + "MUTE");
             Main.muteMode();
             break;
+*/
         default:
             Main.log(this.handlerName + "Unhandled key");
             break;

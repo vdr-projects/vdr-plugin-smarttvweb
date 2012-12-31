@@ -41,10 +41,9 @@ body {
     position: absolute;
     left: 0px; top: 0px;
     width: 960px; height: 540px;
+    background: url("../Images/selectScreen-bg.png");
     background: -webkit-radial-gradient(80% 80%, ellipse cover, rgba(197,222,234,1) 0%,rgba(138,187,215,1) 31%,rgba(6,109,171,1) 100%);
 }
-/*	background: -webkit-linear-gradient(top, rgba(64,150,238,1) 0%,rgba(64,150,238,1) 100%);*/
-
 
 #selectView {
     position: absolute;
@@ -57,6 +56,8 @@ body {
 	padding-top:20px;
     padding-left:20px;
     padding-right:20px;
+    background: url("../Images/selectView-bg.png");
+    background-size: 100%;
 	background: -webkit-linear-gradient(-45deg, #1e5799 0%,#2989d8 41%,#7db9e8 100%);
 	-webkit-box-shadow:3px 3px 7px 4px rgba(0,0,0, 0.5);
 }
@@ -66,6 +67,7 @@ body {
     left: 0px; top: 0px;
     width: 960px; height: 540px;
    	display: none;  
+   	background: url("../Images/selectScreen-bg.png");
     background: -webkit-radial-gradient(80% 80%, ellipse cover, rgba(197,222,234,1) 0%,rgba(138,187,215,1) 31%,rgba(6,109,171,1) 100%);
 }
 
@@ -80,6 +82,8 @@ body {
 	padding-top:20px;
     padding-left:20px;
     padding-right:20px;
+    background: url("../Images/selectView-bg.png");
+    background-size: 100%;
 	background: -webkit-linear-gradient(-45deg, #1e5799 0%,#2989d8 41%,#7db9e8 100%);
 	-webkit-box-shadow:3px 3px 7px 4px rgba(0,0,0, 0.5);
 }
@@ -124,6 +128,8 @@ body {
 	position: absolute;
 	left: 0px; top: 0px;
     width: 960px; height: 540px;
+    background: rgba(0, 0, 139, 0.5);
+    background: url("../Images/main-bg.png");
     background: -webkit-linear-gradient(top, rgba(64,150,238,1) 0%,rgba(64,150,238,1) 100%); 
 }
 
@@ -150,10 +156,11 @@ body {
     -webkit-border-radius: 7px;
     
 	border-width:1px;
+    background: url("../Images/rightHalf-bg.png");
+    background-size: 100%;
 	background: -webkit-linear-gradient(-45deg, #1e5799 0%,#2989d8 41%,#7db9e8 100%);
 }
-/* background: -webkit-linear-gradient(top, rgba(197,222,234,1) 0%,rgba(138,187,215,1) 31%,rgba(6,109,171,1) 100%);
-*/
+
 #status
 {
     position:absolute;
@@ -182,6 +189,8 @@ body {
     
     text-overflow : ellipsis;
 	-webkit-box-shadow:3px 3px 7px 4px rgba(0,0,0, 0.5);
+	background: url("../Images/description-bg.png");
+    background-size: 100%;
 	background: -webkit-linear-gradient(-45deg, #1e5799 0%,#2989d8 41%,#7db9e8 100%);
 }
 
@@ -190,6 +199,8 @@ body {
     position:absolute;
     left: 10px; top:40px;
     width:50%; height:90%;
+    background: url("../Images/leftHalf-bg.png");
+    background-size: 100%;
    	background: -webkit-linear-gradient(-45deg, #1e5799 0%,#2989d8 41%,#7db9e8 100%);  
 	border-style:solid;
 	border-width:1px;
@@ -212,6 +223,8 @@ body {
     -webkit-border-radius: 7px;
     
 	-webkit-box-shadow:3px 3px 7px 4px rgba(0,0,0, 0.5);
+    background: url("../Images/videoList-bg.png");
+    background-size: 100%;
 	background: -webkit-linear-gradient(-45deg, #1e5799 0%,#2989d8 41%,#7db9e8 100%);
 }
 
