@@ -7,9 +7,11 @@
         <!-- Common widget API -->
         <script type='text/javascript' language='javascript' src='$MANAGER_WIDGET/Common/API/Widget.js'></script>
         <script type='text/javascript' language='javascript' src='$MANAGER_WIDGET/Common/API/TVKeyValue.js'></script>
+      	<script type='text/javascript' language='javascript' src='$MANAGER_WIDGET/Common/API/Plugin.js'></script>
+        
         <script type="text/javascript" language="javascript" src="$MANAGER_WIDGET/Common/webapi/1.0/serviceapis.js"></script>
         <script type="text/javascript" language="javascript" src="$MANAGER_WIDGET/Common/webapi/1.0/deviceapis.js"></script>
-		<script type="text/javascript" src="$MANAGER_WIDGET/Common/Plugin/Define.js"></script>
+		<script type="text/javascript" language="javascript" src="$MANAGER_WIDGET/Common/Plugin/Define.js"></script>
         
         <!-- Widget code -->
         <script language="javascript" type="text/javascript" src="Javascript/Main.js"></script>
@@ -27,14 +29,14 @@
         <!-- Plugins -->
         <object id="pluginPlayer" border=0 classid="clsid:SAMSUNG-INFOLINK-PLAYER"></object>
         <object id="pluginAudio" border=0 classid="clsid:SAMSUNG-INFOLINK-AUDIO"></object>
-        <object id="pluginTVMW" border=0 classid="clsid:SAMSUNG-INFOLINK-TVMW"></object>        
         <object id="pluginTime" border=0 classid="clsid:SAMSUNG-INFOLINK-TIME"></object>
+        <object id="pluginObjectTVMW" border=0 classid="clsid:SAMSUNG-INFOLINK-TVMW"></object>        
+        <object id="pluginObjectNNavi" border=0 classid="clsid:SAMSUNG-INFOLINK-NNAVI"></object>        
         <object id="pluginNetwork" border=0 classid="clsid:SAMSUNG-INFOLINK-NETWORK"></object>
 
         <object id="pluginTaskmgnt" border=0 classid="clsid:SAMSUNG-INFOLINK-TASKMANAGER"></object>
-        <object id="pluginNNAVI" border=0 classid="clsid:SAMSUNG-INFOLINK-NNAVI"></object>        
         
-        
+        <script type="text/javascript" src="$MANAGER_WIDGET/Common/OpenSrc/jquery-1.4.2.min.js"></script>
     </head>
 
     <body onload="Main.onLoad();" onunload="Main.onUnload();">
@@ -57,7 +59,6 @@
 				<div id="selectItem2">2: Recordings</div>
 				<div id="selectItem3">3: Media</div>
 				<div id="selectItem4">4: Options</div>
-				<div id="selectItem5">5: DLNA</div>
 			</div>
 		</div>
 		<div id="optionsScreen">

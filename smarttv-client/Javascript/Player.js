@@ -24,6 +24,9 @@ var Player =
     
     bufferState : 0,     // buffer state in %
     
+    trickPlaySpeed : 1, // Multiple of 2 only.
+    trickPlayDirection : 1,
+
     STOPPED : 0,
     PLAYING : 1,
     PAUSED : 2,  
@@ -153,16 +156,17 @@ Player.playVideo = function() {
     	Display.showProgress();
         this.state = this.PLAYING;
         
-//        if (this.plugin.InitPlayer(this.url) == false)
-//        	Display.showPopup("InitPlayer returns false");
+        if (this.plugin.InitPlayer(this.url) == false)
+        	Display.showPopup("InitPlayer returns false");
 
         Player.setBuffer(15000000.0);
-
-        Main.log ("StartPlayback for " + this.url);
-//        if (this.plugin.StartPlayback() == false)
-//        	Display.showPopup("StartPlayback returns false");
+        Player.ResetTrickPlay();
         
-        this.plugin.Play( this.url );
+        Main.log ("StartPlayback for " + this.url);
+        if (this.plugin.StartPlayback() == false)
+        	Display.showPopup("StartPlayback returns false");
+        
+//        this.plugin.Play( this.url );
         Audio.plugin.SetSystemMute(false); 
     }
 };
@@ -241,6 +245,71 @@ Player.skipBackwardVideo = function() {
     var res = this.plugin.JumpBackward(Config.skipDuration);
     if (res == false) 
     	Display.showPopup("Jump Backward ret= " +  ((res == true) ? "True" : "False"));
+};
+
+Player.fastForwardVideo = function() {
+	if (this.trickPlayDirection == 1)
+		this.trickPlaySpeed = this.trickPlaySpeed * 2;
+	else {
+		this.trickPlaySpeed = this.trickPlaySpeed / 2;
+
+		if (this.trickPlaySpeed < 1) {
+			this.trickPlaySpeed = 1;
+			this.trickPlayDirection = -1;
+		}
+
+	}
+	
+	Main.log("FastForward: Direction= " + ((this.trickPlayDirection == 1) ? "Forward": "Backward") + "trickPlaySpeed= " + this.trickPlaySpeed);
+	Main.logToServer("FastForward: Direction= " + ((this.trickPlayDirection == 1) ? "Forward": "Backward") + "trickPlaySpeed= " + this.trickPlaySpeed);
+	if (this.plugin.SetPlaybackSpeed(this.trickPlaySpeed * this.trickPlayDirection) == false) {
+    	Display.showPopup("trick play returns false. Reset Trick-Play" );	
+    	this.trickPlaySpeed = 1;
+    	this.trickPlayDirection = 1;
+	}
+
+};
+
+Player.RewindVideo = function() {
+	if (this.trickPlayDirection == 1) {
+		this.trickPlaySpeed = this.trickPlaySpeed / 2;
+		if (this.trickPlaySpeed < 1) {
+			this.trickPlaySpeed = 1;
+			this.trickPlayDirection = 1;
+		}
+		
+	}
+	else
+		this.trickPlaySpeed = this.trickPlaySpeed * 2;
+
+	if (this.plugin.SetPlaybackSpeed(this.trickPlaySpeed * this.trickPlayDirection) == false) {
+    	Display.showPopup("trick play returns false. Reset Trick-Play" );	
+    	this.trickPlaySpeed = 1;
+    	this.trickPlayDirection = 1;
+	}
+
+	Main.log("Rewind: Direction= " + ((this.trickPlayDirection == 1) ? "Forward": "Backward") + "trickPlaySpeed= " + this.trickPlaySpeed);
+	Main.logToServer("Rewind: Direction= " + ((this.trickPlayDirection == 1) ? "Forward": "Backward") + "trickPlaySpeed= " + this.trickPlaySpeed);
+	if (this.plugin.SetPlaybackSpeed(this.trickPlaySpeed * this.trickPlayDirection) == false) {
+    	Display.showPopup("trick play returns false. Reset Trick-Play" );	
+    	this.trickPlaySpeed = 1;
+    	this.trickPlayDirection = 1;
+	}
+
+};
+
+Player.ResetTrickPlay = function() {
+	if (this.trickPlaySpeed != 1) {
+		this.trickPlaySpeed = 1;
+		this.trickPlayDirection = 1;
+		Main.log("Reset Trickplay " );
+		if (this.plugin.SetPlaybackSpeed(this.trickPlaySpeed * this.trickPlayDirection) == false) {
+	    	Display.showPopup("trick play returns false. Reset Trick-Play" );	
+	    	this.trickPlaySpeed = 1;
+	    	this.trickPlayDirection = 1;
+		}
+		
+	}
 };
 
 Player.getState = function() {
