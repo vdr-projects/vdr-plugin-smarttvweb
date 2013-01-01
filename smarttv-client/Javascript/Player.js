@@ -16,6 +16,8 @@ var Player =
     curPlayTime : 0, // millis
     totalTime : -1,  // millis
     
+    skipDuration : 30,
+    
     curPlayTimeStr : "00:00:00", // millis
     totalTimeStr : "",
     stopCallback : null,    /* Callback function to be set by client */
@@ -55,7 +57,8 @@ Player.init = function() {
           Main.log("success vale this.plugin :  " + success);    
          success = false;
     }
-
+    this.skipDuration = Config.skipDuration; // Use Config default also here
+    
 //    var vermsg = this.plugin.GetPlayerVersion();
 //    Main.log ("player plugin version: " +vermsg);
    
@@ -161,7 +164,8 @@ Player.playVideo = function() {
 
         Player.setBuffer(15000000.0);
         Player.ResetTrickPlay();
-        
+        Player.skipDuration = Config.skipDuration; // reset
+
         Main.log ("StartPlayback for " + this.url);
         if (this.plugin.StartPlayback() == false)
         	Display.showPopup("StartPlayback returns false");
@@ -236,16 +240,47 @@ Player.jumpToVideo = function(percent) {
 };
 
 Player.skipForwardVideo = function() {
-    var res = this.plugin.JumpForward(Config.skipDuration);
-    if (res == false) 
-    	Display.showPopup("Jump Forward ret= " +  ((res == true) ? "True" : "False"));
+    var res = this.plugin.JumpForward(Player.skipDuration);
+    if (res == false) {
+    	Display.showPopup("Jump Forward ret= " +  ((res == true) ? "True" : "False"));    	
+    }
+
 };
 
 Player.skipBackwardVideo = function() {
-    var res = this.plugin.JumpBackward(Config.skipDuration);
-    if (res == false) 
+    var res = this.plugin.JumpBackward(Player.skipDuration);
+    if (res == false) {
     	Display.showPopup("Jump Backward ret= " +  ((res == true) ? "True" : "False"));
+    	
+    }
+
 };
+
+Player.adjustSkipDuration = function (dir) {
+	if (Player.isLive == true) {
+		return;
+	}
+	switch (dir) {
+	case 0:
+		// Reset
+    	Player.skipDuration = Config.skipDuration;
+    	Display.setSkipDuration(Player.skipDuration );    		
+		break;
+	case 1:
+		// Increase
+    	Player.skipDuration += Config.skipDuration;
+    	Display.setSkipDuration(Player.skipDuration );    		
+		break;
+	case 2:
+		// Decrease
+    	Player.skipDuration -= Config.skipDuration;
+    	if (Player.skipDuration < Config.skipDuration)
+    		Player.skipDuration = Config.skipDuration;
+    	Display.setSkipDuration(Player.skipDuration );    		
+		break;
+	};
+};
+
 
 Player.fastForwardVideo = function() {
 	if (this.trickPlayDirection == 1)
