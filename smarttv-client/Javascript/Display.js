@@ -142,6 +142,12 @@ Display.setOlTitle = function (title) {
 	Display.putInnerHTML(elm, Display.olTitle);    
 };
 
+Display.resetStartStop = function () {
+	Display.olStartStop = "";
+    var elm = document.getElementById("olStartStop");
+    Display.putInnerHTML(elm, Display.olStartStop);    
+	
+};
 Display.setStartStop = function(start, stop) {
 	this.olStartStop = "";
 
@@ -163,41 +169,14 @@ Display.setStartStop = function(start, stop) {
     Display.putInnerHTML(elm, Display.olStartStop);    
 };
 
-/*
-Display.getHumanTimeRepresentation = function(time) {
-	var totalTimeHour = 0; 
-	var totalTimeMinute = 0; 
-	var totalTimeSecond = 0;
-	
-    totalTimeHour = Math.floor(time/3600000); 
-    totalTimeMinute = Math.floor((time%3600000)/60000);    
-    totalTimeSecond = Math.floor((time%60000)/1000);
+Display.setSkipDuration = function(duration) {
+	this.olStartStop = "";
 
-    var totalTimeStr = totalTimeHour + ":";
+    this.olStartStop = duration;    
 
-    if(totalTimeMinute == 0)
-    	totalTimeStr += "00:";
-    else if(totalTimeMinute <10)
-    	totalTimeStr += "0" + totalTimeMinute + ":";
-    else
-    	totalTimeStr += totalTimeMinute + ":";
-        
-    if(totalTimeSecond == 0)
-    	totalTimeStr += "00";
-    else if(totalTimeSecond <10)
-    	totalTimeStr += "0" + totalTimeSecond;
-    else
-    	totalTimeStr += totalTimeSecond;
-
-	return totalTimeStr;
+    var elm = document.getElementById("olStartStop");
+    Display.putInnerHTML(elm, "Next Skip: " + Display.olStartStop+"sec");    
 };
-*/
-/*
-// called by Player.OnStreamInfoReady
-Display.updateTotalTime = function(time) {
-    Player.totalTimeStr = Display.getHumanTimeRepresentation(time);
-};
-*/
 
 // Player.OnCurrentPlayTime
 Display.updatePlayTime = function() {
@@ -411,6 +390,7 @@ Display.setVideoList = function(selected, first) {
 Display.selectItem = function (item) {
 
 	item.style.color = "black";
+	item.style.background = "white";
 	item.style.background = "-webkit-linear-gradient(top, rgba(246,248,249,1) 0%,rgba(229,235,238,1) 50%,rgba(215,222,227,1) 51%,rgba(245,247,249,1) 100%)";
 	item.style.borderRadius= "3px";
 	item.style["-webkit-box-shadow"] = "2px 2px 1px 2px rgba(0,0,0, 0.5)";
@@ -589,7 +569,14 @@ Display.handlerHidePopup = function() {
     Display.putInnerHTML(document.getElementById("popup"), "");
 };
 
-//---------------------------------------------------------
+/* ---------------------------------------------------------
+ * Progress Bar Handlers
+ * ---------------------------------------------------------
+ */
+
+Display.isProgressOlShown = function () {
+	return this.progOlHandler.active;
+};
 
 Display.showProgress = function() {
 	this.progOlHandler.show();

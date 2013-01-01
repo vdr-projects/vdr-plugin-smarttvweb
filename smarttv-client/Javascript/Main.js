@@ -66,7 +66,12 @@ var Main = {
 };
 
 Main.onLoad = function() {
-	window.onShow = showHandler;
+	if (typeof(window.onShow) == "function" ) {
+		window.onShow = showHandler;		
+	}
+	if (typeof(window.onshow) == "function" ) {
+		window.onshow = showHandler;		
+	}
 
 	Network.init();
     try {
@@ -376,7 +381,7 @@ Main.playItem = function (url) {
 	    	document.getElementById("olRecProgressBar").display="none";
 		}
 		Display.setOlTitle(Data.getCurrentItem().childs[Main.selectedVideo].title);
-		Display.olStartStop = "";
+		Display.resetStartStop();
 		break;
 	};
 		
@@ -889,6 +894,10 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function () {
                 Player.resumeVideo();
             }
             Player.ResetTrickPlay();
+            if (Display.isProgressOlShown()) {
+            	Player.adjustSkipDuration(0); // reset skip duration to default
+        		Display.resetStartStop();
+            }
             Display.showProgress();
             break;
         case tvKey.KEY_RETURN:
@@ -904,7 +913,14 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function () {
             Main.log("PAUSE");
             Player.pauseVideo();
             break;
-
+        case tvKey.KEY_UP:
+        	Player.adjustSkipDuration(1);
+            Display.showProgress();
+        	break;
+        case tvKey.KEY_DOWN:
+        	Player.adjustSkipDuration(2);
+            Display.showProgress();
+        	break;
 /*        case tvKey.KEY_UP:
         case tvKey.KEY_PANEL_VOL_UP:
         case tvKey.KEY_VOL_UP:

@@ -18,6 +18,7 @@ Options.onEnter = function () {
 
 	Config.updateContext(document.getElementById("widgetServerAddr").value);
 	
+
 	document.getElementById('widgetServerAddr').blur();
 
 	document.getElementById("optionsScreen").style.display="none";
@@ -27,7 +28,11 @@ Options.onEnter = function () {
 	Main.changeState(0);
 	
 	Config.fetchConfig();
-//	Main.enableKeys();
+	if(_g_ime.pluginMouse_use_YN){
+		this.imeBox._blur();
+	};
+
+	//	Main.enableKeys();
 };
 
 Options.onBlue = function () {
@@ -40,6 +45,11 @@ Options.onImeCreated = function(obj) {
 //	obj.setKeySetFunc('12key');
 	Main.logToServer ("Options.onImeCreated()");
 
+	Main.logToServer ("[IME] ============================================ imeobj.IsSupportXT9:"+obj.IsSupportXT9);
+	var strKeySet = obj.getKeySet();
+	Main.logToServer ("[IME] ============================================ strKeySet:"+strKeySet);
+
+	
 	obj.setKeyFunc(tvKey.KEY_RETURN, function(keyCode) { widgetAPI.sendReturnEvent(); return false; } );
 	obj.setKeyFunc(tvKey.KEY_EXIT, function(keyCode) { widgetAPI.sendExitEvent(); return false; } );
 
@@ -56,13 +66,18 @@ Options.onImeCreated = function(obj) {
 
 	Options.imeBox.setOnCompleteFunc(Options.onComplete);
 
+	if(_g_ime.pluginMouse_use_YN){
+		obj._focus();
+	};
+	document.getElementById('widgetServerAddr').focus();
+	Main.logToServer ("Options.onReady()");
+	Main.logToServer ("KeySet= " + Options.imeBox.getKeySet());
+	
 	Options.onReady ();
 };
 
 Options.onReady = function () {
-	document.getElementById('widgetServerAddr').focus();
-	Main.logToServer ("Options.onReady()");
-	Main.log ("KeySet= " + this.imeBox.getKeySet());
+	
 };
 
 

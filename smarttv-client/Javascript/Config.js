@@ -243,6 +243,7 @@ Config.processConfig = function () {
         	res = Config.getXmlValue("liveChannels");
         	if (res != 0) noLiveChannels = res;
         	
+        	Player.skipDuration = Config.skipDuration;
         	Main.log("**** Config ****");
         	Main.log("serverUrl= " + Config.serverUrl);
         	Main.log("format= " + Config.format);

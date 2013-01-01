@@ -56,12 +56,12 @@ body {
 	padding-top:20px;
     padding-left:20px;
     padding-right:20px;
-    background: url("../Images/selectView-bg.png");
-    background-size: 100%;
+    background: rgba(6,109,171,1) 100%;
 	background: -webkit-linear-gradient(-45deg, #1e5799 0%,#2989d8 41%,#7db9e8 100%);
 	-webkit-box-shadow:3px 3px 7px 4px rgba(0,0,0, 0.5);
 }
-
+/*    background-size: 100%;
+*/
 #optionsScreen {
     position: absolute;
     left: 0px; top: 0px;
@@ -82,8 +82,7 @@ body {
 	padding-top:20px;
     padding-left:20px;
     padding-right:20px;
-    background: url("../Images/selectView-bg.png");
-    background-size: 100%;
+    background: rgba(6,109,171,1) 100%;
 	background: -webkit-linear-gradient(-45deg, #1e5799 0%,#2989d8 41%,#7db9e8 100%);
 	-webkit-box-shadow:3px 3px 7px 4px rgba(0,0,0, 0.5);
 }
@@ -157,7 +156,6 @@ body {
     
 	border-width:1px;
     background: url("../Images/rightHalf-bg.png");
-    background-size: 100%;
 	background: -webkit-linear-gradient(-45deg, #1e5799 0%,#2989d8 41%,#7db9e8 100%);
 }
 
@@ -189,6 +187,7 @@ body {
     
     text-overflow : ellipsis;
 	-webkit-box-shadow:3px 3px 7px 4px rgba(0,0,0, 0.5);
+
 	background: url("../Images/description-bg.png");
     background-size: 100%;
 	background: -webkit-linear-gradient(-45deg, #1e5799 0%,#2989d8 41%,#7db9e8 100%);
@@ -200,7 +199,6 @@ body {
     left: 10px; top:40px;
     width:50%; height:90%;
     background: url("../Images/leftHalf-bg.png");
-    background-size: 100%;
    	background: -webkit-linear-gradient(-45deg, #1e5799 0%,#2989d8 41%,#7db9e8 100%);  
 	border-style:solid;
 	border-width:1px;
