@@ -1,7 +1,7 @@
 /*
  * httpresource.h: VDR on Smart TV plugin
  *
- * Copyright (C) 2012 Thorsten Lohmar
+ * Copyright (C) 2012 T. Lohmar
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -310,7 +310,7 @@ int cHttpResource::processRequest() {
     return handlePost();
   }
 
-  if (strcasecmp(mMethod.c_str(), "GET") != 0){
+  if (!((strcasecmp(mMethod.c_str(), "GET") == 0) or (strcasecmp(mMethod.c_str(), "HEAD") == 0))) {
     sendError(501, "Not supported", NULL, "Method is not supported.");
     return OKAY;
   }
@@ -323,27 +323,41 @@ int cHttpResource::processRequest() {
 		  << DEBUGHDR << endl;
 #endif
     //    ret = sendRecordingsHtml( &statbuf);
+    if (handleHeadRequest() != 0)
+      return OKAY;
+
     sendRecordingsHtml( &statbuf);
     return OKAY;
   }
 
   if (mPath.compare("/recordings.xml") == 0) {
+    if (handleHeadRequest() != 0)
+      return OKAY;
+
     sendRecordingsXml( &statbuf);
     return OKAY;
   }
 
   if (mPath.compare("/channels.xml") == 0) {
+    if (handleHeadRequest() != 0)
+      return OKAY;
+
     sendChannelsXml( &statbuf);
     return OKAY;
   }
 
   if (mPath.compare("/epg.xml") == 0) {
+    if (handleHeadRequest() != 0)
+      return OKAY;
+
     sendEpgXml( &statbuf);
     return OKAY;
   }
 #endif
 
   if (mPath.compare("/media.xml") == 0) {
+    if (handleHeadRequest() != 0)
+      return OKAY;
     sendMediaXml( &statbuf);
     return OKAY;
   }
@@ -355,6 +369,9 @@ int cHttpResource::processRequest() {
       sendError(404, "Not Found", NULL, "File not found.");
       return OKAY;
     }
+    if (handleHeadRequest() != 0)
+      return OKAY;
+
     mFileSize = statbuf.st_size;
     mContentType = SINGLEFILE;
     return sendFile(&statbuf);
@@ -362,6 +379,8 @@ int cHttpResource::processRequest() {
 
   if (mPath.size() > 8) {
     if (mPath.compare(mPath.size() -8, 8, "-seg.mpd") == 0) {
+      if (handleHeadRequest() != 0)
+	return OKAY;
       sendManifest( &statbuf, false);
       return OKAY;
     }
@@ -369,6 +388,8 @@ int cHttpResource::processRequest() {
 
   if (mPath.size() > 9) {
     if (mPath.compare(mPath.size() -9, 9, "-seg.m3u8") == 0) {
+      if (handleHeadRequest() != 0)
+	return OKAY;
       sendManifest( &statbuf, true);
       return OKAY;
     }
@@ -376,6 +397,9 @@ int cHttpResource::processRequest() {
 
   if (mPath.size() > 7) {
     if (mPath.compare(mPath.size() -7, 7, "-seg.ts") == 0) {
+      if (handleHeadRequest() != 0)
+	return OKAY;
+
       sendMediaSegment( &statbuf);
       return OKAY;
     }
@@ -397,6 +421,9 @@ int cHttpResource::processRequest() {
     if (mPath.size() >4) {
       if (mPath.compare(mPath.size() - 4, 4, ".rec") == 0) {
 	// Handle any recording directory specifically
+	if (handleHeadRequest() != 0)
+	  return OKAY;
+
 	mContentType = VDRDIR;
 	return sendVdrDir( &statbuf);
       }
@@ -411,6 +438,8 @@ int cHttpResource::processRequest() {
       sendError(404, "Not Found", NULL, "File not found.");
       return OKAY;
     }
+    if (handleHeadRequest() != 0)
+      return OKAY;
 
     sendDir( &statbuf);
     mContentType = MEMBLOCK;
@@ -428,6 +457,8 @@ int cHttpResource::processRequest() {
       sendError(404, "Not Found", NULL, "File not found.");
       return OKAY;
     }
+    if (handleHeadRequest() != 0)
+      return OKAY;
     mFileSize = statbuf.st_size;
     mContentType = SINGLEFILE;
     return sendFile(&statbuf);
@@ -628,6 +659,24 @@ int cHttpResource::parseResume(cResumeEntry &entry, string &id) {
       return OKAY;
     else
       return ERROR;
+}
+
+int cHttpResource::handleHeadRequest() {
+  if (mMethod.compare("HEAD") != 0) {
+    return 0;
+  }
+  *(mLog->log())<< DEBUGPREFIX
+		<< " Handle HEAD Request for Url " << mPath << endl;
+  mConnState = SERVING;
+  mContentType = MEMBLOCK;
+
+  // sent an empty response message with just the OK header
+  mResponseMessage = new string();
+  *mResponseMessage = "";
+  mResponseMessagePos = 0;
+
+  sendHeaders(200, "OK", NULL, NULL, -1, -1);
+  return 1;
 }
 
 int cHttpResource::handlePost() {
@@ -1313,6 +1362,7 @@ int cHttpResource::sendMediaXml (struct stat *statbuf) {
 
 int cHttpResource::sendEpgXml (struct stat *statbuf) {
 #ifndef STANDALONE
+
   char f[400];
   mResponseMessage = new string();
   *mResponseMessage = "";
@@ -1400,6 +1450,7 @@ int cHttpResource::sendEpgXml (struct stat *statbuf) {
 
 int cHttpResource::sendChannelsXml (struct stat *statbuf) {
 #ifndef STANDALONE
+
   char f[400];
   mResponseMessage = new string();
   *mResponseMessage = "";
@@ -1514,6 +1565,7 @@ int cHttpResource::sendChannelsXml (struct stat *statbuf) {
 
 int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
 #ifndef STANDALONE
+
   mResponseMessage = new string();
   *mResponseMessage = "";
   mResponseMessagePos = 0;
@@ -1689,12 +1741,31 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
 
 int cHttpResource::sendRecordingsHtml(struct stat *statbuf) {
 #ifndef STANDALONE
+
   mResponseMessage = new string();
   mResponseMessagePos = 0;
   *mResponseMessage = "";
   mContentType = MEMBLOCK;
 
   mConnState = SERVING;
+
+  vector<sQueryAVP> avps;
+  parseQueryLine(&avps);
+  string link_ext = "";
+  string type = "";
+
+  if (getQueryAttributeValue(&avps, "type", type) == OKAY){
+    *(mLog->log())<< DEBUGPREFIX
+		  << " Found a Type Parameter: " << type
+		  << endl;
+    if (type == "hls") { 
+      link_ext = "/manifest-seg.m3u8";
+    }
+    if (type == "has") {
+      link_ext = "/manifest-seg.mpd";
+    }
+
+  }
 
   sendHeaders(200, "OK", NULL, "text/html", -1, statbuf->st_mtime);
 
@@ -1713,7 +1784,14 @@ int cHttpResource::sendRecordingsHtml(struct stat *statbuf) {
     hdr = "";
     time_t start_time = recording->Start();
     strftime(buff, 20, "%Y-%m-%d %H:%M:%S", localtime(&start_time));
-    snprintf(f, sizeof(f), "%s - %d <A HREF=\"%s\">%s</A>\r\n", buff, recording->HierarchyLevels(), recording->FileName(),  recording->Name());
+
+    if (recording->IsPesRecording()) 
+      snprintf(f, sizeof(f), "%s <A HREF=\"%s\">%s</A>\r\n", buff, cUrlEncode::doUrlSaveEncode(recording->FileName()).c_str(), 
+	       recording->Name());
+    else
+      snprintf(f, sizeof(f), "%s <A HREF=\"%s%s\">%s</A>\r\n", buff, cUrlEncode::doUrlSaveEncode(recording->FileName()).c_str(), 
+	       link_ext.c_str(), recording->Name());
+
     hdr += f;
     *mResponseMessage += hdr;
     // start is time_t
@@ -1724,6 +1802,7 @@ int cHttpResource::sendRecordingsHtml(struct stat *statbuf) {
 
 
 int cHttpResource::sendVdrDir(struct stat *statbuf) {
+
 #ifndef DEBUG
   *(mLog->log())<< DEBUGPREFIX  << " *** sendVdrDir mPath= "  << mPath  << endl;
 #endif  
