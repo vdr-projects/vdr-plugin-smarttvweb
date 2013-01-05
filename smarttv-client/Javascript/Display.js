@@ -47,6 +47,7 @@ Display.init = function()
     {
         success = false;
     }
+    
     for (var i = 0; i <= this.LASTIDX; i++) {
     	var elm = document.getElementById("video"+i);
     	elm.style.paddingLeft = "10px";
@@ -56,6 +57,7 @@ Display.init = function()
 
     var done = false;
     var i = 0;
+
     while (done != true) {
     	i ++;
     	var elm = document.getElementById("selectItem"+i);
@@ -516,8 +518,7 @@ Display.hide = function()
     document.getElementById("main").style.display="none";
 };
 
-Display.show = function()
-{
+Display.show = function() {
 	// cancel ongoing overlays first
 	this.volOlHandler.cancel();
 	this.progOlHandler.cancel();
