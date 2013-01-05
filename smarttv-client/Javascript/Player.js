@@ -5,6 +5,8 @@
 var Player =
 {
     plugin : null,
+    pluginBD : null,
+    mFrontPanel : null,
     isLive : false,
     isRecording : false,
     
@@ -42,7 +44,9 @@ Player.init = function() {
     this.state = this.STOPPED;
     
     this.plugin = document.getElementById("pluginPlayer");
-
+    this.pluginBD = document.getElementById("pluginBD");
+    this.pluginBD.DisplayVFD_Show(0101); // Stop
+    
 /*    var pl_version = "";
     try {
     	pl_version = this.plugin.GetPlayerVersion();
@@ -148,9 +152,11 @@ Player.playVideo = function() {
     if (this.url == null) {
         Main.log("No videos to play");
     }
-    else
-    {
+    else {
     	
+    	Player.bufferState = 0;
+    	Display.bufferUpdate();
+
 //    	Player.curPlayTime = 0;
     	Display.updatePlayTime();
 
@@ -159,31 +165,35 @@ Player.playVideo = function() {
     	Display.showProgress();
         this.state = this.PLAYING;
         
-        if (this.plugin.InitPlayer(this.url) == false)
-        	Display.showPopup("InitPlayer returns false");
+//        if (this.plugin.InitPlayer(this.url) == false)
+//        	Display.showPopup("InitPlayer returns false");
 
         Player.setBuffer(15000000.0);
         Player.ResetTrickPlay();
         Player.skipDuration = Config.skipDuration; // reset
 
         Main.log ("StartPlayback for " + this.url);
-        if (this.plugin.StartPlayback() == false)
-        	Display.showPopup("StartPlayback returns false");
+//        if (this.plugin.StartPlayback() == false)
+//        	Display.showPopup("StartPlayback returns false");
         
-//        this.plugin.Play( this.url );
+        this.plugin.Play( this.url );
         Audio.plugin.SetSystemMute(false); 
+    	pluginObj.setOffScreenSaver();
+        this.pluginBD.DisplayVFD_Show(0100); // Play
     }
 };
 
 Player.pauseVideo = function() {
 	Display.showProgress();
 	Main.logToServer("pauseVideo");
-
+	
     this.state = this.PAUSED;
     Display.status("Pause");
     var res = this.plugin.Pause();
 	if (res == false)
 		Display.showPopup("pause ret= " +  ((res == true) ? "True" : "False"));  
+	pluginAPI.setOnScreenSaver();
+    this.pluginBD.DisplayVFD_Show(0102); // Pause
 };
 
 Player.stopVideo = function() {
@@ -197,6 +207,8 @@ Player.stopVideo = function() {
         if (this.stopCallback) {
             this.stopCallback();
         }
+		pluginAPI.setOnScreenSaver();
+	    this.pluginBD.DisplayVFD_Show(0101); // Stop
     }
     else {
         Main.log("Ignoring stop request, not in correct state");
@@ -211,7 +223,8 @@ Player.resumeVideo = function() {
     var res = this.plugin.Resume();
 	if (res == false)
 		Display.showPopup("resume ret= " +  ((res == true) ? "True" : "False"));  
-
+    pluginObj.setOffScreenSaver();
+    this.pluginBD.DisplayVFD_Show(0100); // Play
 };
 
 Player.jumpToVideo = function(percent) {

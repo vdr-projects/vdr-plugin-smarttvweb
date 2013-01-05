@@ -66,12 +66,8 @@ var Main = {
 };
 
 Main.onLoad = function() {
-	if (typeof(window.onShow) == "function" ) {
-		window.onShow = showHandler;		
-	}
-	if (typeof(window.onshow) == "function" ) {
-		window.onshow = showHandler;		
-	}
+	window.onShow = showHandler;		
+	window.onshow = showHandler;		
 
 	Network.init();
     try {
@@ -101,7 +97,7 @@ Main.onLoad = function() {
 
 showHandler = function() {
 	NNaviPlugin = document.getElementById("pluginObjectNNavi");
-	NNaviPlugin.SetBannerState(2);
+	NNaviPlugin.SetBannerState(1);
 	
 	pluginObj.unregistKey(tvKey.KEY_VOL_UP);
 	pluginObj.unregistKey(tvKey.KEY_VOL_DOWN);
@@ -112,7 +108,6 @@ showHandler = function() {
 
 
 // Called by Config, when done
-// TODO: Send sendReadyEvent early and show a splash screen during startup
 Main.init = function () {
 	Main.log("Main.init()");
     if ( Player.init() && Server.init() && Audio.init()) {

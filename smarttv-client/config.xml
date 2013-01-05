@@ -9,7 +9,7 @@
     <BigThumbIcon>Images/icon/SmartTvWeb_115.png</BigThumbIcon>
     <ListIcon>Images/icon/SmartTvWeb_85.png</ListIcon>
     <BigListIcon>Images/icon/SmartTvWeb_95.png</BigListIcon>
-    <ver>0.82</ver>
+    <ver>0.83</ver>
     <mgrver></mgrver>
     <fullwidget>y</fullwidget>
 	<movie>y</movie>
@@ -25,7 +25,7 @@
     <height>540</height>
     <author>
         <name>T. Lohmar</name>
-        <email></email>
+        <email>smarttv640@gmail.com</email>
         <link></link>
         <organization>Private</organization>
     </author>
