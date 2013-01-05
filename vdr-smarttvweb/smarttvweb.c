@@ -1,7 +1,7 @@
 /*
  * smarttvweb.c: VDR on Smart TV plugin
  *
- * Copyright (C) 2012 Thorsten Lohmar
+ * Copyright (C) 2012 T. Lohmar
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -41,7 +41,7 @@
 #include "smarttvfactory.h"
 
 
-static const char *VERSION        = "0.9.0";
+static const char *VERSION        = "0.9.1";
 static const char *DESCRIPTION    = "SmartTV Web Server";
 
 

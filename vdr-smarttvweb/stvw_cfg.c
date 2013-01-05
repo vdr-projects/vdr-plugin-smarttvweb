@@ -1,7 +1,7 @@
 /*
  * stvw_cfg.h: VDR on Smart TV plugin
  *
- * Copyright (C) 2012 Thorsten Lohmar
+ * Copyright (C) 2012 T. Lohmar
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -53,7 +53,6 @@ cSmartTvConfig::cSmartTvConfig(string d): mConfigDir(d), mLog(NULL), mCfgFile(NU
 }
 
 cSmartTvConfig::~cSmartTvConfig() {
-  fclose(mCfgFile);
 }
 
 void cSmartTvConfig::readConfig() {
