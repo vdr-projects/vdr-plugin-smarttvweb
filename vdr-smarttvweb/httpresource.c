@@ -304,7 +304,7 @@ int cHttpResource::processRequest() {
   *(mLog->log())<< DEBUGPREFIX << " processRequest for mPath= " << mPath << DEBUGHDR << endl;
 #endif
   struct stat statbuf;
-  //  int ret = OKAY;
+  bool ok_to_serve = false;
 
   if (mMethod.compare("POST")==0) {
     return handlePost();
@@ -316,20 +316,6 @@ int cHttpResource::processRequest() {
   }
 
 #ifndef STANDALONE
-  if (mPath.compare("/recordings.html") == 0) {
-#ifndef DEBUG
-    *(mLog->log())<< DEBUGPREFIX
-		  << " generating /recordings.html" 
-		  << DEBUGHDR << endl;
-#endif
-    //    ret = sendRecordingsHtml( &statbuf);
-    if (handleHeadRequest() != 0)
-      return OKAY;
-
-    sendRecordingsHtml( &statbuf);
-    return OKAY;
-  }
-
   if (mPath.compare("/recordings.xml") == 0) {
     if (handleHeadRequest() != 0)
       return OKAY;
@@ -377,6 +363,22 @@ int cHttpResource::processRequest() {
     return sendFile(&statbuf);
   }
 
+  if (mPath.compare("/favicon.ico") == 0) {
+    mPath = mFactory->getConfigDir() + "/web/favicon.ico";
+
+    if (stat(mPath.c_str(), &statbuf) < 0) {
+      sendError(404, "Not Found", NULL, "File not found.");
+      return OKAY;
+    }
+    if (handleHeadRequest() != 0)
+      return OKAY;
+
+    mFileSize = statbuf.st_size;
+    mContentType = SINGLEFILE;
+    return sendFile(&statbuf);
+  }
+
+
   if (mPath.size() > 8) {
     if (mPath.compare(mPath.size() -8, 8, "-seg.mpd") == 0) {
       if (handleHeadRequest() != 0)
@@ -405,9 +407,20 @@ int cHttpResource::processRequest() {
     }
   }
 
+  if (mPath.find("/web/") == 0) {
+    mPath = mFactory->getConfigDir() + mPath;
+    *(mLog->log())<< DEBUGPREFIX
+		  << " Found web request. serving " << mPath << endl;
+    ok_to_serve = true;    
+  }
+
+
   if (stat(mPath.c_str(), &statbuf) < 0) {
     // checking, whether the file or directory exists 
+    *(mLog->log())<< DEBUGPREFIX
+                  << " File Not found " << mPath << endl;
     sendError(404, "Not Found", NULL, "File not found.");
+    
     return OKAY;
   }
 
@@ -429,12 +442,8 @@ int cHttpResource::processRequest() {
       }
     }
 
-    if (mPath.compare(0, (mFactory->getConfig()->getMediaFolder()).size(), mFactory->getConfig()->getMediaFolder()) != 0) {
-      // No directory access outside of MediaFolder
-      *(mLog->log())<< DEBUGPREFIX
-		    << " Directory request is not for MediaFolde (" 
-		    << mFactory->getConfig()->getMediaFolder() << ")"
-		    << endl;
+    if (!((ok_to_serve) or (mPath.compare(0, (mFactory->getConfig()->getMediaFolder()).size(), mFactory->getConfig()->getMediaFolder()) == 0)))  {
+      // No directory access outside of MediaFolder (and also VDRCONG/web)
       sendError(404, "Not Found", NULL, "File not found.");
       return OKAY;
     }
@@ -453,7 +462,7 @@ int cHttpResource::processRequest() {
 #endif
 
     // Check, if requested file is in Media Directory
-    if (mPath.compare(0, (mFactory->getConfig()->getMediaFolder()).size(), mFactory->getConfig()->getMediaFolder()) != 0) {
+    if (!((ok_to_serve) or (mPath.compare(0, (mFactory->getConfig()->getMediaFolder()).size(), mFactory->getConfig()->getMediaFolder()) == 0)))  {
       sendError(404, "Not Found", NULL, "File not found.");
       return OKAY;
     }
@@ -529,8 +538,10 @@ int cHttpResource::fillDataBlk() {
       return ERROR;
     }
     if (mRemLength == 0) {
+#ifndef DEBUG
       *(mLog->log()) << DEBUGPREFIX << " mRemLength is zero "
 		     << "--> Done " << endl;
+#endif
       fclose(mFile);
       mFile = NULL;      
       return ERROR;
@@ -541,8 +552,10 @@ int cHttpResource::fillDataBlk() {
     mRemLength -= mBlkLen;
 
     if (mRemLength == 0) {
+#ifndef DEBUG
       *(mLog->log()) << DEBUGPREFIX << " last Block read "
-		     << "--> Almost Done " << endl;
+      		     << "--> Almost Done " << endl;
+#endif
       return OKAY;
     }
 
@@ -553,6 +566,7 @@ int cHttpResource::fillDataBlk() {
 
       snprintf(pathbuf, sizeof(pathbuf), mFileStructure.c_str(), mDir.c_str(), mVdrIdx);
       mPath = pathbuf;
+
       if (openFile(pathbuf) != OKAY) {
 	*(mLog->log())<< DEBUGPREFIX << " Failed to open file= " << pathbuf << " mRemLength= " << mRemLength<< endl;
 	mFile = NULL;
@@ -563,13 +577,13 @@ int cHttpResource::fillDataBlk() {
 	else
 	  *(mLog->log()) << DEBUGPREFIX << " Still data to send mBlkLen= " << mBlkLen <<" --> continue "  << endl;
 	return OKAY;
-      }
+      } // Error: Open next file failed 
     
       if (mBlkLen == 0) {
 	to_read = ((mRemLength > MAXLEN) ? MAXLEN : mRemLength);
 	mBlkLen = fread(mBlkData, 1, to_read, mFile);
+	mRemLength -= mBlkLen;  
       }
-      mRemLength -= mBlkLen;
     }
     break;
   case SINGLEFILE:
@@ -933,9 +947,6 @@ int cHttpResource::getQueryAttributeValue(vector<sQueryAVP> *avps, string attr, 
 int cHttpResource::parseFiles(vector<sFileEntry> *entries, string prefix, string dir_base, string dir_name, struct stat *statbuf) {
   char pathbuf[4096];
   string link;
-  //  char f[400];
-  //  int len;
-
   DIR *dir;
   struct dirent *de;
   string dir_comp;
@@ -963,6 +974,7 @@ int cHttpResource::parseFiles(vector<sFileEntry> *entries, string prefix, string
 
     if (S_ISDIR(statbuf->st_mode)) {
       if (strcmp(&(pathbuf[strlen(pathbuf)-4]), ".rec") == 0) {
+	// vdr folder
 	time_t now = time(NULL);
 	struct tm tm_r;
 	struct tm t = *localtime_r(&now, &tm_r); 
@@ -984,6 +996,7 @@ int cHttpResource::parseFiles(vector<sFileEntry> *entries, string prefix, string
 	entries->push_back(sFileEntry(dir_name, pathbuf, start));
       }
       else {
+	// regular file
 	parseFiles(entries, prefix + de->d_name + "~", dir_comp, de->d_name, statbuf);
       }
     }
@@ -1004,12 +1017,11 @@ int cHttpResource::sendManifest (struct stat *statbuf, bool is_hls) {
   string mpd_name = mPath.substr(pos+1);
   
   float seg_dur = mFactory->getSegmentDuration() *1.0;
-  //  float seg_dur = SEGMENT_DURATION *1.0;
-
 
   cRecordings* recordings = &Recordings;
   cRecording* rec = recordings->GetByName(mDir.c_str());  
-  float duration = rec->NumFrames() / rec->FramesPerSecond();
+  double duration = rec->NumFrames() / rec->FramesPerSecond();
+  
   time_t now = time(NULL);
 
   if (rec->Info() != NULL){
@@ -1032,6 +1044,7 @@ int cHttpResource::sendManifest (struct stat *statbuf, bool is_hls) {
 
   // duration is now either the actual duration of the asset or the target duration of the asset
   int end_seg = int (duration / seg_dur) +1;
+
   // FIXME: Test Only
   /*  if (rec->FramesPerSecond() > 40)
     end_seg = int (duration *2 / seg_dur) +1;
@@ -1056,7 +1069,7 @@ int cHttpResource::sendManifest (struct stat *statbuf, bool is_hls) {
   return OKAY;
 }
 
-void cHttpResource::writeM3U8(float duration, float seg_dur, int end_seg) {
+void cHttpResource::writeM3U8(double duration, float seg_dur, int end_seg) {
   mResponseMessage = new string();
   mResponseMessagePos = 0;
   *mResponseMessage = "";
@@ -1067,32 +1080,32 @@ void cHttpResource::writeM3U8(float duration, float seg_dur, int end_seg) {
 
   string hdr = "";
 
-    sendHeaders(200, "OK", NULL, "application/x-mpegURL", -1, -1);
 
-    *mResponseMessage += "#EXTM3U\n";
-    //  snprintf(buf, sizeof(buf), "#EXT-X-TARGETDURATION:%d\n", (seg_dur-1));
-    snprintf(buf, sizeof(buf), "#EXT-X-TARGETDURATION:%d\n", int(seg_dur));
+  *mResponseMessage += "#EXTM3U\n";
+  //  snprintf(buf, sizeof(buf), "#EXT-X-TARGETDURATION:%d\n", (seg_dur-1));
+  snprintf(buf, sizeof(buf), "#EXT-X-TARGETDURATION:%d\n", int(seg_dur));
+  hdr = buf;
+  *mResponseMessage += hdr;
+  
+  *mResponseMessage += "#EXT-X-MEDIA-SEQUENCE:1\n";
+  *mResponseMessage += "#EXT-X-KEY:METHOD=NONE\n";
+  
+  for (int i = 1; i < end_seg; i++){
+    //    snprintf(buf, sizeof(buf), "#EXTINF:%.1f,\n", (seg_dur-0.5));
+    snprintf(buf, sizeof(buf), "#EXTINF:%.2f,\n", seg_dur);
     hdr = buf;
     *mResponseMessage += hdr;
-
-    *mResponseMessage += "#EXT-X-MEDIA-SEQUENCE:1\n";
-    *mResponseMessage += "#EXT-X-KEY:METHOD=NONE\n";
     
-    for (int i = 1; i < end_seg; i++){
-      //    snprintf(buf, sizeof(buf), "#EXTINF:%.1f,\n", (seg_dur-0.5));
-      snprintf(buf, sizeof(buf), "#EXTINF:%.2f,\n", seg_dur);
-      hdr = buf;
-      *mResponseMessage += hdr;
+    snprintf(buf, sizeof(buf), "%d-seg.ts\n", i);
+    hdr = buf;
+    *mResponseMessage += hdr;
+  }
+  *mResponseMessage += "#EXT-X-ENDLIST\n";
 
-      snprintf(buf, sizeof(buf), "%d-seg.ts\n", i);
-      hdr = buf;
-      *mResponseMessage += hdr;
-    }
-    *mResponseMessage += "#EXT-X-ENDLIST\n";
-
+  sendHeaders(200, "OK", NULL, "application/x-mpegURL", mResponseMessage->size(), -1);
 }
 
-void cHttpResource::writeMPD(float duration, float seg_dur, int end_seg) {
+void cHttpResource::writeMPD(double duration, float seg_dur, int end_seg) {
   mResponseMessage = new string();
   mResponseMessagePos = 0;
   *mResponseMessage = "";
@@ -1104,20 +1117,12 @@ void cHttpResource::writeMPD(float duration, float seg_dur, int end_seg) {
 
   string hdr = "";
 
-  //  sendHeaders(200, "OK", NULL, "application/xml", -1, -1);
-
   *mResponseMessage += "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n";
 
   snprintf(line, sizeof(line), "<MPD type=\"OnDemand\" minBufferTime=\"PT%dS\" mediaPresentationDuration=\"PT%.1fS\"", 
 	   mFactory->getHasMinBufferTime(), duration);
   *mResponseMessage = *mResponseMessage + line;
 
-  //  *mResponseMessage += "<MPD type=\"OnDemand\" minBufferTime=\"PT30S\" mediaPresentationDuration=";
-
-  //  snprintf(buf, sizeof(buf), "\"PT%.1fS\"", duration);
-  //  hdr = buf;
-
-  //  *mResponseMessage += hdr + " xmlns:xsi=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"urn:mpeg:mpegB:schema:DASH:MPD:DIS2011\" ";
   *mResponseMessage += " xmlns:xsi=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"urn:mpeg:mpegB:schema:DASH:MPD:DIS2011\" ";
   *mResponseMessage += "xsi:schemaLocation=\"urn:mpeg:mpegB:schema:DASH:MPD:DIS2011\">\n";
   *mResponseMessage += "<ProgramInformation>\n";
@@ -1127,9 +1132,6 @@ void cHttpResource::writeMPD(float duration, float seg_dur, int end_seg) {
 
   snprintf(line, sizeof(line), "<Representation id=\"0\" mimeType=\"video/mpeg\" bandwidth=\"%d\" startWithRAP=\"True\" width=\"1280\" height=\"720\" group=\"0\">\n", mFactory->getHasBitrate());
   *mResponseMessage = *mResponseMessage + line;
-  //  *mResponseMessage += "<Representation id=\"0\" mimeType=\"video/mpeg\" bandwidth=\"15000000\" startWithRAP=\"True\" width=\"1280\" height=\"720\" group=\"0\">\n";
-
-  //  *mResponseMessage += "<Representation id=\"0\" mimeType=\"video/mpeg\" bandwidth=\"5000000\" startWithRAP=\"True\" width=\"720\" height=\"576\" group=\"0\">\n";
 
   hdr = "<SegmentInfo duration=";
   snprintf(buf, sizeof(buf), "\"PT%.1fS\"", (seg_dur*1.0));
@@ -1146,7 +1148,7 @@ void cHttpResource::writeMPD(float duration, float seg_dur, int end_seg) {
   *mResponseMessage += "</Period>\n";
   *mResponseMessage += "</MPD>";
 
-  sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), -1);
+  sendHeaders(200, "OK", NULL, "application/x-mpegURL", mResponseMessage->size(), -1);
 }
 
 int cHttpResource::sendMediaSegment (struct stat *statbuf) {
@@ -1160,7 +1162,6 @@ int cHttpResource::sendMediaSegment (struct stat *statbuf) {
   int seg_number; 
 
   int seg_dur = mFactory->getSegmentDuration();
-//  int seg_dur = SEGMENT_DURATION;
   int frames_per_seg = 0;
 
   sscanf(seg_name.c_str(), "%d-seg.ts", &seg_number);
@@ -1262,9 +1263,11 @@ int cHttpResource::sendMediaSegment (struct stat *statbuf) {
 #endif
   }
   else {
+#ifndef DEBUG
     *(mLog->log()) << DEBUGPREFIX
 		   << " start_idx < end_idx " 
 		   << endl;
+#endif
     snprintf(seg_fn, sizeof(seg_fn), mFileStructure.c_str(), mDir.c_str(), mVdrIdx);
     if (stat(seg_fn, statbuf) < 0) {
       *(mLog->log()) << DEBUGPREFIX
@@ -1274,6 +1277,8 @@ int cHttpResource::sendMediaSegment (struct stat *statbuf) {
       // issue: 
     }
     rem_len = statbuf->st_size - start_offset; // remaining length of the first segment
+
+    // loop over all idx files between start_idx and end_idx
     for (int idx = (start_idx+1); idx < end_idx; idx ++) {
       snprintf(seg_fn, sizeof(seg_fn), mFileStructure.c_str(), mDir.c_str(), idx);
       if (stat(seg_fn, statbuf) < 0) {
@@ -1288,9 +1293,13 @@ int cHttpResource::sendMediaSegment (struct stat *statbuf) {
     }
     rem_len += end_offset; // 
     mRemLength = rem_len;
+    snprintf(seg_fn, sizeof(seg_fn), mFileStructure.c_str(), mDir.c_str(), mVdrIdx);
+
+#ifndef DEBUG
     *(mLog->log()) << DEBUGPREFIX
 		   << " start_idx= " << start_idx << " != end_idx= "<< end_idx <<": mRemLength= " <<mRemLength
 		   << endl;    
+#endif
   }
 
   if (error){
@@ -1299,6 +1308,7 @@ int cHttpResource::sendMediaSegment (struct stat *statbuf) {
   }
   
   mContentType = VDRDIR;
+ 
   if (openFile(seg_fn) != OKAY) {
 	*(mLog->log())<< DEBUGPREFIX << " Failed to open file= " << seg_fn 
 		      << " mRemLength= " << mRemLength<< endl;
@@ -1576,7 +1586,7 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
   vector<sQueryAVP> avps;
   parseQueryLine(&avps);
   string model = "";
-  string link_ext = "";
+  string link_ext = ""; 
   string type = "";
   string has_4_hd_str = "";
   bool has_4_hd = true;
@@ -1638,11 +1648,12 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
   if (writeXmlItem("HLS - Big Bugs Bunny", "http://192.168.1.122/sm/BBB-DASH/HLS_BigBuckTS.m3u8|COMPONENT=HLS", "NA", "Big Bucks Bunny - HLS", 
 		   "-", 0, 0) == ERROR) 
     return ERROR;
+  if (writeXmlItem("HAS - Big Bugs Bunny", "http://192.168.1.122:8000/hd2/mpeg/BBB-DASH/HAS_BigBuckTS.xml|COMPONENT=HAS", "NA", "Big Bucks Bunny - HAS from own Server", 
+		   "-", 0, 0) == ERROR) 
+    return ERROR;
 */
-
   //--------------------
   cRecordings* recordings = &Recordings;
-  //  char buff[20];
   char f[600];
 
 #ifndef DEBUG
@@ -1738,68 +1749,6 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
 #endif
   return OKAY;
 }
-
-int cHttpResource::sendRecordingsHtml(struct stat *statbuf) {
-#ifndef STANDALONE
-
-  mResponseMessage = new string();
-  mResponseMessagePos = 0;
-  *mResponseMessage = "";
-  mContentType = MEMBLOCK;
-
-  mConnState = SERVING;
-
-  vector<sQueryAVP> avps;
-  parseQueryLine(&avps);
-  string link_ext = "";
-  string type = "";
-
-  if (getQueryAttributeValue(&avps, "type", type) == OKAY){
-    *(mLog->log())<< DEBUGPREFIX
-		  << " Found a Type Parameter: " << type
-		  << endl;
-    if (type == "hls") { 
-      link_ext = "/manifest-seg.m3u8";
-    }
-    if (type == "has") {
-      link_ext = "/manifest-seg.mpd";
-    }
-
-  }
-
-  sendHeaders(200, "OK", NULL, "text/html", -1, statbuf->st_mtime);
-
-  string hdr = "";
-  hdr += "<HTML><HEAD><TITLE>Recordings</TITLE></HEAD>\r\n";
-  hdr += "<meta http-equiv=\"content-type\" content=\"text/html;charset=UTF-8\"/>\r\n";
-  hdr += "<BODY>";
-  hdr += "<H4>Recordings</H4>\r\n<PRE>\n";
-  hdr += "<HR>\r\n";
-
-  *mResponseMessage += hdr;
-
-  char buff[20];
-  char f[400];
-  for (cRecording *recording = Recordings.First(); recording; recording = Recordings.Next(recording)) {
-    hdr = "";
-    time_t start_time = recording->Start();
-    strftime(buff, 20, "%Y-%m-%d %H:%M:%S", localtime(&start_time));
-
-    if (recording->IsPesRecording()) 
-      snprintf(f, sizeof(f), "%s <A HREF=\"%s\">%s</A>\r\n", buff, cUrlEncode::doUrlSaveEncode(recording->FileName()).c_str(), 
-	       recording->Name());
-    else
-      snprintf(f, sizeof(f), "%s <A HREF=\"%s%s\">%s</A>\r\n", buff, cUrlEncode::doUrlSaveEncode(recording->FileName()).c_str(), 
-	       link_ext.c_str(), recording->Name());
-
-    hdr += f;
-    *mResponseMessage += hdr;
-    // start is time_t
-  }
-#endif
-  return OKAY;
-}
-
 
 int cHttpResource::sendVdrDir(struct stat *statbuf) {
 
@@ -2074,17 +2023,20 @@ const char *cHttpResource::getMimeType(const char *name) {
   if (strcmp(ext, ".jpg") == 0 || strcmp(ext, ".jpeg") == 0) return "image/jpeg";
   if (strcmp(ext, ".gif") == 0) return "image/gif";
   if (strcmp(ext, ".png") == 0) return "image/png";
+  if (strcmp(ext, ".xml") == 0) return "application/xml";  
   if (strcmp(ext, ".css") == 0) return "text/css";
+  if (strcmp(ext, ".js") == 0) return "text/javascript";
   if (strcmp(ext, ".au") == 0) return "audio/basic";
   if (strcmp(ext, ".wav") == 0) return "audio/wav";
   if (strcmp(ext, ".avi") == 0) return "video/x-msvideo";
   if (strcmp(ext, ".mp4") == 0) return "video/mp4";
   if (strcmp(ext, ".vdr") == 0) return "video/mpeg";
   if (strcmp(ext, ".ts") == 0) return "video/mpeg";
-  if (strcmp(ext, ".mpd") == 0) return "application/dash+xml";  
-  if (strcmp(ext, ".xml") == 0) return "application/xml";  
   if (strcmp(ext, ".mpeg") == 0 || strcmp(ext, ".mpg") == 0) return "video/mpeg";
   if (strcmp(ext, ".mp3") == 0) return "audio/mpeg";
+  if (strcmp(ext, ".mpd") == 0) return "application/dash+xml";  
+  if (strcmp(ext, ".m3u8") == 0) return "application/x-mpegURL";
+  
   return NULL;
 }
 

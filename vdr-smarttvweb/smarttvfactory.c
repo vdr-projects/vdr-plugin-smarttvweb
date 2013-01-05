@@ -1,7 +1,7 @@
 /*
  * smarttvfactory.h: VDR on Smart TV plugin
  *
- * Copyright (C) 2012 Thorsten Lohmar
+ * Copyright (C) 2012 T. Lohmar
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -77,11 +77,28 @@ SmartTvServer::SmartTvServer(): mRequestCount(0), isInited(false), serverPort(PO
 
 
 SmartTvServer::~SmartTvServer() {
+
   if (mConfig != NULL)
     delete mConfig;
 }
 
 void SmartTvServer::cleanUp() {
+  // close listening ports
+  for (uint idx= 0; idx < clientList.size(); idx++) {
+    if (clientList[idx] != NULL) {
+      close(idx);
+      delete clientList[idx];
+      clientList[idx] = NULL;
+    }
+  }
+
+  // close server port
+  close(mServerFd);
+
+  // Leave thread
+  pthread_cancel(mThreadId);
+  pthread_join(mThreadId, NULL);
+
   mLog.shutdown();
 }
 

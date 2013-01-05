@@ -110,7 +110,6 @@ class cHttpResource {
   int mBlkPos;
   int mBlkLen;
 
-  //  string path;
   string mRequest;
   string mQuery;
   string mPath;
@@ -131,9 +130,6 @@ class cHttpResource {
   bool mIsRecording;
   float mRecProgress;
 
-  //  int writeToClient(const char *buf, size_t buflen);
-  //  int sendDataChunk();
-
   void setNonBlocking();
   int fillDataBlk();
 
@@ -143,20 +139,17 @@ class cHttpResource {
   int processHttpHeaderNew();
 
   int readRequestPayload();
-  //  int processHttpHeader();
   void sendError(int status, const char *title, const char *extra, const char *text);
   int sendDir(struct stat *statbuf);
   int sendVdrDir(struct stat *statbuf);
-  int sendRecordingsHtml (struct stat *statbuf);
   int sendRecordingsXml (struct stat *statbuf);
   int sendChannelsXml (struct stat *statbuf);
   int sendEpgXml (struct stat *statbuf);
   int sendMediaXml (struct stat *statbuf);
 
-  //  int sendMPD (struct stat *statbuf);
   int sendManifest (struct stat *statbuf, bool is_hls = true);
-  void writeM3U8(float duration, float seg_dur, int end_seg);
-  void writeMPD(float duration, float seg_dur, int end_seg);
+  void writeM3U8(double duration, float seg_dur, int end_seg);
+  void writeMPD(double duration, float seg_dur, int end_seg);
 
 
   int sendMediaSegment (struct stat *statbuf);
@@ -181,9 +174,5 @@ class cHttpResource {
   int getQueryAttributeValue(vector<sQueryAVP> *avps, string id, string &val);
   int openFile(const char *name);
   int writeXmlItem(string title, string link, string programme, string desc, string guid, time_t start, int dur);
-  //  string removeEtChar(string line);
-  //  string hexDump(string input);
-  //  string convertUrl(string input);
-  //  string convertBack(string input);
 };
 #endif
