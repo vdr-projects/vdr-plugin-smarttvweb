@@ -1,7 +1,7 @@
 /*
  * smarttvfactory.h: VDR on Smart TV plugin
  *
- * Copyright (C) 2012 Thorsten Lohmar
+ * Copyright (C) 2012 T. Lohmar
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -55,11 +55,6 @@ class SmartTvServer {
     int isServing();
 
     string getConfigDir() { return mConfigDir; };
-    unsigned int getSegmentDuration() { return mSegmentDuration; };
-    int getHasMinBufferTime() { return mHasMinBufferTime; };
-    unsigned int getHasBitrate() { return mHasBitrate; };
-    int getLiveChannels() { return mLiveChannels; };
-    
     cSmartTvConfig* getConfig() { return mConfig; };
 
  private:
