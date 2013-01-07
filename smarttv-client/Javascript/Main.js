@@ -157,13 +157,11 @@ Main.log = function (msg) {
 };
 
 Main.logToServer = function (msg) {
-//	if (Config.serverUrl == "" )
-//		return;
+	if (Config.serverUrl == "" )
+		return;
 
 	var XHRObj = new XMLHttpRequest();
-//    XHRObj.open("POST", Config.serverUrl + "/log", true);
-    XHRObj.open("POST", "http://192.168.1.122:8000/log", true);
-
+    XHRObj.open("POST", Config.serverUrl + "/log", true);
     XHRObj.send("CLOG: " + msg);
 };
 
@@ -231,6 +229,11 @@ Main.recordingsSelected = function() {
     	
     	Display.show();
     };
+    Server.errorCallback = function (msg) {
+    	Display.showPopup(msg);
+    	Main.changeState(0);
+    };
+
     Player.isLive = false;   
     Server.setSort(true);
     if (Config.format == "") {
@@ -263,13 +266,17 @@ Main.liveSelected = function() {
     Player.isLive = true;
     Server.setSort(false);
     Server.errorCallback = Main.serverError;
-    Server.fetchVideoList(Config.serverUrl + "/channels.xml"); /* Request video information from server */
+    Server.fetchVideoList(Config.serverUrl + "/channels.xml?channels="+Config.liveChannels); /* Request video information from server */
 };
 
 Main.mediaSelected = function() {
     Player.stopCallback = function() {
     	// 
     	Display.show();
+    };
+    Server.errorCallback = function (msg) {
+    	Display.showPopup(msg);
+    	Main.changeState(0);
     };
     Player.isLive = false;   
     Server.setSort(true);

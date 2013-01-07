@@ -12,7 +12,7 @@ var Config = {
 	pendingBuffer: 40, // in percent
 	initialTimeOut: 3, // sec
 	skipDuration : 30, // sec
-	noLiveChannels : 30, 
+	liveChannels : 30, 
 	firstLaunch : false,
 
 	deviceType : 0   // Used to differentiate between browsers and platforms
@@ -241,7 +241,7 @@ Config.processConfig = function () {
         	if (res != 0) this.initialTimeOut = 1.0 * res;
 
         	res = Config.getXmlValue("liveChannels");
-        	if (res != 0) noLiveChannels = res;
+        	if (res != 0) this.liveChannels = res;
         	
         	Player.skipDuration = Config.skipDuration;
         	Main.log("**** Config ****");
@@ -253,6 +253,8 @@ Config.processConfig = function () {
         	Main.log("pendingBuffer= " + Config.pendingBuffer);
         	Main.log("skipDuration= " + Config.skipDuration);
         	Main.log("initialTimeOut= " + Config.initialTimeOut);
+        	Main.log("liveChannels= " + Config.liveChannels);
+        	
         	Main.log("**** /Config ****");      	
         };
     	
