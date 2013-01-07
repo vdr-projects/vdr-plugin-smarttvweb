@@ -67,10 +67,10 @@ Server.createVideoList = function() {
 
 	if (this.XHRObj.status != 200) {
 		Display.putInnerHTML(splashElement, "XML Server Error " + this.XHRObj.status);
-        Display.status("XML Server Error " + this.XHRObj.status);
-    	Display.showPopup("XML Server Error " + this.XHRObj.status);
+//        Display.status("XML Server Error " + this.XHRObj.status);
+//    	Display.showPopup("XML Server Error " + this.XHRObj.status);
         if (this.errorCallback != null) {
-        	this.errorCallback("ServerError");
+        	this.errorCallback(this.XHRObj.responseText);
         }
     }
     else

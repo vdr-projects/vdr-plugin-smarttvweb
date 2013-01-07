@@ -4,15 +4,17 @@
         <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
         <title>Vdr on SmartTV</title>
 
+        <script type="text/javascript" src="$MANAGER_WIDGET/Common/OpenSrc/jquery-1.4.2.min.js"></script>
+
         <!-- Common widget API -->
         <script type='text/javascript' language='javascript' src='$MANAGER_WIDGET/Common/API/Widget.js'></script>
-        <script type='text/javascript' language='javascript' src='$MANAGER_WIDGET/Common/API/TVKeyValue.js'></script>
       	<script type='text/javascript' language='javascript' src='$MANAGER_WIDGET/Common/API/Plugin.js'></script>
+        <script type='text/javascript' language='javascript' src='$MANAGER_WIDGET/Common/API/TVKeyValue.js'></script>
         
         <script type="text/javascript" language="javascript" src="$MANAGER_WIDGET/Common/webapi/1.0/serviceapis.js"></script>
         <script type="text/javascript" language="javascript" src="$MANAGER_WIDGET/Common/webapi/1.0/deviceapis.js"></script>
-        <script language="javascript" type="text/javascript" src="$MANAGER_WIDGET/Common/Util/Include.js"></script>
-        <script language="javascript" type="text/javascript" src="$MANAGER_WIDGET/Common/Util/Language.js"></script>
+        <script type="text/javascript" language="javascript" src="$MANAGER_WIDGET/Common/Util/Include.js"></script>
+        <script type="text/javascript" language="javascript" src="$MANAGER_WIDGET/Common/Util/Language.js"></script>
 		<script type="text/javascript" language="javascript" src="$MANAGER_WIDGET/Common/Plugin/Define.js"></script>
         
         <!-- Widget code -->
@@ -46,10 +48,8 @@
     </head>
 
     <body onload="Main.onLoad();" onunload="Main.onUnload();">
-        <script type="text/javascript" src="$MANAGER_WIDGET/Common/OpenSrc/jquery-1.4.2.min.js"></script>
         <script type="text/javascript" language="javascript" src="$MANAGER_WIDGET/Common/IME_XT9/ime.js"></script>
-        <script type="text/javascript" src="$MANAGER_WIDGET/Common/IME_XT9/inputCommon/ime_input.js"></script>
-         <script language="javascript" type="text/javascript" src="Javascript/Options.js"></script>
+	    <script language="javascript" type="text/javascript" src="Javascript/Options.js"></script>
 
         <!-- Dummy anchor as focus for key events -->
         <a href='javascript:void(0);' id='anchor' onkeydown='Main.keyDown();'></a>

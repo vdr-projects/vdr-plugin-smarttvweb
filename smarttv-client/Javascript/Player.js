@@ -178,7 +178,7 @@ Player.playVideo = function() {
         
         this.plugin.Play( this.url );
         Audio.plugin.SetSystemMute(false); 
-    	pluginObj.setOffScreenSaver();
+        pluginObj.setOffScreenSaver();
         this.pluginBD.DisplayVFD_Show(0100); // Play
     }
 };
@@ -192,7 +192,7 @@ Player.pauseVideo = function() {
     var res = this.plugin.Pause();
 	if (res == false)
 		Display.showPopup("pause ret= " +  ((res == true) ? "True" : "False"));  
-	pluginAPI.setOnScreenSaver();
+	pluginObj.setOnScreenSaver();
     this.pluginBD.DisplayVFD_Show(0102); // Pause
 };
 
@@ -207,7 +207,7 @@ Player.stopVideo = function() {
         if (this.stopCallback) {
             this.stopCallback();
         }
-		pluginAPI.setOnScreenSaver();
+		pluginObj.setOnScreenSaver();
 	    this.pluginBD.DisplayVFD_Show(0101); // Stop
     }
     else {
@@ -223,7 +223,7 @@ Player.resumeVideo = function() {
     var res = this.plugin.Resume();
 	if (res == false)
 		Display.showPopup("resume ret= " +  ((res == true) ? "True" : "False"));  
-    pluginObj.setOffScreenSaver();
+	pluginObj.setOffScreenSaver();
     this.pluginBD.DisplayVFD_Show(0100); // Play
 };
 
