@@ -32,7 +32,7 @@ Server.fetchVideoList = function(url) {
     if (this.XHRObj) {
         this.XHRObj.onreadystatechange = function()
             {
-            var splashElement = document.getElementById("splashStatus");  
+ //           var splashElement = document.getElementById("splashStatus");  
 
         	if (Server.XHRObj.readyState == 4) {
                     Server.createVideoList();
@@ -53,14 +53,14 @@ Server.fetchVideoList = function(url) {
 
 Server.createVideoList = function() {
 	console.log ("creating Video list now");
-	
+	console.log ("status= " + this.XHRObj.status);
+    
 	if (this.XHRObj.status != 200) {
-        if (this.errorCallback != null) {
-        	this.errorCallback("ServerError");
+            if (this.errorCallback != null) {
+        	this.errorCallback(this.XHRObj.responseText);
         }
     }
-    else
-    {
+    else {
     	var xmlResponse = this.XHRObj.responseXML;
     	if (xmlResponse == null) {
             if (this.errorCallback != null) {
@@ -79,7 +79,8 @@ Server.createVideoList = function() {
             var items = xmlElement.getElementsByTagName("item");          
             if (items.length == 0) {
             	console.log("Something wrong. Response does not contain any item");            	
-            };
+	        	this.errorCallback("Empty Response");
+			};
             
             for (var index = 0; index < items.length; index++) {
             	
@@ -94,6 +95,7 @@ Server.createVideoList = function() {
             	    durVal = parseInt(items[index].getElementsByTagName("duration")[0].firstChild.data);
             	}
             	catch (e) {
+					this.errorCallback("XML Parsing Error: " + e);
             	    console.log("ERROR: "+e);
             	}        
            	

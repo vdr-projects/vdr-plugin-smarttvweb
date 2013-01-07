@@ -21,6 +21,10 @@ $(document).ready(function(){
 		
 		// end of dataReceivedCallBack
 		};
+	Server.errorCallback = function (msg) {
+		alert (msg);
+                buttonHandler('rec');
+	};
 
 	$.mobile.loading('show');
 	Server.setSort(true);

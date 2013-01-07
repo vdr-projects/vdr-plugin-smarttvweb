@@ -1,5 +1,5 @@
 /*
- * httpresource.h: VDR on Smart TV plugin
+ * httpresource.c: VDR on Smart TV plugin
  *
  * Copyright (C) 2012 T. Lohmar
  *
@@ -749,17 +749,19 @@ void cHttpResource::sendError(int status, const char *title, const char *extra, 
   mResponseMessagePos = 0;
 
   string hdr = "";
-  sendHeaders(status, title, extra, "text/html", -1, -1);
+  //  sendHeaders(status, title, extra, "text/html", -1, -1);
+  sendHeaders(status, title, extra, "text/plain", -1, -1);
 
-  snprintf(f, sizeof(f), "<HTML><HEAD><TITLE>%d %s</TITLE></HEAD>\r\n", status, title);
+  /*  snprintf(f, sizeof(f), "<HTML><HEAD><TITLE>%d %s</TITLE></HEAD>\r\n", status, title);
   hdr += f;
   snprintf(f, sizeof(f), "<BODY><H4>%d %s</H4>\r\n", status, title);
   hdr += f;
+*/
   snprintf(f, sizeof(f), "%s\r\n", text);
   hdr += f;
-  snprintf(f, sizeof(f), "</BODY></HTML>\r\n");
+  /*  snprintf(f, sizeof(f), "</BODY></HTML>\r\n");
   hdr += f;
-
+*/
 
   strcpy(&(mBlkData[mBlkLen]), hdr.c_str());
   mBlkLen += hdr.size();
@@ -962,6 +964,9 @@ int cHttpResource::parseFiles(vector<sFileEntry> *entries, string prefix, string
 #endif
 
   dir = opendir(dir_comp.c_str());
+  if (stat(dir_comp.c_str(), statbuf) < 0)
+    return ERROR;
+
   while ((de = readdir(dir)) != NULL) {
     if ((strcmp(de->d_name, ".") == 0) or (strcmp(de->d_name, "..") == 0)) {
       continue;
@@ -1016,7 +1021,7 @@ int cHttpResource::sendManifest (struct stat *statbuf, bool is_hls) {
   mDir = mPath.substr(0, pos);
   string mpd_name = mPath.substr(pos+1);
   
-  float seg_dur = mFactory->getSegmentDuration() *1.0;
+  float seg_dur = mFactory->getConfig()->getSegmentDuration() *1.0;
 
   cRecordings* recordings = &Recordings;
   cRecording* rec = recordings->GetByName(mDir.c_str());  
@@ -1120,7 +1125,7 @@ void cHttpResource::writeMPD(double duration, float seg_dur, int end_seg) {
   *mResponseMessage += "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n";
 
   snprintf(line, sizeof(line), "<MPD type=\"OnDemand\" minBufferTime=\"PT%dS\" mediaPresentationDuration=\"PT%.1fS\"", 
-	   mFactory->getHasMinBufferTime(), duration);
+	   mFactory->getConfig()->getHasMinBufferTime(), duration);
   *mResponseMessage = *mResponseMessage + line;
 
   *mResponseMessage += " xmlns:xsi=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"urn:mpeg:mpegB:schema:DASH:MPD:DIS2011\" ";
@@ -1130,7 +1135,7 @@ void cHttpResource::writeMPD(double duration, float seg_dur, int end_seg) {
   *mResponseMessage += "</ProgramInformation>\n";
   *mResponseMessage += "<Period start=\"PT0S\" segmentAlignmentFlag=\"True\">\n"; 
 
-  snprintf(line, sizeof(line), "<Representation id=\"0\" mimeType=\"video/mpeg\" bandwidth=\"%d\" startWithRAP=\"True\" width=\"1280\" height=\"720\" group=\"0\">\n", mFactory->getHasBitrate());
+  snprintf(line, sizeof(line), "<Representation id=\"0\" mimeType=\"video/mpeg\" bandwidth=\"%d\" startWithRAP=\"True\" width=\"1280\" height=\"720\" group=\"0\">\n", mFactory->getConfig()->getHasBitrate());
   *mResponseMessage = *mResponseMessage + line;
 
   hdr = "<SegmentInfo duration=";
@@ -1161,7 +1166,7 @@ int cHttpResource::sendMediaSegment (struct stat *statbuf) {
   string seg_name = mPath.substr(pos+1);
   int seg_number; 
 
-  int seg_dur = mFactory->getSegmentDuration();
+  int seg_dur = mFactory->getConfig()->getSegmentDuration();
   int frames_per_seg = 0;
 
   sscanf(seg_name.c_str(), "%d-seg.ts", &seg_number);
@@ -1326,7 +1331,7 @@ int cHttpResource::sendMediaSegment (struct stat *statbuf) {
 int cHttpResource::sendMediaXml (struct stat *statbuf) {
   char pathbuf[4096];
   string link;
-  string media_folder = "/hd2/mpeg";
+  string media_folder = mFactory->getConfig()->getMediaFolder();
 
   mResponseMessage = new string();
   mResponseMessagePos = 0;
@@ -1340,7 +1345,12 @@ int cHttpResource::sendMediaXml (struct stat *statbuf) {
 #endif
 
   vector<sFileEntry> entries;
-  parseFiles(&entries, "", media_folder, "", statbuf);
+
+  //thlo
+  if (parseFiles(&entries, "", media_folder, "", statbuf) == ERROR) {
+    sendError(404, "Not Found", NULL, "Media Folder likely not configured.");
+    return OKAY;
+  }
     
   sendHeaders(200, "OK", NULL, "application/xml", -1, statbuf->st_mtime);
 
@@ -1510,7 +1520,7 @@ int cHttpResource::sendChannelsXml (struct stat *statbuf) {
 
   *mResponseMessage += hdr;
 
-  int count = mFactory->getLiveChannels();
+  int count = mFactory->getConfig()->getLiveChannels();
   if (no_channels > 0)
     count = no_channels +1;
   
@@ -1595,8 +1605,10 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
     *(mLog->log())<< DEBUGPREFIX
 		  << " Found a Model Parameter: " << model
 		  << endl;
-    if (model == "samsung") 
+    //thlo
+    /*    if (model == "samsung") 
       link_ext = "/manifest-seg.m3u8|COMPONENT=HLS";
+*/
   }
 
   if (getQueryAttributeValue(&avps, "type", type) == OKAY){
@@ -1666,14 +1678,24 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
   time_t now = time(NULL);
 
   vector<sTimerEntry> act_rec;
-#ifndef DEBUG
+  /*#ifndef DEBUG*/
   *(mLog->log())<< DEBUGPREFIX
 		<< " checking avtive timer"
 		<< endl;
-#endif
+  /*#endif*/
   for (cTimer * ti = Timers.First(); ti; ti = Timers.Next(ti)){
     ti->Matches();
 
+    /*    *(mLog->log()) << DEBUGPREFIX 
+		   << " Active Timer: " << ti->File() 
+		   << " EvStart= " << ti->Event()->StartTime() 
+		   << " EvDuration= " << ti->Event()->Duration()
+		   << endl;*/
+    /*    *(mLog->log()) << DEBUGPREFIX 
+		   << " TiStart= " << ti->StartTime()
+      		   << " TiDuration= " << (ti->StopTime() - ti->StartTime())
+		   << endl;
+*/      
     if (ti->HasFlags(tfRecording) ) {
       if (ti->Event() == NULL) {
 	*(mLog->log()) << DEBUGPREFIX 
@@ -1687,6 +1709,7 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
 		     << " Duration= " << ti->Event()->Duration()
 		     << endl;
       act_rec.push_back(sTimerEntry(ti->File(), ti->Event()->StartTime(), ti->Event()->Duration()));
+      //act_rec.push_back(sTimerEntry(ti->File(), ti->StartTime(), (ti->StopTime() - ti->StartTime())));
     }
   }
 
@@ -1717,10 +1740,10 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
     for (uint x = 0; x < act_rec.size(); x++) {
       if (act_rec[x].name == name) {
 
-	*(mLog->log())<< DEBUGPREFIX
+	/*	*(mLog->log())<< DEBUGPREFIX
 		      << " !!!!! Found active Recording !!! "
 		      << endl;
-	//	link += "/hm-seg.m3u8";
+*/
 	rec_dur +=  (act_rec[x].startTime + act_rec[x].duration - now);
 	
 
