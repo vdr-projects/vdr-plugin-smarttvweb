@@ -66,7 +66,6 @@ body {
     position: absolute;
     left: 0px; top: 0px;
     width: 960px; height: 540px;
-   	display: none;  
    	background: url("../Images/selectScreen-bg.png");
     background: -webkit-radial-gradient(80% 80%, ellipse cover, rgba(197,222,234,1) 0%,rgba(138,187,215,1) 31%,rgba(6,109,171,1) 100%);
 }
@@ -226,6 +225,9 @@ body {
 	background: -webkit-linear-gradient(-45deg, #1e5799 0%,#2989d8 41%,#7db9e8 100%);
 }
 
+.style_videoitem {
+	 display: inline-block;
+}
 .style_videoList
 {    
     color:#FFFFFF;
@@ -383,3 +385,16 @@ body {
     text-align:center;
     font-size:14px;
 }
+
+
+#Spinning {
+    position:absolute;
+    left:401px; top:196px;
+    width:158px; height:147px;
+    background-image:url("../Images/spinner/loadingBG.png");
+    background-repeat:no-repeat;
+    opacity:0.5;
+	display:none;  
+	z-index:20;
+}
+
