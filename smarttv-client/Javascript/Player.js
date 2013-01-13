@@ -10,6 +10,7 @@ var Player =
     isLive : false,
     isRecording : false,
     
+    url : "",
     startTime : 0,
     duration : 0,
     
@@ -45,7 +46,12 @@ Player.init = function() {
     
     this.plugin = document.getElementById("pluginPlayer");
     this.pluginBD = document.getElementById("pluginBD");
-    this.pluginBD.DisplayVFD_Show(0101); // Stop
+    try {
+        this.pluginBD.DisplayVFD_Show(0101); // Stop    	
+    }
+    catch (e) {
+    	
+    }
     
 /*    var pl_version = "";
     try {
@@ -98,11 +104,14 @@ Player.setFullscreen = function() {
     this.plugin.SetDisplayArea(0, 0, 960, 540);
 };
 
-Player.setBuffer = function (btr){
+Player.setBuffer = function (){
 	var res = true;
 	var buffer_byte = (Config.totalBufferDuration * Config.tgtBufferBitrate) / 8.0;
-
-	Main.logToServer("Seting TotalBufferSize to " + Math.round(buffer_byte) +"Byte dur= " +Config.totalBufferDuration + "sec init_buffer_perc= " +Config.initialBuffer +"% pend_buffer_perc= " +Config.pendingBuffer + "% initialTimeOut= " +Config.initialTimeOut + "sec");
+	var initial_buf = Config.initialBuffer;
+	if (Player.isLive == true)
+		initial_buf = initial_buf *2;
+	
+	Main.logToServer("Seting TotalBufferSize to " + Math.round(buffer_byte) +"Byte dur= " +Config.totalBufferDuration + "sec init_buffer_perc= " +initial_buf +"% pend_buffer_perc= " +Config.pendingBuffer + "% initialTimeOut= " +Config.initialTimeOut + "sec");
 	
 	//The SetTotalBufferSize function sets the streaming buffer size of media player.
 	res = this.plugin.SetTotalBufferSize(Math.round(buffer_byte));
@@ -112,10 +121,10 @@ Player.setBuffer = function (btr){
 	}
   
 	// The SetInitialBuffer function sets the first buffering size as percentage of buffer size before starting playback.
-	res = this.plugin.SetInitialBuffer(Math.round( buffer_byte * Config.initialBuffer/ 100.0));
+	res = this.plugin.SetInitialBuffer(Math.round( buffer_byte * initial_buf/ 100.0));
 	if (res == false) {
-		Display.showPopup("SetInitialBuffer(" + Math.round(buffer_byte * Config.initialBuffer/ 100.0) +") returns error");
-		Main.logToServer("SetInitialBuffer(" + Math.round(buffer_byte * Config.initialBuffer/ 100.0) +") returns error");
+		Display.showPopup("SetInitialBuffer(" + Math.round(buffer_byte * initial_buf/ 100.0) +") returns error");
+		Main.logToServer("SetInitialBuffer(" + Math.round(buffer_byte * initial_buf/ 100.0) +") returns error");
 	}	
 	//he SetInitialTimeOut function sets the maximum time out value for initial buffering before starting playback.
 	res = this.plugin.SetInitialTimeOut(Config.initialTimeOut);
@@ -130,7 +139,6 @@ Player.setBuffer = function (btr){
 		Display.showPopup("SetPendingBuffer(" + Math.round(buffer_byte * Config.pendingBuffer /100.0) +") returns error");
 		Main.logToServer("SetPendingBuffer(" + Math.round(buffer_byte * Config.pendingBuffer /100.0) +") returns error");
 	}
-
 };
 
 Player.setVideoURL = function(url) {
@@ -157,6 +165,8 @@ Player.playVideo = function() {
     	Player.bufferState = 0;
     	Display.bufferUpdate();
 
+    	Spinner.show();
+
 //    	Player.curPlayTime = 0;
     	Display.updatePlayTime();
 
@@ -165,17 +175,12 @@ Player.playVideo = function() {
     	Display.showProgress();
         this.state = this.PLAYING;
         
-//        if (this.plugin.InitPlayer(this.url) == false)
-//        	Display.showPopup("InitPlayer returns false");
-
-        Player.setBuffer(15000000.0);
+        Player.setBuffer();
         Player.ResetTrickPlay();
         Player.skipDuration = Config.skipDuration; // reset
 
         Main.log ("StartPlayback for " + this.url);
-//        if (this.plugin.StartPlayback() == false)
-//        	Display.showPopup("StartPlayback returns false");
-        
+  
         this.plugin.Play( this.url );
         Audio.plugin.SetSystemMute(false); 
         pluginObj.setOffScreenSaver();
@@ -205,8 +210,10 @@ Player.stopVideo = function() {
 //        Display.setTime(0);
 
         if (this.stopCallback) {
+        	Main.log(" StopCallback");
             this.stopCallback();
         }
+        Spinner.hide();
 		pluginObj.setOnScreenSaver();
 	    this.pluginBD.DisplayVFD_Show(0101); // Stop
     }
@@ -372,6 +379,7 @@ Player.onBufferingStart = function() {
 	Main.logToServer("Buffer Start: " + Player.curPlayTime);
 	Player.bufferStartTime = new Date().getTime();
 
+	Spinner.show();
 	Player.bufferState = 0;
 	Display.bufferUpdate();
 	// should trigger from here the overlay
@@ -393,6 +401,7 @@ Player.onBufferingProgress = function(percent)
 Player.onBufferingComplete = function() {
     Display.status("Play");
 	Display.hideStatus();
+	Spinner.hide();
 
 	Main.logToServer("Buffer Completed - Buffering Duration= " + (new Date().getTime() - Player.bufferStartTime) + " ms");
 
@@ -448,6 +457,7 @@ Player.OnRenderingComplete = function() {
 Player.OnConnectionFailed = function() {
 	// fails to connect to the streaming server
 	Main.log ("ERROR: Failed to connect to the streaming server");
+	Main.logToServer("ERROR: Failed to connect Url= "+ Player.url);
 //	widgetAPI.putInnerHTML(document.getElementById("popup"), "Failed to connect to the streaming server");
 	Display.showPopup("Failed to connect to the streaming server");
 };

@@ -49,10 +49,22 @@ Display.init = function()
     }
     
     for (var i = 0; i <= this.LASTIDX; i++) {
-    	var elm = document.getElementById("video"+i);
+    	var elm = $("#video"+i);
+    	$(elm).css({"width" : "100%", "text-align": "left" });
+    	$(elm).append($("<div>").css({ "display": "inline-block", "padding-top": "4px", "padding-bottom": "6px", "width":"20%"})); 
+    	$(elm).append($("<div>").css({ "display": "inline-block", "padding-top": "4px", "padding-bottom": "6px", "width":"70%"})); 
+    	$(elm).append($("<div>").css({ "display": "inline-block", "padding-top": "4px", "padding-bottom": "6px", "width":"5%"})); 
+
+/*    	$(elm).children("div").eq(0).text ("Hallo1");
+    	$(elm).children("div").eq(1).text ("Hallo2");
+    	$(elm).children("div").eq(2).text ("Hallo3");
+*/
+/*
+ *     	var elm = document.getElementById("video"+i);
     	elm.style.paddingLeft = "10px";
     	elm.style.paddingTop = "4px";
     	elm.style.paddingBottom = "6px";
+    	*/
     }
 
     var done = false;
@@ -76,8 +88,15 @@ Display.init = function()
     return success;
 };
 
+Display.setVideoItem = function (elm, cnt) {
+	// cnt
+	$(elm).children("div").eq(0).text (cnt.c1);
+	$(elm).children("div").eq(1).text (cnt.c2);
+	$(elm).children("div").eq(2).text (cnt.c3);
+};
+
 Display.putInnerHTML = function (elm, val) {
-	
+	alert(Config.deviceType + " " +elm + " " + val);
 	switch (Config.deviceType) {
 	case 0:
 		// Samsung specific handling of innerHtml
@@ -133,7 +152,7 @@ Display.resetVideoList = function () {
 			break;
 	    }
 		Display.unselectItem(elm);	
-		Display.putInnerHTML(elm, "");
+		Display.setVideoItem(elm, {c1: "", c2: "", c3: ""});
 	}    
 	
 };
@@ -276,7 +295,6 @@ Display.handleDescription =function (selected) {
     	var min = Display.getNumString (digi.getMinutes(), 2);
 
     	var d_str ="";
-//    	Main.log("handleDescription: " +Data.getCurrentItem().childs[selected].payload.desc);
     	var msg = "";
     	if (Main.state == 1) {
     		// Live
@@ -326,19 +344,24 @@ Display.getNumString =function(num, fmt) {
 };
 
 Display.getDisplayTitle = function(item) {
-	var res = "";
+	var res = {c1:"", c2:"", c3:""};
 	switch (Main.state) {
 	case 1:
 		// Live
-		res = item.title;
+		if (item.isFolder == true) {
+			res.c2 = item.title;
+			res.c3 = "<" + Display.getNumString(item.childs.length, 2) +">"; 			
+		}
+		else {
+			res.c2 = item.title;
+		}
 		break;
 	case 2:
 	case 3:
 		// Recordings
 		if (item.isFolder == true) {
-//			res = "<" + Display.getNumString(item.childs.length, 3) + ">-------- " + item.title; 
-			res = "<" + Display.getNumString(item.childs.length, 3) + ">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- " + item.title; 
-			
+			res.c1 = "<" + Display.getNumString(item.childs.length, 3) + ">";
+			res.c2 = item.title; 			
 		}
 		else {
 			var digi = new Date(parseInt(item.payload.start*1000));
@@ -348,7 +371,8 @@ Display.getDisplayTitle = function(item) {
 			var min = Display.getNumString (digi.getMinutes(), 2);
 
 			var d_str = mon + "/" + day + " " + hour + ":" + min;
-			res = d_str + " - " + item.title; 
+			res.c1 = d_str;
+			res.c2 = item.title; 
 		}
 		break;
 	default:
@@ -361,7 +385,9 @@ Display.getDisplayTitle = function(item) {
 Display.setVideoList = function(selected, first) {
 	// 
     var listHTML = "";
-    var first_item = selected;
+    var res = {};
+//    var first_item = selected;
+    var first_item = first; //thlo
 
     var i=0;
     Main.log("Display.setVideoList title= " +Data.getCurrentItem().childs[selected].title + " selected= " + selected + " first_item= " + first_item);
@@ -369,15 +395,14 @@ Display.setVideoList = function(selected, first) {
 
     for (i = 0; i <= this.LASTIDX; i++) {
     	if ((first_item+i) >= Data.getVideoCount()) {
-    		listHTML = "";
+    		res = {c1: "", c2: "", c3: ""};
     	}
     	else {
-            listHTML = Display.getDisplayTitle (Data.getCurrentItem().childs[first_item+i]); 
-//            Main.log(" - title[first_item+i]= " +Data.getCurrentItem().childs[(first_item +i)].title + " i= " + i + " listHTML= " + listHTML);
-//            Main.log(" - listHTML= " + listHTML);
+            res = Display.getDisplayTitle (Data.getCurrentItem().childs[first_item+i]); 
     	}
         this.videoList[i] = document.getElementById("video"+i);
-        Display.putInnerHTML(this.videoList[i], listHTML);
+
+		Display.setVideoItem(this.videoList[i], res);
         this.unselectItem(this.videoList[i]);
     }
     
@@ -414,6 +439,7 @@ Display.unselectItem = function (item) {
 Display.setVideoListPosition = function(position, move)
 {    
     var listHTML = "";
+//    var res = {}; //thlo: unused?
     Main.log ("Display.setVideoListPosition title= " +Data.getCurrentItem().childs[position].title + " move= " +move);
 
     this.handleDescription(position);
@@ -454,9 +480,7 @@ Display.setVideoListPosition = function(position, move)
         	this.currentWindow = this.FIRSTIDX;
             
             for(i = 0; i <= this.LASTIDX; i++) {
-                listHTML = Display.getDisplayTitle (Data.getCurrentItem().childs[i]); 
-//            	listHTML = Data.getCurrentItem().childs[i].title;
-                Display.putInnerHTML(this.videoList[i], listHTML);
+        		Display.setVideoItem(this.videoList[i], Display.getDisplayTitle (Data.getCurrentItem().childs[i]));
                 
                 if(i == this.currentWindow)
                 	this.selectItem(this.videoList[i]);
@@ -466,9 +490,7 @@ Display.setVideoListPosition = function(position, move)
         }
         else {            
             for(i = 0; i <= this.LASTIDX; i++) {
-                listHTML = Display.getDisplayTitle (Data.getCurrentItem().childs[i + position - this.currentWindow]); 
-//                listHTML = Data.getCurrentItem().childs[i + position - this.currentWindow].title;
-                Display.putInnerHTML(this.videoList[i], listHTML);
+        		Display.setVideoItem(this.videoList[i], Display.getDisplayTitle (Data.getCurrentItem().childs[i + position - this.currentWindow]));
             }
         }
     }
@@ -479,10 +501,7 @@ Display.setVideoListPosition = function(position, move)
         	this.currentWindow = this.LASTIDX;
             
             for(i = 0; i <= this.LASTIDX; i++) {
-                listHTML = Display.getDisplayTitle (Data.getCurrentItem().childs[i + position - this.currentWindow]); 
-//            	listHTML = Data.getCurrentItem().childs[i + position - this.currentWindow].title;               
-                Display.putInnerHTML(this.videoList[i], listHTML);
-                
+        		Display.setVideoItem(this.videoList[i], Display.getDisplayTitle (Data.getCurrentItem().childs[i + position - this.currentWindow]));
                 if(i == this.currentWindow)
                 	this.selectItem(this.videoList[i]);
                 else
@@ -491,9 +510,7 @@ Display.setVideoListPosition = function(position, move)
         }
         else {            
             for(i = 0; i <= this.LASTIDX; i++) {
-                listHTML = Display.getDisplayTitle (Data.getCurrentItem().childs[i + position]); 
-//                listHTML = Data.getCurrentItem().childs[i + position].title;
-                Display.putInnerHTML(this.videoList[i], listHTML);
+        		Display.setVideoItem(this.videoList[i], Display.getDisplayTitle (Data.getCurrentItem().childs[i + position]));
             }
         }
     }
