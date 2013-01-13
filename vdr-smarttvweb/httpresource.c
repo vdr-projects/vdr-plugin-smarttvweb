@@ -869,7 +869,7 @@ int cHttpResource::sendDir(struct stat *statbuf) {
 }
 
 
-int cHttpResource::writeXmlItem(string name, string link, string programme, string desc, string guid, time_t start, int dur) {
+int cHttpResource::writeXmlItem(string name, string link, string programme, string desc, string guid, time_t start, int dur, int fps, int is_pes) {
   string hdr = "";
   char f[400];
 
@@ -887,7 +887,7 @@ int cHttpResource::writeXmlItem(string name, string link, string programme, stri
   hdr += f;
   hdr += "</start>\n";
 
-  hdr += "<startstr>";
+  /*  hdr += "<startstr>";
   if (start != 0) {
     strftime(f, sizeof(f), "%y%m%d %H:%M", localtime(&start));
     hdr += f;
@@ -895,15 +895,41 @@ int cHttpResource::writeXmlItem(string name, string link, string programme, stri
   else
     hdr += "0 0"; 
   hdr += "</startstr>\n";
-
+*/
   snprintf(f, sizeof(f), "%d", dur);
   hdr += "<duration>";
   hdr += f;
   hdr += "</duration>\n";
 
+  if (fps != -1)
+    snprintf(f, sizeof(f), "<fps>%d</fps>\n", fps);
+  else
+    snprintf(f, sizeof(f), "<fps>unknown</fps>\n");
+  hdr += f;
+
+  switch (is_pes){
+  case -1:
+    // unknown
+    hdr += "<ispes>unknown</ispes>\n";
+    break;
+  case 0: 
+    // true
+    hdr += "<ispes>true</ispes>\n";
+    break;
+  case 1:
+    // false
+    hdr += "<ispes>false</ispes>\n";
+    break;
+  default:
+    break;
+  }
+
   hdr += "</item>\n";
 
   *mResponseMessage += hdr;
+
+
+
 
     //  return writeToClient(hdr.c_str(), hdr.size()); 
     return OKAY;
@@ -1346,14 +1372,11 @@ int cHttpResource::sendMediaXml (struct stat *statbuf) {
 
   vector<sFileEntry> entries;
 
-  //thlo
   if (parseFiles(&entries, "", media_folder, "", statbuf) == ERROR) {
     sendError(404, "Not Found", NULL, "Media Folder likely not configured.");
     return OKAY;
   }
     
-  sendHeaders(200, "OK", NULL, "application/xml", -1, statbuf->st_mtime);
-
   string hdr = "";
   hdr += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
   hdr += "<rss version=\"2.0\">\n";
@@ -1368,7 +1391,7 @@ int cHttpResource::sendMediaXml (struct stat *statbuf) {
     snprintf(pathbuf, sizeof(pathbuf), "http://%s:%d%s", mServerAddr.c_str(), mServerPort, 
     	     cUrlEncode::doUrlSaveEncode(entries[i].sPath).c_str());
     if (writeXmlItem(cUrlEncode::doXmlSaveEncode(entries[i].sName), pathbuf, "NA", "NA", "-", 
-		     entries[i].sStart, -1) == ERROR) 
+		     entries[i].sStart, -1, -1, -1) == ERROR) 
       return ERROR;
 
   }
@@ -1376,7 +1399,8 @@ int cHttpResource::sendMediaXml (struct stat *statbuf) {
   hdr = "</channel>\n";
   hdr += "</rss>\n";
   *mResponseMessage += hdr;
-  
+  sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), statbuf->st_mtime);
+
   return OKAY;
 }
 
@@ -1492,6 +1516,7 @@ int cHttpResource::sendChannelsXml (struct stat *statbuf) {
 
   string no_channels_str = "";
   int no_channels = -1;
+  string group_sep = "";
 
   if (getQueryAttributeValue(&avps, "mode", mode) == OKAY){
     if (mode == "nodesc") {
@@ -1511,8 +1536,6 @@ int cHttpResource::sendChannelsXml (struct stat *statbuf) {
   }
 
   
-  sendHeaders(200, "OK", NULL, "application/xml", -1, statbuf->st_mtime);
-
   string hdr = "";
   hdr += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
   hdr += "<rss version=\"2.0\">\n";
@@ -1528,8 +1551,10 @@ int cHttpResource::sendChannelsXml (struct stat *statbuf) {
   const cSchedules *schedules = cSchedules::Schedules(*lock); 
 
   for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel)) {
-    if (channel->GroupSep())
+    if (channel->GroupSep()) {
+      group_sep = channel->Name();
       continue;
+    }
     if (--count == 0) {
       break;
     }
@@ -1567,8 +1592,10 @@ int cHttpResource::sendChannelsXml (struct stat *statbuf) {
 		    << count 
 		    << " Name= " << channel->Name() << endl;
     }
-
-    if (writeXmlItem(channel->Name(), link, title, desc, *(channel->GetChannelID()).ToString(), start_time, duration) == ERROR) 
+    
+    string c_name = (group_sep != "") ? (group_sep + "~" + channel->Name()) : channel->Name(); 
+    //    if (writeXmlItem(channel->Name(), link, title, desc, *(channel->GetChannelID()).ToString(), start_time, duration) == ERROR) 
+    if (writeXmlItem(c_name, link, title, desc, *(channel->GetChannelID()).ToString(), start_time, duration, -1, -1) == ERROR) 
       return ERROR;
 
   }
@@ -1578,6 +1605,7 @@ int cHttpResource::sendChannelsXml (struct stat *statbuf) {
   
   *mResponseMessage += hdr;
   delete lock;
+  sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), statbuf->st_mtime);
 
 #endif
   return OKAY;
@@ -1605,10 +1633,6 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
     *(mLog->log())<< DEBUGPREFIX
 		  << " Found a Model Parameter: " << model
 		  << endl;
-    //thlo
-    /*    if (model == "samsung") 
-      link_ext = "/manifest-seg.m3u8|COMPONENT=HLS";
-*/
   }
 
   if (getQueryAttributeValue(&avps, "type", type) == OKAY){
@@ -1703,13 +1727,19 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
 		       << " is skipped (No Event()" << endl;
 	continue;
       }
-      *(mLog->log()) << DEBUGPREFIX 
+      /*    *(mLog->log()) << DEBUGPREFIX 
 		     << " Active Timer: " << ti->File() 
 		     << " Start= " << ti->Event()->StartTime() 
 		     << " Duration= " << ti->Event()->Duration()
 		     << endl;
-      act_rec.push_back(sTimerEntry(ti->File(), ti->Event()->StartTime(), ti->Event()->Duration()));
-      //act_rec.push_back(sTimerEntry(ti->File(), ti->StartTime(), (ti->StopTime() - ti->StartTime())));
+*/
+      *(mLog->log()) << DEBUGPREFIX 
+		     << " Active Timer: " << ti->File() 
+		     << " Start= " << ti->StartTime() 
+		     << " Duration= " << (ti->StopTime() - ti->StartTime())
+		     << endl;
+      //      act_rec.push_back(sTimerEntry(ti->File(), ti->Event()->StartTime(), ti->Event()->Duration()));
+      act_rec.push_back(sTimerEntry(ti->File(), ti->StartTime(), (ti->StopTime() - ti->StartTime())));
     }
   }
 
@@ -1758,7 +1788,7 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
     }
 
     if (writeXmlItem(cUrlEncode::doXmlSaveEncode(recording->Name()), link, "NA", desc, "-", 
-		     recording->Start(), rec_dur) == ERROR) 
+		     recording->Start(), rec_dur, recording->FramesPerSecond(), (recording->IsPesRecording() ? 0: 1)) == ERROR) 
       return ERROR;
 
   }
@@ -1771,6 +1801,26 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
 
 #endif
   return OKAY;
+}
+
+void cHttpResource::checkForTimeRequest() {
+  return;
+
+  /*  vector<sQueryAVP> avps;
+  parseQueryLine(&avps);
+  string time = "";
+
+  if (getQueryAttributeValue(&avps, "time", time) == OKAY){
+    *(mLog->log())<< DEBUGPREFIX
+		  << " Found a Time Parameter: " << time
+		  << endl;
+  }
+  */
+  // First, I need to get the fps value
+  // then I determine the frame number mathcing the time
+  // the I go into index and find the byte offset and the vdr idx
+  // Then I need to shortcut the calc in sendVdrDir
+
 }
 
 int cHttpResource::sendVdrDir(struct stat *statbuf) {
@@ -1789,6 +1839,8 @@ int cHttpResource::sendVdrDir(struct stat *statbuf) {
 
   checkRecording();
 
+  // The range request functions are activated, when a time header is detected
+  //  checkForTimeRequest();
   mVdrIdx = 1;
   mFileStructure = "%s/%03d.vdr";
 
