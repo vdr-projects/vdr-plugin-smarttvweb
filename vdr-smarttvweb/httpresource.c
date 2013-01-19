@@ -1621,7 +1621,7 @@ int cHttpResource::sendChannelsXml (struct stat *statbuf) {
 
   for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel)) {
     if (channel->GroupSep()) {
-      group_sep = channel->Name();
+      group_sep = cUrlEncode::doXmlSaveEncode(channel->Name());
       continue;
     }
     if (--count == 0) {
@@ -1662,7 +1662,8 @@ int cHttpResource::sendChannelsXml (struct stat *statbuf) {
 		    << " Name= " << channel->Name() << endl;
     }
     
-    string c_name = (group_sep != "") ? (group_sep + "~" + channel->Name()) : channel->Name(); 
+    string c_name = (group_sep != "") ? (group_sep + "~" + cUrlEncode::doXmlSaveEncode(channel->Name())) 
+      : cUrlEncode::doXmlSaveEncode(channel->Name()); 
     //    if (writeXmlItem(channel->Name(), link, title, desc, *(channel->GetChannelID()).ToString(), start_time, duration) == ERROR) 
     if (writeXmlItem(c_name, link, title, desc, *(channel->GetChannelID()).ToString(), start_time, duration, -1, -1, -1) == ERROR) 
       return ERROR;
