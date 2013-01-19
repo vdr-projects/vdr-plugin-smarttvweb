@@ -1,7 +1,7 @@
 /*
  * url.c: VDR on Smart TV plugin
  *
- * Copyright (C) 2012 Thorsten Lohmar
+ * Copyright (C) 2012 T. Lohmar
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -24,7 +24,7 @@
 #include"url.h"
 
 
-
+//http://www.blooberry.com/indexdot/html/topics/urlencoding.htm
 string cUrlEncode::doUrlSaveEncode(string in) {
   string res = "";
   unsigned char num = 0;
@@ -120,7 +120,6 @@ string cUrlEncode::doUrlSaveDecode(string input) {
   return res;
 }
 
-
 string cUrlEncode::doXmlSaveEncode(string in) {
   string res = "";
   unsigned char num = 0;
@@ -136,7 +135,7 @@ string cUrlEncode::doXmlSaveEncode(string in) {
     num = in[idx];
     switch (num) {
     case 0x26: // '&':
-      res += "&#38;";
+      res += "&amp;";
       break;
     case 0x27: // '\'':
       res += "&apos;";
@@ -184,6 +183,45 @@ string cUrlEncode::doXmlSaveEncode(string in) {
   return res;
 }
 
+string cUrlEncode::doXmlSaveDecode(string input) {
+  string res = "";
+  unsigned int idx = 0;
+  while (idx < input.size()){
+    if (input[idx] == '&') {
+      if (input.compare(idx, 4, "&lt;") == 0){
+	res += "<";
+	idx += 4;
+      }
+      else if (input.compare(idx, 4, "&gt;") == 0){
+	res += ">";
+	idx += 4;
+      }
+      else if (input.compare(idx, 5, "&amp;") == 0){
+	res += "&";
+	idx += 5;
+      }
+      else if (input.compare(idx, 6, "&quot;") == 0){
+	res += "\"";
+	idx += 6;
+      }
+      else if (input.compare(idx, 6, "&apos;") == 0){
+	res += "\'";
+	idx += 6;
+      }
+      else {
+	// ERROR
+	idx = input.size();
+	res = "";
+      }
+    }
+    else {
+      res += input[idx];
+      idx ++;
+    }
+
+  }
+  return res;
+}
 
 string cUrlEncode::removeEtChar(string line, bool xml) {
   bool done = false;

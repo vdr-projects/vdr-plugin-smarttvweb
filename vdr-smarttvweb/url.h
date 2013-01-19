@@ -1,7 +1,7 @@
 /*
  * url.h: VDR on Smart TV plugin
  *
- * Copyright (C) 2012 Thorsten Lohmar
+ * Copyright (C) 2012 T. Lohmar
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -38,6 +38,7 @@ class cUrlEncode {
   static string doUrlSaveDecode (string);
 
   static string doXmlSaveEncode (string);
+  static string doXmlSaveDecode (string);
   static string removeEtChar(string line, bool xml=true);
   static string hexDump(char *line, int line_len);
   static string hexDump(string);

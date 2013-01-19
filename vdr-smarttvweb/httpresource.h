@@ -123,7 +123,7 @@ class cHttpResource {
   bool mAcceptRanges;
   cRange rangeHdr;
   unsigned long long mFileSize;
-  uint mRemLength;
+  uint64_t mRemLength;
   FILE *mFile;
   int mVdrIdx;
   string mFileStructure;
@@ -144,6 +144,7 @@ class cHttpResource {
   int sendVdrDir(struct stat *statbuf);
   int sendRecordingsXml (struct stat *statbuf);
   int sendChannelsXml (struct stat *statbuf);
+  int sendResumeXml (struct stat *statbuf);
   int sendEpgXml (struct stat *statbuf);
   int sendMediaXml (struct stat *statbuf);
 
@@ -163,7 +164,7 @@ class cHttpResource {
   const char *getMimeType(const char *name);
   string getConnStateName();
   void checkRecording();
-  void checkForTimeRequest();
+  bool isTimeRequest(struct stat *statbuf);
   int parseRangeHeaderValue(string);
   int parseHttpRequestLine(string);
   int parseHttpHeaderLine (string);
@@ -174,6 +175,6 @@ class cHttpResource {
 
   int getQueryAttributeValue(vector<sQueryAVP> *avps, string id, string &val);
   int openFile(const char *name);
-  int writeXmlItem(string title, string link, string programme, string desc, string guid, time_t start, int dur, int fps, int is_pes);
+  int writeXmlItem(string title, string link, string programme, string desc, string guid, time_t start, int dur, double fps, int is_pes, int is_new);
 };
 #endif

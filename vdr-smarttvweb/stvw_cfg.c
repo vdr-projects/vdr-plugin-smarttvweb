@@ -122,10 +122,10 @@ void cSmartTvConfig::readConfig() {
     myfile.close();
 }
 
+  /*
 cResumes* cSmartTvConfig::readConfig(string f) {
 
 
-  /*
   string line;
   ifstream myfile ("example.txt");
 
@@ -156,9 +156,9 @@ cResumes* cSmartTvConfig::readConfig(string f) {
     return NULL;
   }
 
-*/  
 
   // open the file
   // read the lines
   return NULL;
 }
+*/  

@@ -50,7 +50,7 @@
 #include <vdr/epg.h>
 #endif
 
-#define SERVER "SmartTvWeb/0.1"
+#define SERVER "SmartTvWeb/0.2"
 #define PROTOCOL "HTTP/1.1"
 #define RFC1123FMT "%a, %d %b %Y %H:%M:%S GMT"
 
@@ -66,6 +66,18 @@
 #define SEGMENT_DURATION 10
 
 using namespace std;
+
+class cResumeEntry {
+ public:
+  string mFilename;
+  float mResume;
+
+  friend  ostream& operator<<(ostream& out, const cResumeEntry& o) {
+    out << "mFilename= " << o.mFilename  << " mResume= " << o.mResume << endl;
+    return out;
+  };
+ cResumeEntry():mFilename(), mResume(-1.0) {};
+};
 
 
 struct sVdrFileEntry {
@@ -86,6 +98,15 @@ struct sTimerEntry {
 sTimerEntry(string t, time_t s, int d) :  name(t), startTime(s), duration(d) {};
 };
 
+// 8 Byte Per Entry
+struct tIndexPes {
+  uint32_t offset;
+  uchar type;
+  uchar number;
+  uint16_t reserved;
+  };
+
+
 // 8 Byte per entry
 struct tIndexTs {
   uint64_t offset:40; // up to 1TB per file (not using long long int here - must definitely be exactly 64 bit!)
@@ -93,6 +114,8 @@ struct tIndexTs {
   int independent:1; // marks frames that can be displayed by themselves (for trick modes)
   uint16_t number:16; // up to 64K files per recording
   };
+
+
 
 union tIndexRead {
   struct tIndexTs in;
@@ -339,6 +362,13 @@ int cHttpResource::processRequest() {
     sendEpgXml( &statbuf);
     return OKAY;
   }
+  if (mPath.compare("/resume.xml") == 0) {
+    if (handleHeadRequest() != 0)
+      return OKAY;
+
+    sendResumeXml( &statbuf);
+    return OKAY;
+  }
 #endif
 
   if (mPath.compare("/media.xml") == 0) {
@@ -547,7 +577,7 @@ int cHttpResource::fillDataBlk() {
       return ERROR;
     }
     to_read = ((mRemLength > MAXLEN) ? MAXLEN : mRemLength);
-    
+
     mBlkLen = fread(mBlkData, 1, to_read, mFile);
     mRemLength -= mBlkLen;
 
@@ -559,7 +589,8 @@ int cHttpResource::fillDataBlk() {
       return OKAY;
     }
 
-    if (mBlkLen != MAXLEN) {
+    //    if (mBlkLen != MAXLEN) { // thlo verify
+    if (mBlkLen != to_read) {
       fclose(mFile);
       mFile = NULL;
       mVdrIdx ++;
@@ -580,7 +611,7 @@ int cHttpResource::fillDataBlk() {
       } // Error: Open next file failed 
     
       if (mBlkLen == 0) {
-	to_read = ((mRemLength > MAXLEN) ? MAXLEN : mRemLength);
+	  to_read = ((mRemLength > MAXLEN) ? MAXLEN : mRemLength);
 	mBlkLen = fread(mBlkData, 1, to_read, mFile);
 	mRemLength -= mBlkLen;  
       }
@@ -628,9 +659,11 @@ int cHttpResource::parseResume(cResumeEntry &entry, string &id) {
     bool done = false;
     size_t cur_pos = 0;
 
-    bool have_devid = false;
-    bool have_title = false;
-    bool have_start = false;
+    // The asset_id should the the filename, which is provided by the link element in the xml
+    // the link is url-safe encoded.
+    
+    //    bool have_devid = false;
+    bool have_filename = false;
     bool have_resume = false;
 
     while (!done) {
@@ -643,21 +676,24 @@ int cHttpResource::parseResume(cResumeEntry &entry, string &id) {
       string attr= mPayload.substr(cur_pos, (pos_col- cur_pos));
       string val = mPayload.substr(pos_col +1, (pos - pos_col-1));
 
-      if (attr== "devid") {
+      /*      if (attr== "devid") {
 	have_devid = true;
 	id = val;
       }
-      else if (attr == "title") {
-	have_title = true;
-	entry.mTitle = val;
-      }
-      else if (attr == "start") {
-	have_start = true;
-	entry.mStartTime = atoi(val.c_str());
+      else */
+      if (attr == "filename") {
+	have_filename = true;
+	entry.mFilename = cUrlEncode::doXmlSaveDecode(val);
+	*(mLog->log())<< DEBUGPREFIX
+		      << " filename= " << entry.mFilename
+		      << endl;
       }
       else if (attr == "resume") {
 	have_resume = true;
-	entry.mResume = atoi(val.c_str());
+	entry.mResume = atof(val.c_str());
+	*(mLog->log())<< DEBUGPREFIX
+		      << " mResume= " << entry.mResume
+		      << endl;
       }
       else {
 	*(mLog->log())<< DEBUGPREFIX
@@ -669,7 +705,7 @@ int cHttpResource::parseResume(cResumeEntry &entry, string &id) {
       if (cur_pos >= mPayload.size())
 	done= true;
     }
-    if (have_resume && have_start && have_title && have_devid)
+    if (have_resume && have_filename )
       return OKAY;
     else
       return ERROR;
@@ -706,7 +742,6 @@ int cHttpResource::handlePost() {
     Resume support:
     Key for recordings: Title plus start time. Value: Current PlayTime in Sec
     Structure: Either, the plugin reads the list from file when the first client connects
-    Question: How to get files into /var/lib/vdr/plugins
 
     First: Create a list of resumes (use vdr cList ).
     Write the list to file
@@ -731,10 +766,26 @@ int cHttpResource::handlePost() {
     *(mLog->log())<< DEBUGPREFIX 
 		  << " Resume: id= " << dev_id
 		  << " resume= " << entry << endl;
+#ifndef STANDALONE
+  cRecording *rec = Recordings.GetByName(entry.mFilename.c_str());
+  if (rec == NULL) {
+    //Error 404
+    sendError(404, "Not Found", NULL, "Failed to find recording.");
+    return OKAY;
+  }
+  cResumeFile resume(entry.mFilename.c_str(), rec->IsPesRecording());
+    *(mLog->log())<< DEBUGPREFIX 
+		  << " Resume:  " << entry.mFilename
+		  << " saving Index= " << int(entry.mResume * rec->FramesPerSecond() )
+		  << " mResume= " <<entry.mResume 
+		  << " fpr= " << rec->FramesPerSecond()
+		  << endl;
+
+    resume.Save(int(entry.mResume * rec->FramesPerSecond() ));
+#endif
   }
 
   sendHeaders(200, "OK", NULL, NULL, -1, -1);
-
   return OKAY;
 }
 
@@ -869,7 +920,7 @@ int cHttpResource::sendDir(struct stat *statbuf) {
 }
 
 
-int cHttpResource::writeXmlItem(string name, string link, string programme, string desc, string guid, time_t start, int dur, int fps, int is_pes) {
+int cHttpResource::writeXmlItem(string name, string link, string programme, string desc, string guid, time_t start, int dur, double fps, int is_pes, int is_new) {
   string hdr = "";
   char f[400];
 
@@ -902,7 +953,7 @@ int cHttpResource::writeXmlItem(string name, string link, string programme, stri
   hdr += "</duration>\n";
 
   if (fps != -1)
-    snprintf(f, sizeof(f), "<fps>%d</fps>\n", fps);
+    snprintf(f, sizeof(f), "<fps>%.2f</fps>\n", fps);
   else
     snprintf(f, sizeof(f), "<fps>unknown</fps>\n");
   hdr += f;
@@ -919,6 +970,23 @@ int cHttpResource::writeXmlItem(string name, string link, string programme, stri
   case 1:
     // false
     hdr += "<ispes>false</ispes>\n";
+    break;
+  default:
+    break;
+  }
+
+  switch (is_new){
+  case -1:
+    // unknown
+    hdr += "<isnew>unknown</isnew>\n";
+    break;
+  case 0: 
+    // true
+    hdr += "<isnew>true</isnew>\n";
+    break;
+  case 1:
+    // false
+    hdr += "<isnew>false</isnew>\n";
     break;
   default:
     break;
@@ -1244,6 +1312,7 @@ int cHttpResource::sendMediaSegment (struct stat *statbuf) {
   if(buffered_indexes <= 0 ) {
     *(mLog->log())<<DEBUGPREFIX
 		  << " issue while reading" << endl;
+    delete[] index_buf;
     sendError(404, "Not Found", NULL, "Failed to read Index file");
     return OKAY;
   }
@@ -1391,7 +1460,7 @@ int cHttpResource::sendMediaXml (struct stat *statbuf) {
     snprintf(pathbuf, sizeof(pathbuf), "http://%s:%d%s", mServerAddr.c_str(), mServerPort, 
     	     cUrlEncode::doUrlSaveEncode(entries[i].sPath).c_str());
     if (writeXmlItem(cUrlEncode::doXmlSaveEncode(entries[i].sName), pathbuf, "NA", "NA", "-", 
-		     entries[i].sStart, -1, -1, -1) == ERROR) 
+		     entries[i].sStart, -1, -1, -1, -1) == ERROR) 
       return ERROR;
 
   }
@@ -1595,7 +1664,7 @@ int cHttpResource::sendChannelsXml (struct stat *statbuf) {
     
     string c_name = (group_sep != "") ? (group_sep + "~" + channel->Name()) : channel->Name(); 
     //    if (writeXmlItem(channel->Name(), link, title, desc, *(channel->GetChannelID()).ToString(), start_time, duration) == ERROR) 
-    if (writeXmlItem(c_name, link, title, desc, *(channel->GetChannelID()).ToString(), start_time, duration, -1, -1) == ERROR) 
+    if (writeXmlItem(c_name, link, title, desc, *(channel->GetChannelID()).ToString(), start_time, duration, -1, -1, -1) == ERROR) 
       return ERROR;
 
   }
@@ -1609,6 +1678,49 @@ int cHttpResource::sendChannelsXml (struct stat *statbuf) {
 
 #endif
   return OKAY;
+}
+
+int cHttpResource::sendResumeXml (struct stat *statbuf) {
+#ifndef STANDALONE
+
+  mResponseMessage = new string();
+  *mResponseMessage = "";
+  mResponseMessagePos = 0;
+  mContentType = MEMBLOCK;
+
+  mConnState = SERVING;
+  
+  char f[400];
+
+  cResumeEntry entry;
+  string id;
+  parseResume(entry, id);
+
+
+  cRecording *rec = Recordings.GetByName(entry.mFilename.c_str());
+  if (rec == NULL) {
+    //Error 404
+    sendError(404, "Not Found", NULL, "Failed to find recording.");
+    return OKAY;
+  }
+  cResumeFile resume(entry.mFilename.c_str(), rec->IsPesRecording());
+
+  *(mLog->log())<< DEBUGPREFIX
+		<< " resume request for " << entry.mFilename 
+		<< " resume= " << resume.Read() 
+		<< " (" << resume.Read() *1.0 / rec->FramesPerSecond() << "sec)"
+		<< endl;
+
+  *mResponseMessage  += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+  *mResponseMessage += "<resume>\n";
+  snprintf(f, sizeof(f), "%.02f", resume.Read() *1.0 / rec->FramesPerSecond());
+  *mResponseMessage += f;
+  *mResponseMessage += "</resume>\n";
+
+  sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), statbuf->st_mtime);
+
+  return OKAY;
+#endif
 }
 
 int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
@@ -1787,8 +1899,11 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
 
     }
 
-    if (writeXmlItem(cUrlEncode::doXmlSaveEncode(recording->Name()), link, "NA", desc, "-", 
-		     recording->Start(), rec_dur, recording->FramesPerSecond(), (recording->IsPesRecording() ? 0: 1)) == ERROR) 
+    if (writeXmlItem(cUrlEncode::doXmlSaveEncode(recording->Name()), link, "NA", desc, 
+		     cUrlEncode::doXmlSaveEncode(recording->FileName()).c_str(), 
+		     recording->Start(), rec_dur, recording->FramesPerSecond(), 
+		     (recording->IsPesRecording() ? 0: 1), (recording->IsNew() ? 0: 1)) == ERROR) 
+      // Better Internal Server Error
       return ERROR;
 
   }
@@ -1803,24 +1918,174 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
   return OKAY;
 }
 
-void cHttpResource::checkForTimeRequest() {
-  return;
+bool cHttpResource::isTimeRequest(struct stat *statbuf) {
 
-  /*  vector<sQueryAVP> avps;
+  vector<sQueryAVP> avps;
   parseQueryLine(&avps);
-  string time = "";
+  string time_str = "";
+  float time = 0.0;
 
-  if (getQueryAttributeValue(&avps, "time", time) == OKAY){
-    *(mLog->log())<< DEBUGPREFIX
-		  << " Found a Time Parameter: " << time
-		  << endl;
+  if (getQueryAttributeValue(&avps, "time", time_str) != OKAY){
+    return false;
   }
-  */
-  // First, I need to get the fps value
-  // then I determine the frame number mathcing the time
-  // the I go into index and find the byte offset and the vdr idx
-  // Then I need to shortcut the calc in sendVdrDir
+  time = atof(time_str.c_str());
+  *(mLog->log())<< DEBUGPREFIX
+		<< " Found a Time Parameter: " << time
+		<< endl;
 
+  mDir = mPath;
+  cRecording *rec = Recordings.GetByName(mPath.c_str());
+  if (rec == NULL) {
+    *(mLog->log())<< DEBUGPREFIX
+		  << " Error: Did not find recording= " << mPath << endl;
+    sendError(404, "Not Found", NULL, "File not found.");
+    return true;
+  }
+  
+  double fps = rec->FramesPerSecond();
+  double dur = rec->NumFrames() * fps;
+  bool is_pes = rec->IsPesRecording();
+  if (dur < time) {
+    sendError(400, "Bad Request", NULL, "Time to large.");
+    return true;
+  }
+
+  int start_frame = int(time * fps) -25; 
+
+  FILE* idx_file= NULL;
+
+  if (is_pes){
+    idx_file = fopen((mDir +"/index.vdr").c_str(), "r");
+    //    sendError(400, "Bad Request", NULL, "PES not yet supported.");
+    //    return true;
+  }
+  else {
+    idx_file = fopen((mDir +"/index").c_str(), "r");
+  }
+
+  if (idx_file == NULL){
+    *(mLog->log()) << DEBUGPREFIX
+		   << " failed to open idx file = "<< (mDir +"/index").c_str()
+		   << endl;
+    sendError(404, "Not Found", NULL, "Failed to open Index file");
+    return OKAY;
+  }
+
+  int buffered_frames = 50;
+  char *index_buf = new char[8 *buffered_frames]; // 50 indexes
+
+  *(mLog->log()) << DEBUGPREFIX
+		 << " seeking to start_frame= " << start_frame 
+		 << " fps= " << fps << endl;
+  fseek(idx_file, start_frame * 8, SEEK_SET);
+
+  int buffered_indexes = fread(index_buf, 8, (buffered_frames), idx_file);
+
+  fclose(idx_file);
+
+  if(buffered_indexes <= 0 ) {
+    *(mLog->log())<<DEBUGPREFIX
+		  << " issue while reading, buffered_indexes <=0" << endl;
+    delete[] index_buf;
+    sendError(404, "Not Found", NULL, "Failed to read Index file");
+    return OKAY;
+  }
+
+  *(mLog->log()) << DEBUGPREFIX
+		 << " Finding I-Frame now" << endl;
+
+
+  bool found_it = false;
+  int i = 0;
+  
+  uint32_t offset = 0;
+  int idx =0;
+  int type =0;
+      
+  for (i= 0; i < buffered_indexes; i++){
+    if (is_pes) { 
+      tIndexPes in_read_pes;
+      memcpy (&in_read_pes, &(index_buf[i*8]), 8);
+      type = in_read_pes.type == 1;
+      idx = in_read_pes.number;
+      offset = in_read_pes.offset;
+    }
+    else{
+      tIndexTs in_read_ts;
+      memcpy (&in_read_ts, &(index_buf[i*8]), 8);
+      type = in_read_ts.independent;
+      idx = in_read_ts.number;
+      offset = in_read_ts.offset;
+    }      
+
+    *(mLog->log()) << DEBUGPREFIX
+		   << " Frame= " << i 
+		   << " idx= "<< idx
+		   << " offset= " << offset 
+		   << " type= " << type
+		   << endl;
+    if (type){
+      found_it = true;
+      break;
+    }
+  }
+  
+  if (!found_it) {
+    delete[] index_buf;
+    sendError(404, "Not Found", NULL, "Failed to read Index file");
+    return OKAY;
+  }
+
+  mVdrIdx = idx;
+
+  *(mLog->log()) << DEBUGPREFIX
+		   << " idx= "<< mVdrIdx
+		   << " offset= " << offset 
+		   << endl;
+
+  delete[] index_buf;  
+
+  char pathbuf[4096];
+  uint64_t file_size = 0;
+  bool more_to_go = true;
+  int vdr_idx = mVdrIdx;
+  while (more_to_go) {
+    snprintf(pathbuf, sizeof(pathbuf), mFileStructure.c_str(), mPath.c_str(), vdr_idx);
+    if (stat(pathbuf, statbuf) >= 0) {
+      *(mLog->log())<< " found for " <<   pathbuf << endl;
+      file_size += statbuf->st_size;
+    }
+    else {
+      more_to_go = false;
+    }
+    vdr_idx ++;
+  }
+  mRemLength = file_size - offset;
+
+  snprintf(pathbuf, sizeof(pathbuf), mFileStructure.c_str(), mPath.c_str(), mVdrIdx);
+  
+  *(mLog->log()) << DEBUGPREFIX
+		 << " Opening Path= "
+		 << pathbuf << endl;
+  if (openFile(pathbuf) != OKAY) {
+    sendError(403, "Forbidden", NULL, "Access denied.");
+    return true;
+  }
+
+  *(mLog->log()) << DEBUGPREFIX
+		 << " Done. Start Streaming " 
+		 << endl;
+
+  fseek(mFile, offset, SEEK_SET);
+
+  if (rangeHdr.isRangeRequest) {
+    snprintf(pathbuf, sizeof(pathbuf), "Content-Range: bytes 0-%lld/%lld", (mRemLength -1), mRemLength);
+    sendHeaders(206, "Partial Content", pathbuf, "video/mpeg", mRemLength, statbuf->st_mtime);
+  }
+  else {
+    sendHeaders(200, "OK", NULL, "video/mpeg", mRemLength, -1);
+  }  
+  return true;
 }
 
 int cHttpResource::sendVdrDir(struct stat *statbuf) {
@@ -1839,8 +2104,6 @@ int cHttpResource::sendVdrDir(struct stat *statbuf) {
 
   checkRecording();
 
-  // The range request functions are activated, when a time header is detected
-  //  checkForTimeRequest();
   mVdrIdx = 1;
   mFileStructure = "%s/%03d.vdr";
 
@@ -1849,6 +2112,14 @@ int cHttpResource::sendVdrDir(struct stat *statbuf) {
 #ifndef DEBUG
     *(mLog->log())<< DEBUGPREFIX  << " using dir format: " << mFileStructure.c_str() << endl;
 #endif
+  }
+
+  // The range request functions are activated, when a time header is detected
+  if (isTimeRequest(statbuf)) {
+    *(mLog->log())<< DEBUGPREFIX
+		  << " isTimeRequest is true"
+		  << endl;
+    return OKAY;
   }
 
   // --- looup all vdr files in the dir ---

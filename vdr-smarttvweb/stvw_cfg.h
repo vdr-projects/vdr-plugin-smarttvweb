@@ -32,19 +32,8 @@
 
 using namespace std;
 
-class cResumeEntry {
- public:
-  string mTitle;
-  time_t mStartTime; // title is not unique
-  int mResume;
-  time_t mLastViewed;
 
-  friend  ostream& operator<<(ostream& out, const cResumeEntry& o) {
-    out << "mTitle= " << o.mTitle << " mStartTime= " << o.mStartTime << " mResume= " << o.mResume << endl;
-    return out;
-  };
-};
-
+/*
 class cResumes {
  public:
  cResumes(string t) : mDevice(t) {};
@@ -53,7 +42,7 @@ class cResumes {
 
   string mDevice; 
 };
-
+*/
 class cSmartTvConfig {
  private:
   string mConfigDir;
@@ -73,7 +62,7 @@ class cSmartTvConfig {
 
   void readConfig();
 
-  cResumes* readConfig(string);
+  //  cResumes* readConfig(string);
 
   string getLogFile() { return mLogFile; };
   string getMediaFolder() { return mMediaFolder; };
