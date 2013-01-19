@@ -48,6 +48,10 @@ Data.dumpFolderStruct = function(){
     Main.log("---------- dumpFolderStruct Done -------");    
 };
 
+Data.findEpgUpdateTime = function() {
+	return this.assets.findEpgUpdateTime(Display.GetEpochTime() + 10000, "", 0);
+	// min, guid, level
+};
 Data.getCurrentItem = function () {
 	return this.folderList[this.folderList.length-1].item;
 };
@@ -121,6 +125,34 @@ Item.prototype.addChild = function (key, pyld, level) {
     		this.childs.push(folder);
     	}
     }
+};
+
+Item.prototype.findEpgUpdateTime = function (min, guid, level) {
+    var prefix= "";
+    for (var i = 0; i < level; i++)
+    	prefix += "-";
+
+    for (var i = 0; i < this.childs.length; i++) {
+    	if (this.childs[i].isFolder == true) {
+    		var res = this.childs[i].findEpgUpdateTime(min, guid, level+1);
+    		min = res.min;
+    		guid = res.guid;
+    	}
+    	else {
+    		var digi =new Date(this.childs[i].payload['start']  * 1000);
+    		var str = digi.getHours() + ":" + digi.getMinutes();
+   		
+			Main.log(prefix + "min= " + min+ " start= " + this.childs[i].payload['start'] + " (" + str+ ") title= " + this.childs[i].title);
+    		
+    		if ((this.childs[i].payload['start'] != 0) && ((this.childs[i].payload['start'] + this.childs[i].payload['dur']) < min)) {
+    			min = this.childs[i].payload['start'] + this.childs[i].payload['dur'];
+    			guid = this.childs[i].payload['guid'] ;
+    			Main.log(prefix + "New Min= " + min + " new id= " + guid + " title= " + this.childs[i].title);
+    		}
+    	}
+    }  
+
+    return { "min": min, "guid" : guid};
 };
 
 Item.prototype.print = function(level) {

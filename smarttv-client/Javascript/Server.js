@@ -12,8 +12,8 @@ Server.init = function()
 {
     var success = true;
     
-    var splashElement = document.getElementById("splashStatus");  
-    Display.putInnerHTML(splashElement, "Starting Up");
+//    var splashElement = document.getElementById("splashStatus");  
+//    Display.putInnerHTML(splashElement, "Starting Up");
 
     if (this.XHRObj) {
         this.XHRObj.destroy();  
@@ -36,8 +36,8 @@ Server.fetchVideoList = function(url) {
     if (this.XHRObj) {
         this.XHRObj.onreadystatechange = function()
             {
-            var splashElement = document.getElementById("splashStatus");  
-            Display.putInnerHTML(splashElement, "State" + Server.XHRObj.readyState);
+//            var splashElement = document.getElementById("splashStatus");  
+//            Display.putInnerHTML(splashElement, "State" + Server.XHRObj.readyState);
 
         	if (Server.XHRObj.readyState == 4) {
                     Server.createVideoList();
@@ -48,8 +48,8 @@ Server.fetchVideoList = function(url) {
         this.XHRObj.send(null);
     }
     else {
-        var splashElement = document.getElementById("splashStatus");  
-        Display.putInnerHTML(splashElement, "Failed !!!" );
+//        var splashElement = document.getElementById("splashStatus");  
+//        Display.putInnerHTML(splashElement, "Failed !!!" );
     	Display.showPopup("Failed to create XHR");
 
         if (this.errorCallback != null) {
@@ -62,11 +62,11 @@ Server.createVideoList = function() {
 	Main.log ("creating Video list now");
 	Main.logToServer("creating Video list now");
 	
-    var splashElement = document.getElementById("splashStatus");  
-    Display.putInnerHTML(splashElement, "Creating Video list now" );
+//    var splashElement = document.getElementById("splashStatus");  
+//    Display.putInnerHTML(splashElement, "Creating Video list now" );
 
 	if (this.XHRObj.status != 200) {
-		Display.putInnerHTML(splashElement, "XML Server Error " + this.XHRObj.status);
+//		Display.putInnerHTML(splashElement, "XML Server Error " + this.XHRObj.status);
 //        Display.status("XML Server Error " + this.XHRObj.status);
 //    	Display.showPopup("XML Server Error " + this.XHRObj.status);
         if (this.errorCallback != null) {
@@ -78,7 +78,7 @@ Server.createVideoList = function() {
     	var xmlResponse = this.XHRObj.responseXML;
     	if (xmlResponse == null) {
             Display.status("xmlResponse == null" );
-            Display.putInnerHTML(splashElement, "Error in XML File ");
+//            Display.putInnerHTML(splashElement, "Error in XML File ");
         	Display.showPopup("Error in XML File");
             if (this.errorCallback != null) {
             	this.errorCallback("XmlError");
@@ -89,14 +89,14 @@ Server.createVideoList = function() {
 //    	var xmlElement = this.XHRObj.responseXML.documentElement;
         
         if (!xmlElement) {
-        	Display.putInnerHTML(splashElement, "Failed to get valid XML!!!");
+//        	Display.putInnerHTML(splashElement, "Failed to get valid XML!!!");
             Display.status("Failed to get valid XML");
         	Display.showPopup("Failed to get valid XML");
             return;
         }
         else
         {
-        	Display.putInnerHTML(splashElement, "Parsing ...");
+//        	Display.putInnerHTML(splashElement, "Parsing ...");
             var items = xmlElement.getElementsByTagName("item");          
             if (items.length == 0) {
             	Display.showPopup("Something wrong. Response does not contain any item");
@@ -113,16 +113,26 @@ Server.createVideoList = function() {
 //                var startstrVal = "";
                 var startVal =0;
                 var durVal  =0;
+                var guid = "";
+                var fps = -1;
+                var ispes = "unknown";
                 try {
 //            	    startstrVal = items[index].getElementsByTagName("startstr")[0].firstChild.data;
             	    startVal = parseInt(items[index].getElementsByTagName("start")[0].firstChild.data);
             	    durVal = parseInt(items[index].getElementsByTagName("duration")[0].firstChild.data);
-            	}
-            	catch (e) {
-            		
+            	    guid= items[index].getElementsByTagName("guid")[0].firstChild.data;
+                }
+            	catch (e) {            		
             	    Main.log("ERROR: "+e);
             	}        
-           	
+            	try {
+            	    ispes = items[index].getElementsByTagName("ispes")[0].firstChild.data;
+            	}
+            	catch (e) {}
+            	try {
+            	    fps = parseInt(items[index].getElementsByTagName("fps")[0].firstChild.data);
+            	}
+            	catch (e) {}
             	var desc = descriptionElement.firstChild.data;
 
                 if (titleElement && linkElement) {
@@ -131,13 +141,16 @@ Server.createVideoList = function() {
                 			prog: progElement.firstChild.data, 
                 			desc: desc, 
 //                			startstr: startstrVal, 
+                			guid : guid,
                 			start: startVal, 
-                			dur: durVal});              	
+                			dur: durVal,
+                			ispes : ispes,
+                			fps : fps});              	
             	}
                 
             }
             Data.completed(this.doSort);
-            Display.putInnerHTML(splashElement, "Done...");
+//            Display.putInnerHTML(splashElement, "Done...");
 
             if (this.dataReceivedCallback)
             {
