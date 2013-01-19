@@ -65,6 +65,10 @@ var Main = {
     menuKeyHndl : null
 };
 
+$(document).ready(function(){
+	Main.onLoad ();
+}); 
+
 Main.onLoad = function() {
 	window.onShow = showHandler;		
 	window.onshow = showHandler;		
@@ -82,7 +86,11 @@ Main.onLoad = function() {
 //		Display.showPopup("Not a Samsung Smart TV. Lets see, how far we come");
 	}
 
-	Display.init(); 
+	Display.init();
+    Display.selectItem(document.getElementById("selectItem1"));
+    Spinner.init();
+	Helpbar.init();
+	Options.init();
 
     this.defKeyHndl = new cDefaulKeyHndl;
     this.playStateKeyHndl = new cPlayStateKeyHndl(this.defKeyHndl);
@@ -110,25 +118,25 @@ showHandler = function() {
 // Called by Config, when done
 Main.init = function () {
 	Main.log("Main.init()");
+	
     if ( Player.init() && Server.init() && Audio.init()) {
     	Display.setVolume( Audio.getVolume() );
 
+//    	Epg.init();
         // Start retrieving data from server
         Server.dataReceivedCallback = function() {
                 /* Use video information when it has arrived */
-//        		Main.log("Server.dataReceivedCallback");
-        		Display.setVideoList(Main.selectedVideo);
+        		Display.setVideoList(Main.selectedVideo, Main.selectedVideo); 
 
                 Display.show();
+                if (Player.isLive == true) {
+                	Epg.startEpgUpdating();
+                }
             };
 
         // Enable key event processing
         this.enableKeys();
-
-        Display.selectItem(document.getElementById("selectItem1"));
-        
-		document.getElementById("splashScreen").style.display="none";
-		
+	
     }
     else {
        Main.log("Failed to initialise");
@@ -172,15 +180,16 @@ Main.onUnload = function()
 
 
 Main.changeState = function (state) {
-	Main.log("change state: new state= " + state);
+	Main.log("change state: OldState= " + this.state + " NewState= " + state);
 	var old_state = this.state;
 	this.state = state;
 	
 	switch (this.state) {
 	case 0:
 		Main.selectMenuKeyHndl.select = old_state;
+		
 		Main.log ("old Select= " + Main.selectMenuKeyHndl.select);
-		Display.resetSelectItems(Main.selectMenuKeyHndl.select);
+		Display.resetSelectItems(old_state);
         
 		document.getElementById("selectScreen").style.display="block";
 		Display.hide();
@@ -206,9 +215,10 @@ Main.changeState = function (state) {
 		break;
 	case 4:
 		// Options
-    	Options.init();
+//    	Options.init();
 		document.getElementById("selectScreen").style.display="none";
-		document.getElementById("optionsScreen").style.display="block";
+		Options.show();
+//		document.getElementById("optionsScreen").style.display="block";
 		Main.optionsSelected();
 		break;
 
@@ -267,6 +277,7 @@ Main.liveSelected = function() {
     Server.setSort(false);
     Server.errorCallback = Main.serverError;
     Server.fetchVideoList(Config.serverUrl + "/channels.xml?channels="+Config.liveChannels); /* Request video information from server */
+    
 };
 
 Main.mediaSelected = function() {
@@ -325,7 +336,8 @@ Main.keyDown = function() {
 
 		break;
 	case 4:
-		Main.log ("ERROR: Wrong State");
+//		Options.onInput();
+//		Main.log ("ERROR: Wrong State");
 		break;
 	};
 };
@@ -341,7 +353,9 @@ Main.playItem = function (url) {
 	switch (this.state) {
 	case 1:
 		// Live
-		Display.setOlTitle(Data.getCurrentItem().childs[Main.selectedVideo].payload.prog);
+		// Check for updates
+		
+		Display.setOlTitle(Data.getCurrentItem().childs[Main.selectedVideo].title + " - " +Data.getCurrentItem().childs[Main.selectedVideo].payload.prog);
 		Display.setStartStop (start_time, (start_time + duration));
 		Player.isLive = true;
 		Player.bufferState = 0;
@@ -391,17 +405,18 @@ Main.playItem = function (url) {
 	Player.playVideo();
 };
 
-Main.selectPageUp = function(up) {
+Main.selectPageUp = function() {
 	if (this.selectedVideo == 0) {
 		 Main.changeState(0);
 		 return;
 	};
 	
-	this.selectedVideo = (this.selectedVideo - (Display.LASTIDX + 1));
+	Main.previousVideo(Display.LASTIDX + 1);
+/*	this.selectedVideo = (this.selectedVideo - (Display.LASTIDX + 1));
     if (this.selectedVideo < 0) {
     	this.selectedVideo = 0;
     }	
-
+*/
     var first_item = this.selectedVideo - Display.currentWindow;
     if (first_item < 0 )
     	first_item = 0;
@@ -410,12 +425,14 @@ Main.selectPageUp = function(up) {
     Display.setVideoList(this.selectedVideo, first_item);
 };
 
-Main.selectPageDown = function(down) {
-    this.selectedVideo = (this.selectedVideo + Display.LASTIDX + 1);
-    
+Main.selectPageDown = function() {
+	Main.nextVideo (Display.LASTIDX + 1);
+
+/*	this.selectedVideo = (this.selectedVideo + Display.LASTIDX + 1);    
     if (this.selectedVideo >= Data.getVideoCount()) {
     	this.selectedVideo = Data.getVideoCount() -1;
     }	
+*/
     var first_item = this.selectedVideo - Display.currentWindow;
 
     Main.log("selectPageDown: this.selectedVideo= " + this.selectedVideo + " first_item= " + first_item);
@@ -423,12 +440,13 @@ Main.selectPageDown = function(down) {
 };
 
 Main.nextVideo = function(no) {
+	// Just move the selectedVideo pointer and ensure wrap around
     this.selectedVideo = (this.selectedVideo + no) % Data.getVideoCount();	
 	Main.log("nextVideo= " + this.selectedVideo);
 };
 
 Main.previousVideo = function(no) {
-
+// Just move the selectedVideo pointer and ensure wrap around
 	this.selectedVideo = (this.selectedVideo - no);
     if (this.selectedVideo < 0) {
         this.selectedVideo += Data.getVideoCount();
@@ -437,69 +455,23 @@ Main.previousVideo = function(no) {
 
 };
 
-Main.selectNextVideo = function(down)
-{
+Main.selectNextVideo = function() {
     Player.stopVideo();
     Main.nextVideo(1);
 
 //    this.updateCurrentVideo(down);
-    Display.setVideoListPosition(this.selectedVideo, down);
+    Display.setVideoListPosition(this.selectedVideo, Main.DOWN);
 };
 
-Main.selectPreviousVideo = function(up)
+Main.selectPreviousVideo = function()
 {
     Player.stopVideo();
     Main.previousVideo(1);
 
 //    this.updateCurrentVideo(up);
-    Display.setVideoListPosition(this.selectedVideo, up);
+    Display.setVideoListPosition(this.selectedVideo, Main.UP);
 };
 
-
-
-Main.setMuteMode = function()
-{
-    if (this.mute != this.YMUTE)
-    {
-        var volumeElement = document.getElementById("volumeInfo");
-        //Audio.plugin.SetSystemMute(true);
-        Audio.plugin.SetUserMute(true);
-        document.getElementById("volumeBar").style.backgroundImage = "url(Images/muteBar.png)";
-        document.getElementById("volumeIcon").style.backgroundImage = "url(Images/mute.png)";
-        widgetAPI.putInnerHTML(volumeElement, "MUTE");
-        this.mute = this.YMUTE;
-    }
-};
-
-Main.noMuteMode = function()
-{
-    if (this.mute != this.NMUTE)
-    {
-        Audio.plugin.SetUserMute(false); 
-        document.getElementById("volumeBar").style.backgroundImage = "url(Images/volumeBar.png)";
-        document.getElementById("volumeIcon").style.backgroundImage = "url(Images/volume.png)";
-        Display.setVolume( Audio.getVolume() );
-        this.mute = this.NMUTE;
-    }
-};
-
-Main.muteMode = function()
-{
-    switch (this.mute)
-    {
-        case this.NMUTE:
-            this.setMuteMode();
-            break;
-            
-        case this.YMUTE:
-            this.noMuteMode();
-            break;
-            
-        default:
-            Main.log("ERROR: unexpected mode in muteMode");
-            break;
-    }
-};
 
 // -----------------------------------------------
 
@@ -972,22 +944,54 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function () {
  Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
  
  switch(keyCode) {
- 	case tvKey.KEY_1:
+// 	case tvKey.KEY_1:
+ 	case tvKey.KEY_UP:
  	case tvKey.KEY_CH_UP:
  		Main.log("Prog Up");
         Display.showProgress();
  		Player.stopVideo();
- 		Main.previousVideo(1);
-	 
+
+ 		// Check, weather I am the last element of a folder. If yes, go one level up
+ 		if (Main.selectedVideo == (Data.getVideoCount() -1)) {
+ 			//Last VideoItem, check wrap around or folder fall-down
+ 			if (Data.isRootFolder() != "true") {
+ 				Main.selectedVideo = Data.folderUp();
+ 			}
+ 		}
+ 		Main.nextVideo(1); // increase and wrap
+ 		// check, if new element is a folder again
+ 		if (Data.getCurrentItem().childs[Main.selectedVideo].isFolder == true) {
+ 			Data.selectFolder(Main.selectedVideo);
+ 			Main.selectedVideo= 0;
+ 		}
+// 		Main.nextVideo(1);
+ 		
  		Main.playItem(); 
  		break;
 
- 	case tvKey.KEY_4:
+// 	case tvKey.KEY_4:
+ 	case tvKey.KEY_DOWN:
  	case tvKey.KEY_CH_DOWN:
  		Main.log("Prog Down");
         Display.showProgress();
  		Player.stopVideo();
- 		Main.nextVideo(1);
+
+ 		// check, if I am the first element of a folder
+ 		// if yes, then one up
+ 		if (Main.selectedVideo == 0) {
+ 			//First VideoItem, 
+ 			if (Data.isRootFolder() != "true") {
+ 				Main.selectedVideo = Data.folderUp();
+ 			}
+ 		}
+ 		Main.previousVideo(1);
+ 		// check, if new element is a folder again
+ 		if (Data.getCurrentItem().childs[Main.selectedVideo].isFolder == true) {
+ 			Data.selectFolder(Main.selectedVideo);
+ 			Main.selectedVideo= Data.getVideoCount()-1;
+ 		}
+ 		
+// 		Main.previousVideo(1);
 	 
  		Main.playItem(); 
  		break;
@@ -1005,7 +1009,7 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function () {
      case tvKey.KEY_STOP:
      	Main.log("STOP");
      	Player.stopVideo();
-     	Display.setVideoList(Main.selectedVideo);
+     	Display.setVideoList(Main.selectedVideo, Main.selectedVideo- ( Main.selectedVideo % (Display.LASTIDX +1)));
      	Display.show();
 		widgetAPI.blockNavigation(event);
 
@@ -1057,12 +1061,12 @@ cMenuKeyHndl.prototype.handleKeyDown = function () {
      	
      case tvKey.KEY_RIGHT:
          Main.log("Right");
-         Main.selectPageDown(Main.DOWN);
+         Main.selectPageDown();
          break;
      
      case tvKey.KEY_LEFT:
          Main.log("Left");
-         Main.selectPageUp(Main.UP);
+         Main.selectPageUp();
          break;
 
      case tvKey.KEY_ENTER:
@@ -1074,7 +1078,7 @@ cMenuKeyHndl.prototype.handleKeyDown = function () {
      		Main.log ("selectFolder= " +Main.selectedVideo);
      		Data.selectFolder(Main.selectedVideo);
      		Main.selectedVideo= 0;
-     		Display.setVideoList(Main.selectedVideo);
+     		Display.setVideoList(Main.selectedVideo, Main.selectedVideo); // thlo
      	} 
      	else{
      		Display.hide();
@@ -1094,19 +1098,19 @@ cMenuKeyHndl.prototype.handleKeyDown = function () {
     	 else {
     		 Main.selectedVideo = Data.folderUp();
     		 Main.log("folderUp selectedVideo= " + Main.selectedVideo);
-    		 Display.setVideoList(Main.selectedVideo);
+    		 Display.setVideoList(Main.selectedVideo, Main.selectedVideo); // thlo
     	 }
     	 widgetAPI.blockNavigation(event);
 
          break;
      case tvKey.KEY_DOWN:
          Main.log("DOWN");
-         Main.selectNextVideo(Main.DOWN);
+         Main.selectNextVideo();
          break;
          
      case tvKey.KEY_UP:
          Main.log("UP");
-         Main.selectPreviousVideo(Main.UP);           
+         Main.selectPreviousVideo();           
          break;            
          
      default:

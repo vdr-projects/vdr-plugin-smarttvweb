@@ -64,17 +64,14 @@ Config.init = function () {
 			// should switch to the config screen here
 			var res = fileSystemObj.createCommonDir(curWidget.id);
 			if (res == true) {
-				Config.firstLaunch = true;
-
-				Main.init(); // Obsolete? 
-
-				Main.changeState(4);
+				Config.doFirstLaunch();
 				return;
 			}
 			else {
-				Main.init();
-				Display.showPopup ("ERROR: Cannot create widget folder");
-				Main.logToServer("ERROR: Cannot create widget folder curWidget.id= " +curWidget.id);
+				Config.doFirstLaunch();
+//				Main.init();
+				Display.showPopup ("WARNING: Cannot create widget folder. Try Config");
+//				Main.logToServer("ERROR: Cannot create widget folder curWidget.id= " +curWidget.id);
 			}
 			return;
 		}
@@ -84,6 +81,13 @@ Config.init = function () {
 	}
 
 	Config.fetchConfig();
+};
+
+Config.doFirstLaunch = function () {
+	Config.firstLaunch = true;
+//	Main.init(); // Obsolete? 
+
+	Main.changeState(4);
 };
 
 Config.fetchConfig = function () {
@@ -114,6 +118,7 @@ Config.writeContext = function (addr) {
 };
 
 Config.updateContext = function (addr) {
+	Main.log("Config.updateContext with ("+addr+")");
 	var fileSystemObj = new FileSystem();
 
 	var fd = fileSystemObj.openCommonFile(Config.cfgFileName,"w");
@@ -123,6 +128,7 @@ Config.updateContext = function (addr) {
 
     Config.serverAddr = addr;
     Config.serverUrl = "http://" + Config.serverAddr;
+	Config.fetchConfig();
 };
 
 Config.readContext = function () {
@@ -141,29 +147,28 @@ Config.readContext = function () {
 		    	Config.serverUrl = "http://" + Config.serverAddr;
 		    }
 		    else {
-		    	Display.showPopup ("WARNING: Error in Config File. Try widget restart.");    	
+		    	Display.showPopup ("ERROR: Error in Config File. Try widget re-install.");    	
 		    	// TODO: I should re-write the config file
 		    }
 		}
 		fileSystemObj.closeCommonFile(fd);	
-		
 	}
 	catch (e) {
-		Main.logToServer("Config.readContext: Error while reading: e= " +e);
+		Main.log("Config.readContext: Error while reading: e= " +e);
 		var res = fileSystemObj.createCommonDir(curWidget.id);
 		if (res == true) {
-			Main.logToServer("Config.readContext: Widget Folder created");
-			Display.showPopup ("Config Read Error:  Try widget restart");  
+			Main.log("WARNING: ConfigRead Error. Launching Config-Menu from here");
+			//			Display.showPopup ("Config Read Error:  Try widget restart");  
+			
 		}
 		else {
-			Main.logToServer("Config.readContext: Widget Folder creation failed");
-			Display.showPopup ("Config Read Error:  Try re-installing the widget");  
-			Main.log("-------------- Error: res = false ------------------------");			
+			Main.log("Config.readContext: Widget Folder creation failed");
+			
+			Display.showPopup ("WARNING: ConfigRead Error and WidgetFolder creation failed. <br> Launching Config-Menu from here");  
+//			Main.log("-------------- Error: res = false ------------------------");			
 		}
+		Config.doFirstLaunch();
 
-		Config.firstLaunch = true;
-		Main.init();
-		Main.changeState(4);
 	}
 };
 
@@ -219,6 +224,8 @@ Config.processConfig = function () {
             return;
         }
         else  {
+    		Config.firstLaunch = false;
+
         	Main.log ("Parsing config XML now");
         	Main.logToServer("Parsing config XML now");
         	this.format = Config.getXmlString("format");
