@@ -38,6 +38,9 @@
 
 using namespace std;
 
+#define PLG_VERSION "0.9.3"
+#define SERVER "SmartTvWeb/0.9.3" 
+
 class SmartTvServer {
   public:
     SmartTvServer();

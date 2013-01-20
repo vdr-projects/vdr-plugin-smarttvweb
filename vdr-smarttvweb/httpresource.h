@@ -144,7 +144,8 @@ class cHttpResource {
   int sendVdrDir(struct stat *statbuf);
   int sendRecordingsXml (struct stat *statbuf);
   int sendChannelsXml (struct stat *statbuf);
-  int sendResumeXml (struct stat *statbuf);
+  int sendResumeXml ();
+  //  int sendResumeXml (struct stat *statbuf);
   int sendEpgXml (struct stat *statbuf);
   int sendMediaXml (struct stat *statbuf);
 

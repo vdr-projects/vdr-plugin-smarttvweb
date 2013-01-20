@@ -41,7 +41,7 @@
 #include "smarttvfactory.h"
 
 
-static const char *VERSION        = "0.9.2";
+static const char *VERSION        = PLG_VERSION;
 static const char *DESCRIPTION    = "SmartTV Web Server";
 
 
