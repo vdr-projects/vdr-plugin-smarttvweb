@@ -50,7 +50,6 @@
 #include <vdr/epg.h>
 #endif
 
-#define SERVER "SmartTvWeb/0.2"
 #define PROTOCOL "HTTP/1.1"
 #define RFC1123FMT "%a, %d %b %Y %H:%M:%S GMT"
 
@@ -360,13 +359,6 @@ int cHttpResource::processRequest() {
       return OKAY;
 
     sendEpgXml( &statbuf);
-    return OKAY;
-  }
-  if (mPath.compare("/resume.xml") == 0) {
-    if (handleHeadRequest() != 0)
-      return OKAY;
-
-    sendResumeXml( &statbuf);
     return OKAY;
   }
 #endif
@@ -754,7 +746,17 @@ int cHttpResource::handlePost() {
 		  << endl;
   }
 
-  if (mPath.compare("/resume") == 0) {
+  if (mPath.compare("/getResume.xml") == 0) {
+    if (handleHeadRequest() != 0)
+      return OKAY;
+
+    //    sendResumeXml( &statbuf);
+    sendResumeXml( );
+    return OKAY;
+  }
+
+
+  if (mPath.compare("/setResume.xml") == 0) {
 
     string dev_id;
     cResumeEntry entry;
@@ -1681,7 +1683,8 @@ int cHttpResource::sendChannelsXml (struct stat *statbuf) {
   return OKAY;
 }
 
-int cHttpResource::sendResumeXml (struct stat *statbuf) {
+//int cHttpResource::sendResumeXml (struct stat *statbuf) {
+int cHttpResource::sendResumeXml () {
 #ifndef STANDALONE
 
   mResponseMessage = new string();
@@ -1695,12 +1698,14 @@ int cHttpResource::sendResumeXml (struct stat *statbuf) {
 
   cResumeEntry entry;
   string id;
-  parseResume(entry, id);
 
+  parseResume(entry, id);
 
   cRecording *rec = Recordings.GetByName(entry.mFilename.c_str());
   if (rec == NULL) {
     //Error 404
+    *(mLog->log())<< DEBUGPREFIX
+		  << " sendResume: File Not Found filename= " << entry.mFilename << endl;
     sendError(404, "Not Found", NULL, "Failed to find recording.");
     return OKAY;
   }
@@ -1713,12 +1718,13 @@ int cHttpResource::sendResumeXml (struct stat *statbuf) {
 		<< endl;
 
   *mResponseMessage  += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
-  *mResponseMessage += "<resume>\n";
+  *mResponseMessage += "<resume>";
   snprintf(f, sizeof(f), "%.02f", resume.Read() *1.0 / rec->FramesPerSecond());
   *mResponseMessage += f;
   *mResponseMessage += "</resume>\n";
 
-  sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), statbuf->st_mtime);
+
+  sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), -1);
 
   return OKAY;
 #endif
