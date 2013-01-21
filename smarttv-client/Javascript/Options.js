@@ -53,21 +53,12 @@ Options.createKeypad = function () {
 	var sheet = $("<style>");
 	sheet.attr({type : 'text/css',
 		innerHTML : '\
-		.ui-btn {width:70px; height: 48px; display:inline-block, font-size:20px;background:url("Images/keypad/kp-button.png");}\
-		.ui-btn-pressed {width:70px; height: 48px; display:inline-blockfont-size:20px;background:url("Images/keypad/kp-button-inv.png");}\
+		.ui-btn {width:70px; height: 48px; display:inline-block; font-size:20px;background:url("Images/keypad/kp-button.png");}\
+		.ui-btn-pressed {width:70px; height: 48px; display:inline-block;font-size:20px;background:url("Images/keypad/kp-button-inv.png");}\
 		.ui-keypad {left:650px; top:135px; width: 220px; text-align:center; border-width:1px; background: #1e5799; border-style:solid;\
 		}'});
 	$('body').append(sheet);
 
-/*	var domNode = $('<div>');
-	domNode.attr({id : 'ime_keypad',
-		innerHTML : '<table class="ui-keypad">  \
-		<tr><td><button id="kb-btn-1" class="ui-btn">1</button></td><td><button id="kb-btn-2" class="ui-btn">2</button></td><td><button id="kb-btn-3" class="ui-btn">3</button></td></tr>\
-		<tr><td><button id="kb-btn-4" class="ui-btn">4</button></td><td><button id="kb-btn-5" class="ui-btn">5</button></td><td><button id="kb-btn-6" class="ui-btn">6</button></td></tr>\
-		<tr><td><button id="kb-btn-7" class="ui-btn">7</button></td><td><button id="kb-btn-8" class="ui-btn">8</button></td><td><button id="kb-btn-9" class="ui-btn">9</button></td></tr>\
-		<tr><td><button id="kb-btn-dot" class="ui-btn">.</button></td><td><button id="kb-btn-0" class="ui-btn">0</button></td><td><button id="kb-btn-col" class="ui-btn">:</button></td></tr>\
-		</table>'});
-*/
 	var domNode = $('<div>', { id: "ime_keypad", class: "ui-keypad"});
 	var row = $('<div>');
 	$("<button>", {id : "kb-btn-1", text: "1", class: "ui-btn"}).appendTo(row);

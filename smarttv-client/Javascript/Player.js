@@ -11,9 +11,11 @@ var Player =
     isRecording : false,
     
     url : "",
+    guid : "unknown",
     startTime : 0,
     duration : 0,
-    
+ 
+    resumePos : -1,
     state : 0,
     cptOffset  : 0,  // millis
     curPlayTime : 0, // millis
@@ -146,13 +148,14 @@ Player.setVideoURL = function(url) {
     Main.log("URL = " + this.url);
 };
 
+
 Player.setCurrentPlayTimeOffset = function(val) {
 	// val in milli sec
 	this.cptOffset = val;
 //	Display.showPopup("CurrentPlayTimeOffset= " + this.cptOffset);
 };
 
-Player.playVideo = function() {
+Player.playVideo = function(resume_pos) {
 	if (Config.deviceType != 0) {
 		Display.showPopup ("Only supported for TVs");
 		return;
@@ -161,7 +164,6 @@ Player.playVideo = function() {
         Main.log("No videos to play");
     }
     else {
-    	
     	Player.bufferState = 0;
     	Display.bufferUpdate();
 
@@ -180,8 +182,11 @@ Player.playVideo = function() {
         Player.skipDuration = Config.skipDuration; // reset
 
         Main.log ("StartPlayback for " + this.url);
-  
-        this.plugin.Play( this.url );
+
+        if (resume_pos == -1)
+        	this.plugin.Play( this.url );
+        else
+        	this.plugin.ResumePlay(this.url, resume_pos);
         Audio.plugin.SetSystemMute(false); 
         pluginObj.setOffScreenSaver();
         this.pluginBD.DisplayVFD_Show(0100); // Play

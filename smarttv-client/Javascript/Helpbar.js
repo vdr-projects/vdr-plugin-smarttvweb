@@ -1,4 +1,3 @@
-
 var Helpbar = {
 	isInited : false	
 };
@@ -23,13 +22,13 @@ Helpbar.createHelpbar = function() {
 	var sheet = $("<style>");
 	sheet.attr({type : 'text/css',
 		innerHTML : '\
-		.hb-bg {width:960px; height: 40px; left: 0px; top: 480px; font-size:16px;background: darkblue;background: -webkit-linear-gradient(top, #1e5799 0%,#7db9e8 50%,#1e5799 100%);}\
+		.hb-bg {left:0px; top:480px; width:960px; height:40px; position: absolute; font-size:18px; background: darkblue;background: -webkit-linear-gradient(top, #1e5799 0%,#7db9e8 50%,#1e5799 100%);}\
 		}'});
 	$('body').append(sheet);
 
-	
+//	$('<div>', { id: "helpbar", class: "hb-bg"}).appendTo ($("body"));
+//	$('<div>', {id: "hb-row"}).appendTo("#helpbar");
 	$("<table>", {id:"helpbar", class: "hb-bg"}).appendTo ($("body"));
-//	$("#helpbar").hide();
 	$("<tr>", {id: "hb-row", align:"center", valign:"middle"}).appendTo("#helpbar");
 
 	Helpbar.addItem("Images/helpbar/help_lr.png", "Move Cursor");
@@ -42,9 +41,10 @@ Helpbar.createHelpbar = function() {
 	Helpbar.addItem("Images/helpbar/help_blue.png", "Colon (:)");
 };
 
-
 Helpbar.addItem = function(url, msg) {
 	var hb_elm = $("<td>");
+//	var hb_elm = $("<div>");
+//	hb_elm.css({"display":"inline-block"});
 	hb_elm.appendTo("#hb-row");
 	
 	var tab = $("<table>");
@@ -54,5 +54,4 @@ Helpbar.addItem = function(url, msg) {
 	
 	$("<td>").append($("<img>", { src: url})).appendTo(row);
 	$("<td>").append($("<p>", { text: msg})).appendTo(row);
-
 };

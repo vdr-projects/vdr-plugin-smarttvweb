@@ -4,7 +4,9 @@
         <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
         <title>Vdr on SmartTV</title>
 
-        <script type="text/javascript" src="$MANAGER_WIDGET/Common/OpenSrc/jquery-1.4.2.min.js"></script>
+       <script type="text/javascript" src="$MANAGER_WIDGET/Common/OpenSrc/jquery-1.4.2.min.js"></script>            
+<!--        <script type="text/javascript" src="$MANAGER_WIDGET/Common/OpenSrc/jquery-1.4.2.min.js"></script>             -->
+<!--         <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script> -->
 <!--         <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script> -->
 
         <!-- Common widget API -->
@@ -28,6 +30,7 @@
         <script language="javascript" type="text/javascript" src="Javascript/Options.js"></script>
         <script language="javascript" type="text/javascript" src="Javascript/Epg.js"></script>
         <script language="javascript" type="text/javascript" src="Javascript/Spinner.js"></script>
+        <script language="javascript" type="text/javascript" src="Javascript/Buttons.js"></script>
         
         <!-- Style sheets -->
         <link rel="stylesheet" href="CSS/Main.css" type="text/css">
@@ -130,6 +133,8 @@
 		<div id="Spinning">
 			<img ></img>
 		</div>
-		
+		<div id="pr-popup">
+		        <a href='javascript:void(0);' id='pr-popup-anchor' onkeydown='Buttons.onInput();'></a>
+		</div>
     </body>
 </html>
