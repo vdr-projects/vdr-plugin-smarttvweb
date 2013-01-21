@@ -116,6 +116,7 @@ Server.createVideoList = function() {
                 var guid = "";
                 var fps = -1;
                 var ispes = "unknown";
+                var isnew = "unknown";
                 try {
 //            	    startstrVal = items[index].getElementsByTagName("startstr")[0].firstChild.data;
             	    startVal = parseInt(items[index].getElementsByTagName("start")[0].firstChild.data);
@@ -129,6 +130,11 @@ Server.createVideoList = function() {
             	    ispes = items[index].getElementsByTagName("ispes")[0].firstChild.data;
             	}
             	catch (e) {}
+            	try {
+            	    isnew = items[index].getElementsByTagName("isnew")[0].firstChild.data;
+            	}
+            	catch (e) {}
+
             	try {
             	    fps = parseInt(items[index].getElementsByTagName("fps")[0].firstChild.data);
             	}
@@ -145,6 +151,7 @@ Server.createVideoList = function() {
                 			start: startVal, 
                 			dur: durVal,
                 			ispes : ispes,
+                			isnew : isnew,
                 			fps : fps});              	
             	}
                 
@@ -159,3 +166,60 @@ Server.createVideoList = function() {
         }
     }
 };
+
+
+
+Server.getResume = function (guid) {
+	Main.log ("***** getResume *****");
+	$.ajax({
+		url: Config.serverUrl + "/getResume.xml",
+		type : "POST",
+		data : "filename:" + guid +"\n", 
+		success : function(data, status, XHR ) {
+			Main.log("**** Resome Success Response - status= " + status + " mime= " + XHR.responseType + " data= "+ data);
+			var xmlResponse = XHR.responseXML;
+			if (xmlResponse == null) {
+				Main.logToServer("Resume: xmlResponse is null");
+	    		Display.hide();
+	        	Display.showProgress();
+				Player.playVideo();
+			}
+			var xmlElement = xmlResponse.documentElement;
+			if (!xmlElement) {
+				Main.logToServer("Resume: Dont get xml");
+	    		Display.hide();
+	        	Display.showProgress();
+				Player.playVideo();
+
+			}
+			var xml_str = (new XMLSerializer()).serializeToString(xmlElement);
+			Main.logToServer(" XML Response= " + xml_str + " NodeType= " + xmlElement.nodeType);
+			Main.logToServer("xmlElement.firstChild.nodeType= " + xmlElement.firstChild.nodeType);
+			Main.logToServer("xmlElement.firstChild.nodeName= " + xmlElement.firstChild.nodeName);
+			Main.logToServer("xmlElement.firstChild.nodeValue= " + xmlElement.firstChild.nodeValue);
+			var resume_val = -1.0;
+			try {
+				resume_val = parseFloat(xmlElement.firstChild.nodeValue);
+				Main.log("resume val= " + resume_val );
+				Main.logToServer("resume val= " + resume_val );
+				Player.resumePos = resume_val;
+				Buttons.show();
+//				Player.playVideo( resume_val);
+			}
+			catch (e) {
+				Main.log("Resume Parsing Error: " +e);
+	    		Display.hide();
+	        	Display.showProgress();
+				Player.playVideo();
+			}
+			
+		},
+		error : function (jqXHR, status, error) {
+			Main.log("**** Resome Error Response - status= " + status + " error= "+ error);
+    		Display.hide();
+        	Display.showProgress();
+			Player.playVideo();
+		}
+	});
+};
+

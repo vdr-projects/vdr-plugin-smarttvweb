@@ -6,6 +6,7 @@ var Display =
     bufferingElm : null,
     FIRSTIDX : 0,
     LASTIDX : 15,
+    itemHeight : 0,
     currentWindow : 0,
 
     olTitle : "",
@@ -20,7 +21,10 @@ var Display =
     videoList : new Array()
 };
 
-
+/*
+ * General Functions
+ * 
+ */
 
 Display.init = function()
 {
@@ -55,18 +59,9 @@ Display.init = function()
     	$(elm).append($("<div>").css({ "display": "inline-block", "padding-top": "4px", "padding-bottom": "6px", "width":"70%"})); 
     	$(elm).append($("<div>").css({ "display": "inline-block", "padding-top": "4px", "padding-bottom": "6px", "width":"5%"})); 
 
-/*    	$(elm).children("div").eq(0).text ("Hallo1");
-    	$(elm).children("div").eq(1).text ("Hallo2");
-    	$(elm).children("div").eq(2).text ("Hallo3");
-*/
-/*
- *     	var elm = document.getElementById("video"+i);
-    	elm.style.paddingLeft = "10px";
-    	elm.style.paddingTop = "4px";
-    	elm.style.paddingBottom = "6px";
-    	*/
     }
 
+    
     var done = false;
     var i = 0;
 
@@ -86,13 +81,6 @@ Display.init = function()
     
     Main.log("Display initialized" );
     return success;
-};
-
-Display.setVideoItem = function (elm, cnt) {
-	// cnt
-	$(elm).children("div").eq(0).text (cnt.c1);
-	$(elm).children("div").eq(1).text (cnt.c2);
-	$(elm).children("div").eq(2).text (cnt.c3);
 };
 
 Display.putInnerHTML = function (elm, val) {
@@ -124,124 +112,6 @@ Display.GetEpochTime = function() {
 
 	return res;
 };
-
-Display.resetSelectItems = function (itm) {
-	var done = false;
-	var i = 0;
-	while (done != true) {
-		i ++;
-		var elm = document.getElementById("selectItem"+i);
-		if (elm == null) {
-			done = true;
-			Main.log( " only found to selectItem"+ (i-1));
-			break;
-	    }
-		Display.unselectItem(elm);	
-	}    
-    Display.selectItem(document.getElementById("selectItem"+itm));
-};
-
-Display.resetVideoList = function () {
-	var done = false;
-	var i = 0;
-	while (done != true) {
-		i ++;
-		var elm = document.getElementById("video"+i);
-		if (elm == null) {
-			done = true;
-			break;
-	    }
-		Display.unselectItem(elm);	
-		Display.setVideoItem(elm, {c1: "", c2: "", c3: ""});
-	}    
-	
-};
-
-Display.setOlTitle = function (title) {
-	this.olTitle = title;
-	var elm = document.getElementById("olTitle");
-	Display.putInnerHTML(elm, Display.olTitle);    
-};
-
-Display.resetStartStop = function () {
-	Display.olStartStop = "";
-    var elm = document.getElementById("olStartStop");
-    Display.putInnerHTML(elm, Display.olStartStop);    
-	
-};
-Display.setStartStop = function(start, stop) {
-	this.olStartStop = "";
-
-	var digi =new Date(start * 1000);
-    var hours=digi.getHours();
-    var minutes=digi.getMinutes();
-    if (minutes<=9)
-    	   minutes='0'+minutes;
-    this.olStartStop = hours + ":" + minutes + " - ";
-
-	digi =new Date(stop * 1000);
-    hours=digi.getHours();
-    minutes=digi.getMinutes();
-    if (minutes<=9)
-    	   minutes='0'+minutes;
-    this.olStartStop = this.olStartStop + hours + ":" + minutes;    
-
-    var elm = document.getElementById("olStartStop");
-    Display.putInnerHTML(elm, Display.olStartStop);    
-};
-
-Display.setSkipDuration = function(duration) {
-	this.olStartStop = "";
-
-    this.olStartStop = duration;    
-
-    var elm = document.getElementById("olStartStop");
-    Display.putInnerHTML(elm, "Next Skip: " + Display.olStartStop+"sec");    
-};
-
-// Player.OnCurrentPlayTime
-Display.updatePlayTime = function() {
-//    Player.curPlayTimeStr =  Display.getHumanTimeRepresentation(Player.curPlayTime);
-    var timeElement = document.getElementById("olTimeInfo");
-    Display.putInnerHTML(timeElement,  Player.curPlayTimeStr + " / " + Player.totalTimeStr);    
-};
-
-Display.updateProgressBar = function () {
-	var timePercent = (Player.curPlayTime *100)/ Player.totalTime;
-    document.getElementById("olProgressBar").style.width = Math.round(timePercent) + "%";	
-};
-
-Display.updateRecBar = function (start_time, duration){
-	var now = Display.GetEpochTime();
-
-	var remaining = Math.round(((start_time + duration) - now) * 100/ duration);
-//    Main.log (" remaining= " + remaining + " start= " + start_time + " dur= " + duration);
-	var elm = document.getElementById("olRecProgressBar");
-    elm.style.display="block";
-    elm.style.width = remaining + "%";
-    elm.style.left = (100 - remaining) + "%";
-};
-
-
-Display.status = function(status) {
-    Main.log(status);
-    Display.putInnerHTML(this.statusDiv, status);
-    Display.putInnerHTML(this.statusPopup, status);
-};
-
-Display.showStatus = function() {
-	this.statusPopup.style.display="block";
-};
-
-Display.hideStatus = function() {
-	this.statusPopup.style.display="none";
-};
-
-
-Display.progress = function(status) {
-	Display.putInnerHTML(this.statusDiv, status);
-};
-
 
 Display.durationString = function(time) {
     var timeHour = 0; 
@@ -275,6 +145,163 @@ Display.durationString = function(time) {
 };
 
 
+Display.getNumString =function(num, fmt) {
+	var res = "";
+
+	if (num < 10) {
+		for (var i = 1; i < fmt; i ++) {
+			res += "0";		
+		};
+	} else if (num < 100) {
+		for (var i = 2; i < fmt; i ++) {
+			res += "0";		
+		};	
+	}
+
+	res = res + num;
+	
+	return res;
+};
+
+Display.selectItem = function (item) {
+
+	item.style.color = "black";
+	item.style.background = "white";
+	item.style.background = "-webkit-linear-gradient(top, rgba(246,248,249,1) 0%,rgba(229,235,238,1) 50%,rgba(215,222,227,1) 51%,rgba(245,247,249,1) 100%)";
+	item.style.borderRadius= "3px";
+	item.style["-webkit-box-shadow"] = "2px 2px 1px 2px rgba(0,0,0, 0.5)";
+	//	item.style.backgroundColor = "white";
+
+};
+
+Display.unselectItem = function (item) {
+	item.style.color = "white";
+	item.style.backgroundColor = "transparent";
+	item.style.background = "transparent";
+	item.style["-webkit-box-shadow"] = "";
+};
+
+Display.jqSelectItem = function (item) {
+	//item is a JQ Object
+	item.css( {"color": "black", "background" : "white", 
+		"background" : "-webkit-linear-gradient(top, rgba(246,248,249,1) 0%,rgba(229,235,238,1) 50%,rgba(215,222,227,1) 51%,rgba(245,247,249,1) 100%)",
+		"border-radius": "3px",
+		"-webkit-box-shadow": "2px 2px 1px 2px rgba(0,0,0, 0.5)"
+		});
+};
+
+Display.jqUnselectItem = function (item) {
+	item.css ({"color" : "white", "background" : "transparent", "-webkit-box-shadow": ""});
+};
+
+/*
+ * Main Select Screen Functions
+ * 
+ */
+Display.resetSelectItems = function (itm) {
+	var done = false;
+	var i = 0;
+	while (done != true) {
+		i ++;
+		var elm = document.getElementById("selectItem"+i);
+		if (elm == null) {
+			done = true;
+			Main.log( " only found to selectItem"+ (i-1));
+			break;
+	    }
+		Display.unselectItem(elm);	
+	}    
+    Display.selectItem(document.getElementById("selectItem"+itm));
+};
+
+/*
+ * Video Select Screen Functions
+ * 
+ */
+Display.hide = function() {
+//    document.getElementById("main").style.display="none";
+    $("#main").hide();
+};
+
+Display.show = function() {
+	// cancel ongoing overlays first
+	this.volOlHandler.cancel();
+	this.progOlHandler.cancel();
+	this.popupOlHandler.cancel();
+//    document.getElementById("main").style.display="block";
+    $("#main").show();
+
+    this.itemHeight = Math.round(parseInt($("#videoList").height()) / (this.LASTIDX +1) );
+    alert ("vidList= " + $("#videoList").height()+ " itmHeight= " + this.itemHeight );
+    
+};
+
+Display.setVideoList = function(selected, first) {
+	// 
+    var listHTML = "";
+    var res = {};
+//    var first_item = selected;
+    var first_item = first; //thlo
+
+    var i=0;
+    Main.log("Display.setVideoList title= " +Data.getCurrentItem().childs[selected].title + " selected= " + selected + " first_item= " + first_item);
+    this.handleDescription(selected);
+
+    for (i = 0; i <= this.LASTIDX; i++) {
+    	if ((first_item+i) >= Data.getVideoCount()) {
+    		res = {c1: "", c2: "", c3: ""};
+    	}
+    	else {
+            res = Display.getDisplayTitle (Data.getCurrentItem().childs[first_item+i]); 
+    	}
+        this.videoList[i] = document.getElementById("video"+i);
+
+		Display.setVideoItem(this.videoList[i], res);
+        this.unselectItem(this.videoList[i]);
+    }
+    
+    this.currentWindow = (selected - first_item);
+    this.selectItem(this.videoList[this.currentWindow]);
+    
+    listHTML = (selected +1) + " / " + Data.getVideoCount();
+    
+    Display.putInnerHTML(document.getElementById("videoCount"), listHTML);
+};
+
+Display.setVideoItem = function (elm, cnt) {
+	// cnt
+	$(elm).children("div").eq(0).text (cnt.c1);
+	$(elm).children("div").eq(1).text (cnt.c2);
+	$(elm).children("div").eq(2).text (cnt.c3);
+
+	var itm = $(elm).children("div").eq(1);
+	if (itm.outerHeight() > this.itemHeight) {
+		var temp = cnt.c2;
+		while(itm.outerHeight() > this.itemHeight) {
+		    temp = temp.substr(0, temp.length-1);
+		    itm.text(temp + '...');
+		}	
+	}
+};
+
+//Video Select Screen
+Display.resetVideoList = function () {
+	var done = false;
+	var i = 0;
+	while (done != true) {
+		var elm = document.getElementById("video"+i);
+		if (elm == null) {
+			done = true;
+			break;
+	    }
+		Display.unselectItem(elm);	
+		Display.setVideoItem(elm, {c1: "", c2: "", c3: ""});
+		i ++;
+	}    
+	
+};
+
+//Video Select Screen
 Display.handleDescription =function (selected) {
 	Main.log("Display.handleDescription ");
 	
@@ -325,112 +352,6 @@ Display.handleDescription =function (selected) {
 	
 };
 
-Display.getNumString =function(num, fmt) {
-	var res = "";
-
-	if (num < 10) {
-		for (var i = 1; i < fmt; i ++) {
-			res += "0";		
-		};
-	} else if (num < 100) {
-		for (var i = 2; i < fmt; i ++) {
-			res += "0";		
-		};	
-	}
-
-	res = res + num;
-	
-	return res;
-};
-
-Display.getDisplayTitle = function(item) {
-	var res = {c1:"", c2:"", c3:""};
-	switch (Main.state) {
-	case 1:
-		// Live
-		if (item.isFolder == true) {
-			res.c2 = item.title;
-			res.c3 = "<" + Display.getNumString(item.childs.length, 2) +">"; 			
-		}
-		else {
-			res.c2 = item.title;
-		}
-		break;
-	case 2:
-	case 3:
-		// Recordings
-		if (item.isFolder == true) {
-			res.c1 = "<" + Display.getNumString(item.childs.length, 3) + ">";
-			res.c2 = item.title; 			
-		}
-		else {
-			var digi = new Date(parseInt(item.payload.start*1000));
-			var mon = Display.getNumString ((digi.getMonth()+1), 2);
-			var day = Display.getNumString (digi.getDate(), 2);
-			var hour = Display.getNumString (digi.getHours(), 2);
-			var min = Display.getNumString (digi.getMinutes(), 2);
-
-			var d_str = mon + "/" + day + " " + hour + ":" + min;
-			res.c1 = d_str;
-			res.c2 = item.title; 
-		}
-		break;
-	default:
-		Main.log("ERROR: Shall be in state 1 or 2. State= " + Main.state);
-		break;
-	}
-	return res;
-};
-
-Display.setVideoList = function(selected, first) {
-	// 
-    var listHTML = "";
-    var res = {};
-//    var first_item = selected;
-    var first_item = first; //thlo
-
-    var i=0;
-    Main.log("Display.setVideoList title= " +Data.getCurrentItem().childs[selected].title + " selected= " + selected + " first_item= " + first_item);
-    this.handleDescription(selected);
-
-    for (i = 0; i <= this.LASTIDX; i++) {
-    	if ((first_item+i) >= Data.getVideoCount()) {
-    		res = {c1: "", c2: "", c3: ""};
-    	}
-    	else {
-            res = Display.getDisplayTitle (Data.getCurrentItem().childs[first_item+i]); 
-    	}
-        this.videoList[i] = document.getElementById("video"+i);
-
-		Display.setVideoItem(this.videoList[i], res);
-        this.unselectItem(this.videoList[i]);
-    }
-    
-    this.currentWindow = (selected - first_item);
-    this.selectItem(this.videoList[this.currentWindow]);
-    
-    listHTML = (selected +1) + " / " + Data.getVideoCount();
-    
-    Display.putInnerHTML(document.getElementById("videoCount"), listHTML);
-};
-
-Display.selectItem = function (item) {
-
-	item.style.color = "black";
-	item.style.background = "white";
-	item.style.background = "-webkit-linear-gradient(top, rgba(246,248,249,1) 0%,rgba(229,235,238,1) 50%,rgba(215,222,227,1) 51%,rgba(245,247,249,1) 100%)";
-	item.style.borderRadius= "3px";
-	item.style["-webkit-box-shadow"] = "2px 2px 1px 2px rgba(0,0,0, 0.5)";
-	//	item.style.backgroundColor = "white";
-
-};
-
-Display.unselectItem = function (item) {
-	item.style.color = "white";
-	item.style.backgroundColor = "transparent";
-	item.style.background = "transparent";
-	item.style["-webkit-box-shadow"] = "";
-};
 
 
 /*
@@ -522,6 +443,142 @@ Display.setDescription = function(description) {
     Display.putInnerHTML(descriptionElement, description);
 };
 
+
+/*
+ * Overlay Functions
+ * 
+ */
+/*
+ * Progress Overlay
+ * 
+ */
+Display.setOlTitle = function (title) {
+	this.olTitle = title;
+	var elm = document.getElementById("olTitle");
+	Display.putInnerHTML(elm, Display.olTitle);    
+};
+
+Display.resetStartStop = function () {
+	Display.olStartStop = "";
+    var elm = document.getElementById("olStartStop");
+    Display.putInnerHTML(elm, Display.olStartStop);    
+	
+};
+Display.setStartStop = function(start, stop) {
+	this.olStartStop = "";
+
+	var digi =new Date(start * 1000);
+    var hours=digi.getHours();
+    var minutes=digi.getMinutes();
+    if (minutes<=9)
+    	   minutes='0'+minutes;
+    this.olStartStop = hours + ":" + minutes + " - ";
+
+	digi =new Date(stop * 1000);
+    hours=digi.getHours();
+    minutes=digi.getMinutes();
+    if (minutes<=9)
+    	   minutes='0'+minutes;
+    this.olStartStop = this.olStartStop + hours + ":" + minutes;    
+
+    var elm = document.getElementById("olStartStop");
+    Display.putInnerHTML(elm, Display.olStartStop);    
+};
+
+Display.setSkipDuration = function(duration) {
+	this.olStartStop = "";
+
+    this.olStartStop = duration;    
+
+    var elm = document.getElementById("olStartStop");
+    Display.putInnerHTML(elm, "Next Skip: " + Display.olStartStop+"sec");    
+};
+
+// Player.OnCurrentPlayTime
+Display.updatePlayTime = function() {
+//    Player.curPlayTimeStr =  Display.getHumanTimeRepresentation(Player.curPlayTime);
+    var timeElement = document.getElementById("olTimeInfo");
+    Display.putInnerHTML(timeElement,  Player.curPlayTimeStr + " / " + Player.totalTimeStr);    
+};
+
+Display.updateProgressBar = function () {
+	var timePercent = (Player.curPlayTime *100)/ Player.totalTime;
+    document.getElementById("olProgressBar").style.width = Math.round(timePercent) + "%";	
+};
+
+Display.updateRecBar = function (start_time, duration){
+	var now = Display.GetEpochTime();
+
+	var remaining = Math.round(((start_time + duration) - now) * 100/ duration);
+//    Main.log (" remaining= " + remaining + " start= " + start_time + " dur= " + duration);
+	var elm = document.getElementById("olRecProgressBar");
+    elm.style.display="block";
+    elm.style.width = remaining + "%";
+    elm.style.left = (100 - remaining) + "%";
+};
+
+
+Display.status = function(status) {
+    Main.log(status);
+    Display.putInnerHTML(this.statusDiv, status);
+    Display.putInnerHTML(this.statusPopup, status);
+};
+
+Display.showStatus = function() {
+	this.statusPopup.style.display="block";
+};
+
+Display.hideStatus = function() {
+	this.statusPopup.style.display="none";
+};
+
+
+Display.progress = function(status) {
+	Display.putInnerHTML(this.statusDiv, status);
+};
+
+
+Display.getDisplayTitle = function(item) {
+	var res = {c1:"", c2:"", c3:""};
+	switch (Main.state) {
+	case 1:
+		// Live
+		if (item.isFolder == true) {
+			res.c2 = item.title;
+			res.c3 = "<" + Display.getNumString(item.childs.length, 2) +">"; 			
+		}
+		else {
+			res.c2 = item.title;
+		}
+		break;
+	case 2:
+	case 3:
+		// Recordings
+		if (item.isFolder == true) {
+			res.c1 = "<" + Display.getNumString(item.childs.length, 3) + ">";
+			res.c2 = item.title; 			
+		}
+		else {
+			var digi = new Date(parseInt(item.payload.start*1000));
+			var mon = Display.getNumString ((digi.getMonth()+1), 2);
+			var day = Display.getNumString (digi.getDate(), 2);
+			var hour = Display.getNumString (digi.getHours(), 2);
+			var min = Display.getNumString (digi.getMinutes(), 2);
+
+			var d_str = mon + "/" + day + " " + hour + ":" + min;
+			res.c1 = d_str;
+			res.c2 = item.title; 
+		}
+		break;
+	default:
+		Main.log("ERROR: Shall be in state 1 or 2. State= " + Main.state);
+		break;
+	}
+	return res;
+};
+
+
+
 //--------------------------------------------------------
 Display.bufferUpdate = function() {
 	// Player.bufferState 
@@ -530,19 +587,9 @@ Display.bufferUpdate = function() {
 };
 
 //--------------------------------------------------------
-Display.hide = function()
-{
-    document.getElementById("main").style.display="none";
-};
-
-Display.show = function() {
-	// cancel ongoing overlays first
-	this.volOlHandler.cancel();
-	this.progOlHandler.cancel();
-	this.popupOlHandler.cancel();
-    document.getElementById("main").style.display="block";
-};
-
+/*
+ * Volume Control Handlers (obsolete)
+ */
 //---------------------------------------------------------
 Display.setVolume = function(level)
 {
@@ -571,6 +618,9 @@ Display.handlerHideVolume = function() {
 
 
 //---------------------------------------------------------
+/*
+ * Popup handlers
+ */
 Display.showPopup = function(text) {
 	var oldHTML = document.getElementById("popup").innerHTML;
 	Display.putInnerHTML(document.getElementById("popup"), oldHTML + "<br>" + text);
@@ -639,8 +689,10 @@ Display.handlerShowProgress = function() {
 };
 
 
-
-//----------------------------------------
+/*
+ * OverlayHandler Class
+ * 
+ */
 function OverlayHandler (n) {
 //	this.pluginTime = null;
 	this.active = false;
@@ -670,9 +722,7 @@ OverlayHandler.prototype.init = function(showcb, hidecb) {
 
 OverlayHandler.prototype.checkHideCallback = function () {
 	var now = Display.GetEpochTime();
-	//	Main.log(that.handlerName + "checkHideCallback: now= " + now + " hideTime= " +  that.hideTime +  " delta= " + (now - that.hideTime));
 	if (now >= this.hideTime) {
-//		Main.log(this.handlerName + "hiding " + this.handlerName + " howDur: act= " + (now - this.startTime) + " int= " + (this.hideTime-this.startTime));
 
 		this.olDelay = 3000;
 		if (this.hideCallback) {
@@ -685,9 +735,8 @@ OverlayHandler.prototype.checkHideCallback = function () {
 		return;
 	}
 	var delay = (this.hideTime - now) * 1000;
-//	Main.log(this.handlerName + "checkHideCallback: new timeout= " +delay);
 
-	// pass an anonymous function
+	// pass an anonymous function to keep the context
 	var self = this;
 	this.timeoutObj = window.setTimeout(function() {self.checkHideCallback(); }, delay);
 };
@@ -711,8 +760,6 @@ OverlayHandler.prototype.show = function() {
 			Main.log(this.handlerName + ": No showCallback defined - ignoring " );
 	}
 	else {
-//		Main.log(this.handlerName + " extending showtime for " + this.handlerName + " for another " + (this.olDelay /1000)+ "sec");
-//		this.hideTime = this.pluginTime.GetEpochTime() + (this.olDelay /1000);
 		this.hideTime = Display.GetEpochTime() + (this.olDelay /1000);
 	}
 };

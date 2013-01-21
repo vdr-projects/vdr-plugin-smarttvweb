@@ -57,6 +57,12 @@ var Main = {
     
     NMUTE : 0,
     YMUTE : 1,
+
+    eMAIN : 0, // state Main Select
+    eLIVE : 1, // State Live Select Screen / Video Playing 
+    eREC : 2, // State Recording Select Screen / Video Playing
+    eMED : 3, // State Media Select Screen / Video Playing
+    eOPT : 4, // Options
     
     defKeyHndl : null,
     selectMenuKeyHndl : null,
@@ -86,6 +92,9 @@ Main.onLoad = function() {
 //		Display.showPopup("Not a Samsung Smart TV. Lets see, how far we come");
 	}
 
+	$.ajaxSetup ({  
+        cache: false  
+    });  
 	Display.init();
     Display.selectItem(document.getElementById("selectItem1"));
     Spinner.init();
@@ -119,6 +128,7 @@ showHandler = function() {
 Main.init = function () {
 	Main.log("Main.init()");
 	
+	Buttons.init();
     if ( Player.init() && Server.init() && Audio.init()) {
     	Display.setVolume( Audio.getVolume() );
 
@@ -141,6 +151,7 @@ Main.init = function () {
     else {
        Main.log("Failed to initialise");
     }
+
     /*
      * 
      * Fetch JS file
@@ -185,7 +196,7 @@ Main.changeState = function (state) {
 	this.state = state;
 	
 	switch (this.state) {
-	case 0:
+	case Main.eMAIN:
 		Main.selectMenuKeyHndl.select = old_state;
 		
 		Main.log ("old Select= " + Main.selectMenuKeyHndl.select);
@@ -195,25 +206,25 @@ Main.changeState = function (state) {
 		Display.hide();
 		Display.resetVideoList();		
 		break;
-	case 1:
+	case Main.eLIVE:
 		document.getElementById("selectScreen").style.display="none";
 		Display.show();
 		Data.reset ();
 		Main.liveSelected();
 		break;
-	case 2:
+	case Main.eREC:
 		document.getElementById("selectScreen").style.display="none";
 		Display.show();
 		Data.reset ();
 		Main.recordingsSelected();
 		break;
-	case 3:
+	case Main.eMED:
 		document.getElementById("selectScreen").style.display="none";
 		Display.show();
 		Data.reset ();
 		Main.mediaSelected();
 		break;
-	case 4:
+	case Main.eOPT:
 		// Options
 //    	Options.init();
 		document.getElementById("selectScreen").style.display="none";
@@ -221,20 +232,20 @@ Main.changeState = function (state) {
 //		document.getElementById("optionsScreen").style.display="block";
 		Main.optionsSelected();
 		break;
-
 	}
 };
 
 Main.recordingsSelected = function() {
     Player.stopCallback = function() {
     	// 
-    	var msg = "devid:" + Network.getMac() + "\n"; 
-    	msg += "title:" + Data.getCurrentItem().childs[Main.selectedVideo].title + "\n"; 
-    	msg += "start:" +Data.getCurrentItem().childs[Main.selectedVideo].payload.start + "\n";
+//    	var msg = "devid:" + Network.getMac() + "\n"; 
+//    	Player.curPlayTime = 15.4 * 1000;
+    	var msg = ""; 
+    	msg += "filename:" + Data.getCurrentItem().childs[Main.selectedVideo].payload.guid + "\n"; 
     	msg += "resume:"+ (Player.curPlayTime/1000) + "\n" ;
     	
         var XHRObj = new XMLHttpRequest();
-        XHRObj.open("POST", Config.serverUrl + "/resume", true);
+        XHRObj.open("POST", Config.serverUrl + "/setResume.xml", true);
         XHRObj.send(msg);
     	
     	Display.show();
@@ -299,6 +310,7 @@ Main.optionsSelected = function() {
 };
 
 Main.enableKeys = function() {
+	Main.log("Main.enableKeys");
     document.getElementById("anchor").focus();
 };
 
@@ -342,6 +354,7 @@ Main.keyDown = function() {
 	};
 };
 
+
 Main.playItem = function (url) {
 	Main.log(Main.state + " playItem for " +Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
 	var start_time = Data.getCurrentItem().childs[Main.selectedVideo].payload.start;
@@ -351,10 +364,12 @@ Main.playItem = function (url) {
 	document.getElementById("olRecProgressBar").style.display="none";
 
 	switch (this.state) {
-	case 1:
+	case Main.eLIVE:
 		// Live
 		// Check for updates
-		
+		Display.hide();
+    	Display.showProgress();
+    	
 		Display.setOlTitle(Data.getCurrentItem().childs[Main.selectedVideo].title + " - " +Data.getCurrentItem().childs[Main.selectedVideo].payload.prog);
 		Display.setStartStop (start_time, (start_time + duration));
 		Player.isLive = true;
@@ -371,11 +386,46 @@ Main.playItem = function (url) {
 		Player.OnCurrentPlayTime(0);
 		Main.log ("Live now= " +  now + " StartTime= " + Data.getCurrentItem().childs[Main.selectedVideo].payload.start + " offset= " +Player.cptOffset );
 		Main.log("Live Content= " + Data.getCurrentItem().childs[Main.selectedVideo].title + " dur= " + Data.getCurrentItem().childs[Main.selectedVideo].payload.dur);
+
+		Player.guid = Data.getCurrentItem().childs[Main.selectedVideo].payload.guid;
+
+		Player.setVideoURL( Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
+		Player.playVideo(-1);
 	break;
-	case 2: 
-	case 3:
+	case Main.eMED:
+		Display.hide();
+    	Display.showProgress();
+    	
 		Player.setCurrentPlayTimeOffset(0);
-//		Player.cptOffset = 0;
+		Player.isLive = false;
+		Player.isRecording = false;
+    	Main.log(" playItem: now= " + now + " start_time= " + start_time + " dur= " + duration + " (Start + Dur - now)= " + ((start_time + duration) -now));
+
+    	document.getElementById("olRecProgressBar").display="none";
+		Display.setOlTitle(Data.getCurrentItem().childs[Main.selectedVideo].title);
+		Display.resetStartStop();
+
+		Player.setVideoURL( Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
+		Player.playVideo(-1);
+
+		Player.guid = "unknown";
+
+		break;
+	case Main.eREC: 
+		/*
+		 * Check is isnew = false
+		 * if yes, then open a popup with the choice to play or to resume
+		 * The player is in any case started from somewhere else
+	
+		 * If resume, then play is issued from resume callback
+		 */
+//		Main.getResume(Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
+		Player.setVideoURL( Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
+		Player.guid = Data.getCurrentItem().childs[Main.selectedVideo].payload.guid;
+
+		Server.getResume(Player.guid);
+		
+		Player.setCurrentPlayTimeOffset(0);
 		Player.isLive = false;
 		Player.isRecording = false;
     	Main.log(" playItem: now= " + now + " start_time= " + start_time + " dur= " + duration + " (Start + Dur - now)= " + ((start_time + duration) -now));
@@ -398,11 +448,22 @@ Main.playItem = function (url) {
 		}
 		Display.setOlTitle(Data.getCurrentItem().childs[Main.selectedVideo].title);
 		Display.resetStartStop();
+		Main.log("IsNew= " +Data.getCurrentItem().childs[Main.selectedVideo].payload.isnew);
+		
+		
+/*		if (Data.getCurrentItem().childs[Main.selectedVideo].payload.isnew == "false") {
+			Buttons.show();
+		}
+		else {
+    		Display.hide();
+        	Display.showProgress();
+
+        	Player.playVideo(-1);
+		}
+*/
 		break;
 	};
 		
-	Player.setVideoURL( Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
-	Player.playVideo();
 };
 
 Main.selectPageUp = function() {
@@ -1081,9 +1142,9 @@ cMenuKeyHndl.prototype.handleKeyDown = function () {
      		Display.setVideoList(Main.selectedVideo, Main.selectedVideo); // thlo
      	} 
      	else{
-     		Display.hide();
+/*     		Display.hide();
         	Display.showProgress();
-
+*/
         	Main.playItem(); 
      	}
         break;
