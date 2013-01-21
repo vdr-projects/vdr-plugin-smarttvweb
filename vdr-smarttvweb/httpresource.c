@@ -1709,6 +1709,12 @@ int cHttpResource::sendResumeXml () {
     sendError(404, "Not Found", NULL, "Failed to find recording.");
     return OKAY;
   }
+  if (rec->IsNew()) {
+    *(mLog->log())<< DEBUGPREFIX
+		  << " sendResume: file is new "  << endl;
+    sendError(400, "Bad Request", NULL, "File is new.");
+    return OKAY;
+  }
   cResumeFile resume(entry.mFilename.c_str(), rec->IsPesRecording());
 
   *(mLog->log())<< DEBUGPREFIX
