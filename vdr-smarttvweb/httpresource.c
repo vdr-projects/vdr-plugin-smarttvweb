@@ -48,6 +48,7 @@
 #include <vdr/timers.h>
 #include <vdr/videodir.h>
 #include <vdr/epg.h>
+
 #endif
 
 #define PROTOCOL "HTTP/1.1"
@@ -361,6 +362,32 @@ int cHttpResource::processRequest() {
     sendEpgXml( &statbuf);
     return OKAY;
   }
+
+  if (mPath.compare("/setResume.xml") == 0) {
+    if (handleHeadRequest() != 0)
+      return OKAY;
+
+    receiveResume();
+    return OKAY;
+  }
+
+  if (mPath.compare("/getResume.xml") == 0) {
+    if (handleHeadRequest() != 0)
+      return OKAY;
+
+    sendResumeXml();
+    return OKAY;
+  }
+
+  if (mPath.compare("/vdrstatus.xml") == 0) {
+    if (handleHeadRequest() != 0)
+      return OKAY;
+
+    sendVdrStatusXml( &statbuf);
+    return OKAY;
+  }
+
+
 #endif
 
   if (mPath.compare("/media.xml") == 0) {
@@ -472,8 +499,8 @@ int cHttpResource::processRequest() {
     if (handleHeadRequest() != 0)
       return OKAY;
 
-    sendDir( &statbuf);
     mContentType = MEMBLOCK;
+    sendDir( &statbuf);
     return OKAY;    
   }
   else {
@@ -610,6 +637,7 @@ int cHttpResource::fillDataBlk() {
     }
     break;
   case SINGLEFILE:
+
     to_read = ((mRemLength > MAXLEN) ? MAXLEN : mRemLength);
     mBlkLen = fread(mBlkData, 1, to_read, mFile);
     mRemLength -= mBlkLen;
@@ -730,17 +758,6 @@ int cHttpResource::handlePost() {
   *mResponseMessage = "";
   mResponseMessagePos = 0;
 
-  /*
-    Resume support:
-    Key for recordings: Title plus start time. Value: Current PlayTime in Sec
-    Structure: Either, the plugin reads the list from file when the first client connects
-
-    First: Create a list of resumes (use vdr cList ).
-    Write the list to file
-    Read the list from file
-    
-   */
-
   if (mPath.compare("/log") == 0) {
     *(mLog->log())<< mPayload
 		  << endl;
@@ -755,40 +772,16 @@ int cHttpResource::handlePost() {
     return OKAY;
   }
 
-
   if (mPath.compare("/setResume.xml") == 0) {
+    if (handleHeadRequest() != 0)
+      return OKAY;
 
-    string dev_id;
-    cResumeEntry entry;
-    if (parseResume(entry, dev_id) == ERROR) {
-      *(mLog->log())<< DEBUGPREFIX 
-		    << " ERROR parsing resume" 
-		    << endl;
-    }
-    *(mLog->log())<< DEBUGPREFIX 
-		  << " Resume: id= " << dev_id
-		  << " resume= " << entry << endl;
-#ifndef STANDALONE
-  cRecording *rec = Recordings.GetByName(entry.mFilename.c_str());
-  if (rec == NULL) {
-    //Error 404
-    sendError(404, "Not Found", NULL, "Failed to find recording.");
+    receiveResume();
     return OKAY;
   }
-  cResumeFile resume(entry.mFilename.c_str(), rec->IsPesRecording());
-    *(mLog->log())<< DEBUGPREFIX 
-		  << " Resume:  " << entry.mFilename
-		  << " saving Index= " << int(entry.mResume * rec->FramesPerSecond() )
-		  << " mResume= " <<entry.mResume 
-		  << " fpr= " << rec->FramesPerSecond()
-		  << endl;
 
-    resume.Save(int(entry.mResume * rec->FramesPerSecond() ));
-#endif
-  }
-
-  sendHeaders(200, "OK", NULL, NULL, -1, -1);
-  return OKAY;
+  // Should not reach the end of the function
+  return ERROR;
 }
 
 
@@ -844,78 +837,79 @@ int cHttpResource::sendDir(struct stat *statbuf) {
   snprintf(pathbuf, sizeof(pathbuf), "%sindex.html", mPath.c_str());
   if (stat(pathbuf, statbuf) >= 0) {
     mPath = pathbuf;
-    sendFile(statbuf);
+    mFileSize = statbuf->st_size;
+    mContentType = SINGLEFILE;
+    return sendFile(statbuf);    
   }
-  else {
+
 #ifndef DEBUG
-    *(mLog->log()) << DEBUGPREFIX << " sendDir: create index.html "  << endl;
+  *(mLog->log()) << DEBUGPREFIX << " sendDir: create index.html "  << endl;
 #endif
-    DIR *dir;
-    struct dirent *de;
-    
-    sendHeaders(200, "OK", NULL, "text/html", -1, statbuf->st_mtime);
-    mResponseMessage = new string();
-    mResponseMessagePos = 0;
-    *mResponseMessage = "";
+  DIR *dir;
+  struct dirent *de;
+  
+  mResponseMessage = new string();
+  mResponseMessagePos = 0;
+  *mResponseMessage = "";
 
-    string hdr = "";
-    snprintf(f, sizeof(f), "<HTML><HEAD><TITLE>Index of %s</TITLE></HEAD>\r\n<BODY>", mPath.c_str());
-    hdr += f;
-    snprintf(f, sizeof(f), "<H4>Index of %s</H4>\r\n<PRE>\n", mPath.c_str());
-    hdr += f;
-    snprintf(f, sizeof(f), "Name                             Last Modified              Size\r\n");
-    hdr += f;
-    snprintf(f, sizeof(f), "<HR>\r\n");
-    hdr += f;
+  string hdr = "";
+  snprintf(f, sizeof(f), "<HTML><HEAD><TITLE>Index of %s</TITLE></HEAD>\r\n<BODY>", mPath.c_str());
+  hdr += f;
+  snprintf(f, sizeof(f), "<H4>Index of %s</H4>\r\n<PRE>\n", mPath.c_str());
+  hdr += f;
+  snprintf(f, sizeof(f), "Name                             Last Modified              Size\r\n");
+  hdr += f;
+  snprintf(f, sizeof(f), "<HR>\r\n");
+  hdr += f;
     
-    *mResponseMessage += hdr;
-    hdr = "";
+  *mResponseMessage += hdr;
+  hdr = "";
     
-    if (len > 1) {
-      snprintf(f, sizeof(f), "<A HREF=\"..\">..</A>\r\n");
-      hdr += f;
-    }
-    *mResponseMessage += hdr;
-        
-    dir = opendir(mPath.c_str());
-    while ((de = readdir(dir)) != NULL) {
-      char timebuf[32];
-      struct tm *tm;
-      strcpy(pathbuf, mPath.c_str());
-      //	printf (" -Entry: %s\n", de->d_name);
-      strcat(pathbuf, de->d_name);
-      
-      stat(pathbuf, statbuf);
-      tm = gmtime(&(statbuf->st_mtime));
-      strftime(timebuf, sizeof(timebuf), "%d-%b-%Y %H:%M:%S", tm);
-      
-      hdr = "";
-      snprintf(f, sizeof(f), "<A HREF=\"%s%s\">", de->d_name, S_ISDIR(statbuf->st_mode) ? "/" : "");
-      hdr += f;
-      
-      snprintf(f, sizeof(f), "%s%s", de->d_name, S_ISDIR(statbuf->st_mode) ? "/</A>" : "</A> ");
-      hdr += f;
-      
-      if (strlen(de->d_name) < 32) {
-	snprintf(f, sizeof(f), "%*s", 32 - strlen(de->d_name), "");
-	hdr += f;
-      }
-      if (S_ISDIR(statbuf->st_mode)) {
-	snprintf(f, sizeof(f), "%s\r\n", timebuf);
-	hdr += f;
-      }
-      else {
-	snprintf(f, sizeof(f), "%s\r\n", timebuf);
-	hdr += f;
-      }
-
-      *mResponseMessage += hdr;
-    }
-    closedir(dir);
-    snprintf(f, sizeof(f), "</PRE>\r\n<HR>\r\n<ADDRESS>%s</ADDRESS>\r\n</BODY></HTML>\r\n", SERVER);
-    *mResponseMessage += f;
-
+  if (len > 1) {
+    snprintf(f, sizeof(f), "<A HREF=\"..\">..</A>\r\n");
+    hdr += f;
   }
+  *mResponseMessage += hdr;
+        
+  dir = opendir(mPath.c_str());
+  while ((de = readdir(dir)) != NULL) {
+    char timebuf[32];
+    struct tm *tm;
+    strcpy(pathbuf, mPath.c_str());
+    //	printf (" -Entry: %s\n", de->d_name);
+    strcat(pathbuf, de->d_name);
+      
+    stat(pathbuf, statbuf);
+    tm = gmtime(&(statbuf->st_mtime));
+    strftime(timebuf, sizeof(timebuf), "%d-%b-%Y %H:%M:%S", tm);
+      
+    hdr = "";
+    snprintf(f, sizeof(f), "<A HREF=\"%s%s\">", de->d_name, S_ISDIR(statbuf->st_mode) ? "/" : "");
+    hdr += f;
+      
+    snprintf(f, sizeof(f), "%s%s", de->d_name, S_ISDIR(statbuf->st_mode) ? "/</A>" : "</A> ");
+    hdr += f;
+      
+    if (strlen(de->d_name) < 32) {
+      snprintf(f, sizeof(f), "%*s", 32 - strlen(de->d_name), "");
+      hdr += f;
+    }
+    if (S_ISDIR(statbuf->st_mode)) {
+      snprintf(f, sizeof(f), "%s\r\n", timebuf);
+      hdr += f;
+    }
+    else {
+      snprintf(f, sizeof(f), "%s\r\n", timebuf);
+      hdr += f;
+    }
+
+    *mResponseMessage += hdr;
+  }
+  closedir(dir);
+  snprintf(f, sizeof(f), "</PRE>\r\n<HR>\r\n<ADDRESS>%s</ADDRESS>\r\n</BODY></HTML>\r\n", SERVER);
+  *mResponseMessage += f;
+
+  sendHeaders(200, "OK", NULL, "text/html", mResponseMessage->size(), statbuf->st_mtime);
 
   mRemLength = 0;
   return OKAY;
@@ -1475,6 +1469,45 @@ int cHttpResource::sendMediaXml (struct stat *statbuf) {
   return OKAY;
 }
 
+int cHttpResource::sendVdrStatusXml (struct stat *statbuf) {
+
+#ifndef STANDALONE
+
+  char f[400];
+  mResponseMessage = new string();
+  *mResponseMessage = "";
+  mResponseMessagePos = 0;
+  mContentType = MEMBLOCK;
+
+  mConnState = SERVING;
+
+  int free;
+  int used;
+  int percent;
+
+  percent = VideoDiskSpace(&free, &used);
+
+  *mResponseMessage += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+  *mResponseMessage += "<vdrstatus>\n";
+
+  *mResponseMessage += "<diskspace>\n";  
+  snprintf(f, sizeof(f), "<free>%d</free>", free);
+  *mResponseMessage += f;
+
+  snprintf(f, sizeof(f), "<used>%d</used>", used);
+  *mResponseMessage += f;
+  snprintf(f, sizeof(f), "<percent>%d</percent>", percent);
+  *mResponseMessage += f;
+  *mResponseMessage += "</diskspace>\n";
+  
+  *mResponseMessage += "</vdrstatus>\n";
+
+  sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), -1);
+
+#endif
+  return OKAY;
+}
+
 int cHttpResource::sendEpgXml (struct stat *statbuf) {
 #ifndef STANDALONE
 
@@ -1542,6 +1575,7 @@ int cHttpResource::sendEpgXml (struct stat *statbuf) {
   
   string title = cUrlEncode::doXmlSaveEncode(ev->Title());
   hdr = "<title>" + title +"</title>\n";
+  hdr += "<guid>" + id + "</guid>\n";
   hdr += "<desc>";
   hdr += cUrlEncode::doXmlSaveEncode(ev->Description());
   hdr += "</desc>\n";
@@ -1683,6 +1717,63 @@ int cHttpResource::sendChannelsXml (struct stat *statbuf) {
   return OKAY;
 }
 
+int cHttpResource::receiveResume() {
+  string dev_id;
+  cResumeEntry entry;
+  if (parseResume(entry, dev_id) == ERROR) {
+    *(mLog->log())<< DEBUGPREFIX 
+		  << " ERROR parsing resume" 
+		  << endl;
+  }
+
+  *(mLog->log())<< DEBUGPREFIX 
+		<< " Resume: id= " << dev_id
+		<< " resume= " << entry << endl;
+
+  vector<sQueryAVP> avps;
+  parseQueryLine(&avps);
+  string guid; 
+  string resume_str; 
+
+  if (getQueryAttributeValue(&avps, "guid", guid) == OKAY){
+    entry.mFilename = guid;
+    *(mLog->log())<< DEBUGPREFIX
+		  << " Found a id Parameter: " << guid
+		  << endl;
+  }
+  if (getQueryAttributeValue(&avps, "resume", resume_str) == OKAY){
+    entry.mResume = atof(resume_str.c_str());
+    *(mLog->log())<< DEBUGPREFIX
+		  << " Found a resume Parameter: " << entry.mResume
+		  << endl;
+  }
+
+
+
+
+#ifndef STANDALONE
+  cRecording *rec = Recordings.GetByName(entry.mFilename.c_str());
+  if (rec == NULL) {
+    //Error 404
+    sendError(404, "Not Found", NULL, "Failed to find recording.");
+    return OKAY;
+  }
+
+  cResumeFile resume(entry.mFilename.c_str(), rec->IsPesRecording());
+  *(mLog->log())<< DEBUGPREFIX 
+		<< " Resume:  " << entry.mFilename
+		<< " saving Index= " << int(entry.mResume * rec->FramesPerSecond() )
+		<< " mResume= " <<entry.mResume 
+		<< " fpr= " << rec->FramesPerSecond()
+		<< endl;
+
+  resume.Save(int(entry.mResume * rec->FramesPerSecond() ));
+#endif
+
+  sendHeaders(200, "OK", NULL, NULL, -1, -1);
+  return OKAY;
+}
+
 //int cHttpResource::sendResumeXml (struct stat *statbuf) {
 int cHttpResource::sendResumeXml () {
 #ifndef STANDALONE
@@ -1700,6 +1791,18 @@ int cHttpResource::sendResumeXml () {
   string id;
 
   parseResume(entry, id);
+
+  vector<sQueryAVP> avps;
+  parseQueryLine(&avps);
+  string guid; 
+
+  if (getQueryAttributeValue(&avps, "guid", guid) == OKAY){
+    entry.mFilename = guid;
+    *(mLog->log())<< DEBUGPREFIX
+		  << " Found a id Parameter: " << guid
+		  << endl;
+  }
+
 
   cRecording *rec = Recordings.GetByName(entry.mFilename.c_str());
   if (rec == NULL) {
@@ -2297,7 +2400,7 @@ void cHttpResource::sendHeaders(int status, const char *title, const char *extra
   }
   if (length >= 0) {
     snprintf(f, sizeof(f), "Content-Length: %lld\r\n", length);
-    *(mLog->log())<< DEBUGPREFIX << " " << f << endl;
+    //    *(mLog->log())<< DEBUGPREFIX << " " << f << endl;
     hdr += f;
   }
   if (date != -1) {
@@ -2328,9 +2431,9 @@ void cHttpResource::sendHeaders(int status, const char *title, const char *extra
 int cHttpResource::sendFile(struct stat *statbuf) {
   // Send the First Datachunk, incl all headers
 
-  *(mLog->log())<< "fd= " <<  mFd << " mReqId= "<< mReqId << " mPath= " << mPath 
-       << DEBUGHDR
-       << endl;
+  *(mLog->log())<< DEBUGPREFIX
+		<< mReqId << " SendFile mPath= " << mPath 
+		<< endl;
 
   char f[400];
 
@@ -2339,37 +2442,36 @@ int cHttpResource::sendFile(struct stat *statbuf) {
     return OKAY;
   }
   mFile = fopen(mPath.c_str(), "r");
-  int ret = OKAY;
+  //  int ret = OKAY;
 
   if (!mFile) {
     sendError(403, "Forbidden", NULL, "Access denied.");
-    ret = ERROR;
+    return OKAY;
   }
-  else {
-    mFileSize = S_ISREG(statbuf->st_mode) ? statbuf->st_size : -1;
 
-    if (!rangeHdr.isRangeRequest) {
-      mRemLength = mFileSize;
-      sendHeaders(200, "OK", NULL, getMimeType(mPath.c_str()), mFileSize, statbuf->st_mtime);
-    }
-    else { // Range request
-      fseek(mFile, rangeHdr.begin, SEEK_SET);
-      if (rangeHdr.end == 0)
-	rangeHdr.end = mFileSize;
-      mRemLength = (rangeHdr.end-rangeHdr.begin);
-      snprintf(f, sizeof(f), "Content-Range: bytes %lld-%lld/%lld", rangeHdr.begin, (rangeHdr.end -1), mFileSize);
-      sendHeaders(206, "Partial Content", f, getMimeType(mPath.c_str()), (rangeHdr.end-rangeHdr.begin), statbuf->st_mtime);
-    }
+  mFileSize = S_ISREG(statbuf->st_mode) ? statbuf->st_size : -1;
+
+  if (!rangeHdr.isRangeRequest) {
+    mRemLength = mFileSize;
+    sendHeaders(200, "OK", NULL, getMimeType(mPath.c_str()), mFileSize, statbuf->st_mtime);
+  }
+  else { // Range request
+    fseek(mFile, rangeHdr.begin, SEEK_SET);
+    if (rangeHdr.end == 0)
+      rangeHdr.end = mFileSize;
+    mRemLength = (rangeHdr.end-rangeHdr.begin);
+    snprintf(f, sizeof(f), "Content-Range: bytes %lld-%lld/%lld", rangeHdr.begin, (rangeHdr.end -1), mFileSize);
+    sendHeaders(206, "Partial Content", f, getMimeType(mPath.c_str()), (rangeHdr.end-rangeHdr.begin), statbuf->st_mtime);
+  }
 
 #ifndef DEBUG
-    *(mLog->log())<< "fd= " <<  mFd << " mReqId= "<< mReqId 
-	 << ": Done mRemLength= "<< mRemLength << " ret= " << ret 
-	 << DEBUGHDR << endl;
+  *(mLog->log())<< "fd= " <<  mFd << " mReqId= "<< mReqId 
+		<< ": Done mRemLength= "<< mRemLength << " mContentType= " << mContentType 
+		<< endl;
 #endif
-    mConnState = SERVING;
+  mConnState = SERVING;
 
-  }
-  return ret;
+  return OKAY;
 
 }
 

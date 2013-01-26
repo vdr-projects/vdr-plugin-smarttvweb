@@ -145,11 +145,15 @@ class cHttpResource {
   int sendRecordingsXml (struct stat *statbuf);
   int sendChannelsXml (struct stat *statbuf);
   int sendResumeXml ();
+  int sendVdrStatusXml (struct stat *statbuf);
   //  int sendResumeXml (struct stat *statbuf);
   int sendEpgXml (struct stat *statbuf);
   int sendMediaXml (struct stat *statbuf);
 
   int sendManifest (struct stat *statbuf, bool is_hls = true);
+
+  int receiveResume();
+
   void writeM3U8(double duration, float seg_dur, int end_seg);
   void writeMPD(double duration, float seg_dur, int end_seg);
 
