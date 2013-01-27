@@ -173,7 +173,9 @@ Player.playVideo = function(resume_pos) {
     	Display.updatePlayTime();
 
         Display.status("Play");
-    	Display.showStatus();
+    	Display.hideStatus();
+//    	Display.showStatus();
+
     	Display.showProgress();
         this.state = this.PLAYING;
         
@@ -181,12 +183,13 @@ Player.playVideo = function(resume_pos) {
         Player.ResetTrickPlay();
         Player.skipDuration = Config.skipDuration; // reset
 
-        Main.log ("StartPlayback for " + this.url);
+        Main.log ("Player.playVideo: StartPlayback for " + this.url);
 
         if (resume_pos == -1)
         	this.plugin.Play( this.url );
         else
         	this.plugin.ResumePlay(this.url, resume_pos);
+
         Audio.plugin.SetSystemMute(false); 
         pluginObj.setOffScreenSaver();
         this.pluginBD.DisplayVFD_Show(0100); // Play
@@ -199,6 +202,7 @@ Player.pauseVideo = function() {
 	
     this.state = this.PAUSED;
     Display.status("Pause");
+	Display.showStatus();
     var res = this.plugin.Pause();
 	if (res == false)
 		Display.showPopup("pause ret= " +  ((res == true) ? "True" : "False"));  
@@ -232,6 +236,7 @@ Player.resumeVideo = function() {
 	Display.showProgress();
     this.state = this.PLAYING;
     Display.status("Play");
+	Display.hideStatus();
     var res = this.plugin.Resume();
 	if (res == false)
 		Display.showPopup("resume ret= " +  ((res == true) ? "True" : "False"));  
@@ -257,7 +262,7 @@ Player.jumpToVideo = function(percent) {
 //    Display.showPopup("jumpToVideo= " + percent + "% of " + (this.totalTime/1000) + "sec<br>--> tgt = " + tgt + "sec curPTime= " + (this.curPlayTime/1000)+"sec");
 	this.plugin.Stop();
 	
-	Display.showStatus();
+//	Display.showStatus();
 
 	var res = this.plugin.ResumePlay(this.url, tgt );
 	if (res == false)
@@ -390,7 +395,7 @@ Player.onBufferingStart = function() {
 	// should trigger from here the overlay
 	Display.showProgress();
 	Display.status("Buffering...");
-	Display.showStatus();
+//	Display.showStatus();
 };
 
 Player.onBufferingProgress = function(percent)
@@ -447,11 +452,10 @@ Player.OnStreamInfoReady = function() {
 //    Player.curPlayTimeStr =  Display.durationString(Player.totalTime / 1000.0);
     Player.totalTimeStr =Display.durationString(Player.totalTime / 1000.0);
     
-/*    var height = Player.plugin.GetVideoHeight();
-    var width = Player.GetVideoWidth();
-    Display.showPopup("Resolution= " + height + " x " +width);
-    Main.log("Resolution= " + height + " x " +width);
-*/
+    var height = Player.plugin.GetVideoHeight();
+    var width = Player.plugin.GetVideoWidth();
+//    Display.showPopup("Resolution= " + height + " x " +width);
+    Main.logToServer("Resolution= " + width + " x " + height );
 };
 
 Player.OnRenderingComplete = function() {
@@ -478,8 +482,9 @@ Player.OnStreamNotFound = function() {
 Player.OnNetworkDisconnected = function() {
 //  when the ethernet is disconnected or the streaming server stops supporting the content in the middle of streaming.
 	Main.log ("ERROR: Lost Stream (Unavailable?)");
-
+	
 //	widgetAPI.putInnerHTML(document.getElementById("popup"), "Lost Stream (Unavailable?)");
 	Display.showPopup("Lost Stream (Unavailable?)");
+	Server.saveResume();
 };
 

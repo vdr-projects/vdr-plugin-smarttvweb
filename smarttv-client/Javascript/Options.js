@@ -122,8 +122,8 @@ Options.deleteAll = function () {
 
 Options.deleteChar = function() {
 	var txt = document.getElementById(Options.inputElm).value;
-	alert("Options.cursorPos= " +Options.cursorPos);
-	alert("txt.length= " +txt.length);
+//	alert("Options.cursorPos= " +Options.cursorPos);
+//	alert("txt.length= " +txt.length);
 	document.getElementById(Options.inputElm).value = txt.slice(0, (Options.cursorPos-1))  + txt.slice(Options.cursorPos);
 	Options.cursorPos = Options.cursorPos -1;
 	Options.setCursor(Options.cursorPos);
