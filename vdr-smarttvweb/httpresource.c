@@ -1527,14 +1527,26 @@ int cHttpResource::sendEpgXml (struct stat *statbuf) {
   vector<sQueryAVP> avps;
   parseQueryLine(&avps);
   string id = "S19.2E-1-1107-17500";
+  string mode = "";
+  bool add_desc = true; 
+
   if (getQueryAttributeValue(&avps, "id", id) == ERROR){
     *(mLog->log())<< DEBUGPREFIX
 		  << " ERROR: id not found" 
 		  << DEBUGHDR << endl;
+    delete mResponseMessage;
     sendError(400, "Bad Request", NULL, "no id in query line");
     return OKAY;
   }
 
+  if (getQueryAttributeValue(&avps, "mode", mode) == OKAY){
+    if (mode == "nodesc") {
+      add_desc = false;
+      *(mLog->log())<< DEBUGPREFIX
+		    << " **** Mode: No Description ****"
+		    << endl;
+    }
+  }
 
   /*  for (int i = 0; i < avps.size(); i++) {
     if (avps[i].attribute == "id")
@@ -1550,21 +1562,46 @@ int cHttpResource::sendEpgXml (struct stat *statbuf) {
     *(mLog->log())<< DEBUGPREFIX
 		  << " ERROR: Not possible to get the ChannelId from the string" 
 		  << DEBUGHDR << endl;
-    // ERROR
-    // FIXME: Should send a proper error code
-    return ERROR;
+    delete mResponseMessage;
+    sendError(400, "Bad Request", NULL, "Invalid Channel ID.");
+    return OKAY;
   }
 
   cSchedulesLock * lock = new cSchedulesLock(false, 500);
   const cSchedules *schedules = cSchedules::Schedules(*lock);
  
   const cSchedule *schedule = schedules->GetSchedule(chan_id);
-  const cEvent * ev = schedule->GetPresentEvent();
+  if (schedule == NULL) {
+    *(mLog->log())<< DEBUGPREFIX
+		  << "ERROR: Schedule is zero for guid= " << id
+		  << endl;
+    delete mResponseMessage;
+    sendError(500, "Internal Server Error", NULL, "Schedule is zero.");
+    return OKAY;
+  }
 
-  delete lock;
+  time_t now = time(NULL);
+  const cEvent *ev = NULL;
+  for(cEvent* e = schedule->Events()->First(); e; e = schedule->Events()->Next(e)) {
+    if ( (e->StartTime() <= now) && (e->EndTime() > now)) {
+      ev = e;
+	
+    } else if (e->StartTime() > now + 3600) {
+      break;
+    }
+  }
   
-  sendHeaders(200, "OK", NULL, "application/xml", -1, statbuf->st_mtime);
+  //  const cEvent * ev = schedule->GetPresentEvent();
 
+  if (ev == NULL) {
+    *(mLog->log())<< DEBUGPREFIX
+		  << "ERROR: Event is zero for guid= " << id
+		  << endl;
+    delete mResponseMessage;
+    sendError(500, "Internal Server Error", NULL, "Event is zero.");
+    return OKAY;
+  }
+  
   string hdr = "";
   hdr += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
   hdr += "<tv version=\"2.0\">\n";
@@ -1572,18 +1609,56 @@ int cHttpResource::sendEpgXml (struct stat *statbuf) {
 
   *mResponseMessage += hdr;
   // Payload here
-  
-  string title = cUrlEncode::doXmlSaveEncode(ev->Title());
-  hdr = "<title>" + title +"</title>\n";
-  hdr += "<guid>" + id + "</guid>\n";
-  hdr += "<desc>";
-  hdr += cUrlEncode::doXmlSaveEncode(ev->Description());
-  hdr += "</desc>\n";
 
+  hdr = "";
+  if (ev->Title() != NULL) {
+    string title = cUrlEncode::doXmlSaveEncode(ev->Title());
+    hdr += "<title>" + title +"</title>\n";
+  }
+  else {
+    *(mLog->log())<< DEBUGPREFIX
+		  << " ERROR: title is zero for guid= " << id  << endl;
+    hdr += "<title>Empty</title>\n";
+
+    delete mResponseMessage;
+    sendError(500, "Internal Server Error", NULL, "Title is zero.");
+    return OKAY;
+  }
+
+  hdr += "<guid>" + id + "</guid>\n";
+
+  *(mLog->log())<< DEBUGPREFIX
+		<< " guid= " << id
+		<< " title= " << ev->Title()
+		<< " start= " << ev->StartTime()
+		<< " end= " << ev->EndTime()
+		<< " now= " << now
+		<< endl;
+  if (add_desc) {
+    hdr += "<desc>";
+    if (ev->Description() != NULL) {
+      hdr += cUrlEncode::doXmlSaveEncode(ev->Description());
+    }
+    else {
+      *(mLog->log())<< DEBUGPREFIX
+		    << " ERROR: description is zero for guid= " << id << endl;
+      
+      delete mResponseMessage;
+      sendError(500, "Internal Server Error", NULL, "Description is zero.");
+      return OKAY;
+    }
+    hdr += "</desc>\n";
+  }
+  else {
+    hdr += "<desc>No Description Available</desc>\n";
+  }
   snprintf(f, sizeof(f), "<start>%ld</start>\n", ev->StartTime());
   hdr += f ;
 
   snprintf(f, sizeof(f), "<end>%ld</end>\n", ev->EndTime());
+  hdr += f;
+
+  snprintf(f, sizeof(f), "<duration>%d</duration>\n", ev->Duration());
   hdr += f;
   *mResponseMessage += hdr;
 
@@ -1592,6 +1667,9 @@ int cHttpResource::sendEpgXml (struct stat *statbuf) {
   
   *mResponseMessage += hdr;
 
+  delete lock;
+
+  sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), -1);
 
 #endif
   return OKAY;
