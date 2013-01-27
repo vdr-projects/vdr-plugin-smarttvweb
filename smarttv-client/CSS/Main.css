@@ -6,7 +6,7 @@
     margin: 0;
     border: 0;
     position: relative;
-    color:#FFFFFF;
+    color: #FFFFFF;
     background-color: transpant;
     text-shadow: 1px 1px 1px #000;
     
@@ -53,13 +53,22 @@ body {
 	border-width:2px;  
     font-size:16px;
 	-webkit-border-radius: 7px;
-	padding-top:20px;
+	padding-top:5px;
     padding-left:20px;
     padding-right:20px;
     background: rgba(6,109,171,1) 100%;
 	background: -webkit-linear-gradient(-45deg, #1e5799 0%,#2989d8 41%,#7db9e8 100%);
 	-webkit-box-shadow:3px 3px 7px 4px rgba(0,0,0, 0.5);
 }
+
+
+#selectNow{
+	text-align: left;
+}
+#selectDisk{
+	text-align: right;
+}
+
 /*    background-size: 100%;
 */
 #optionsScreen {
@@ -137,14 +146,32 @@ body {
 	height: 35px;
 	width: 90%;
     background-repeat:repeat-x;
-    font-size:25px;
     padding-top:3px;
-    padding-left:20px;
+    padding-left:10px;
     z-index:10;
+	}
+
+#logo div {
+	display:inline-block;
 }
 
+#logoNow {
+	text-align: left;
+	font-size:18px;
+	width: 35%;
+}
 
+#logoTitle {
+	text-align: center;
+	font-size:25px;
+	width: 30%;
+}
 
+#logoDisk {
+	text-align: right;
+	font-size:18px;
+	width: 35%;
+}
 /* Right Half */
 #rightHalf {
     position: absolute;
@@ -350,6 +377,9 @@ body {
     width:50%; height:16px;
     text-align:left;
     font-size:16px;
+	overflow:hidden;
+	text-overflow: ellipsis;
+	white-space : nowrap;
 }
       
 #olStartStop {

@@ -51,17 +51,31 @@ Display.init = function()
     {
         success = false;
     }
-    
+
     for (var i = 0; i <= this.LASTIDX; i++) {
     	var elm = $("#video"+i);
+    	$(elm).css({"width" : "100%", "text-align": "left", "padding-top": "4px", "padding-bottom": "5px" });
+    	$(elm).append($("<div>").css({ "display": "inline-block", "width":"20%", 
+			"overflow": "hidden", "text-overflow":"ellipsis", "height": "14px"})); 
+    	$(elm).append($("<div>").css({ "display": "inline-block", "width":"70%", 
+			"overflow": "hidden", "text-overflow":"ellipsis", "white-space": "nowrap", "height": "14px"})); 
+    	$(elm).append($("<div>").css({ "display": "inline-block", "width":"5%", 
+			 "height": "14px"})); 
+    }  
+	
+
+/*    for (var i = 0; i <= this.LASTIDX; i++) {
+    	var elm = $("#video"+i);
     	$(elm).css({"width" : "100%", "text-align": "left" });
-    	$(elm).append($("<div>").css({ "display": "inline-block", "padding-top": "4px", "padding-bottom": "6px", "width":"20%"})); 
-    	$(elm).append($("<div>").css({ "display": "inline-block", "padding-top": "4px", "padding-bottom": "6px", "width":"70%"})); 
-    	$(elm).append($("<div>").css({ "display": "inline-block", "padding-top": "4px", "padding-bottom": "6px", "width":"5%"})); 
-
-    }
-
-    
+    	$(elm).append($("<div>").css({ "display": "inline-block", "padding-top": "4px", "padding-bottom": "6px", "width":"20%", 
+			"overflow": "hidden", "text-overflow":"ellipsis"})); 
+    	$(elm).append($("<div>").css({ "display": "inline-block", "padding-top": "4px", "padding-bottom": "6px", "width":"70%", 
+			"overflow": "hidden", "text-overflow":"ellipsis"})); 
+    	$(elm).append($("<div>").css({ "display": "inline-block", "padding-top": "4px", "padding-bottom": "6px", "width":"5%"
+			})); 
+    }  
+*/
+   
     var done = false;
     var i = 0;
 
@@ -83,8 +97,9 @@ Display.init = function()
     return success;
 };
 
+
 Display.putInnerHTML = function (elm, val) {
-	alert(Config.deviceType + " " +elm + " " + val);
+//	alert(Config.deviceType + " " +elm + " " + val);
 	switch (Config.deviceType) {
 	case 0:
 		// Samsung specific handling of innerHtml
@@ -231,18 +246,45 @@ Display.show = function() {
 //    document.getElementById("main").style.display="block";
     $("#main").show();
 
-    this.itemHeight = Math.round(parseInt($("#videoList").height()) / (this.LASTIDX +1) );
-    alert ("vidList= " + $("#videoList").height()+ " itmHeight= " + this.itemHeight );
-    
+    this.itemHeight = Math.round(parseInt($("#videoList").height()) / (this.LASTIDX +1) );    
 };
+
+Display.tuneLeftSide = function() {
+	var res = {};
+	res.w1 = "20%";
+	res.w2 = "70%";
+	res.w3 = "5%";
+	switch (Main.state) {
+		case Main.eLIVE:
+		case Main.eMED:
+			res.w1 = "5%";
+			res.w2 = "85%";
+			res.w3 = "5%";
+		break;
+		case Main.eREC:
+			res.w1 = "20%";
+			res.w2 = "70%";
+			res.w3 = "5%";
+		break;
+		default:
+			Main.logToServer("ERROR in Display.tuneLeftSide. Should not be here");
+		break;
+	}
+	Main.log("Display.tuneLeftSide: w1= " + res.w1 +" w2= " + res.w2 + " w3= " + res.w3  );
+	return res;
+};
+
 
 Display.setVideoList = function(selected, first) {
 	// 
     var listHTML = "";
     var res = {};
 //    var first_item = selected;
-    var first_item = first; //thlo
 
+    var first_item = first; //thlo	
+//	var first_item = selected - ( selected % (Display.LASTIDX +1))
+
+	tab_style = Display.tuneLeftSide();
     var i=0;
     Main.log("Display.setVideoList title= " +Data.getCurrentItem().childs[selected].title + " selected= " + selected + " first_item= " + first_item);
     this.handleDescription(selected);
@@ -255,8 +297,8 @@ Display.setVideoList = function(selected, first) {
             res = Display.getDisplayTitle (Data.getCurrentItem().childs[first_item+i]); 
     	}
         this.videoList[i] = document.getElementById("video"+i);
-
-		Display.setVideoItem(this.videoList[i], res);
+		Display.setVideoItem(this.videoList[i], res, tab_style);
+		
         this.unselectItem(this.videoList[i]);
     }
     
@@ -264,16 +306,23 @@ Display.setVideoList = function(selected, first) {
     this.selectItem(this.videoList[this.currentWindow]);
     
     listHTML = (selected +1) + " / " + Data.getVideoCount();
-    
-    Display.putInnerHTML(document.getElementById("videoCount"), listHTML);
+	$("#videoCount").text(listHTML);
+//    Display.putInnerHTML(document.getElementById("videoCount"), listHTML);
 };
 
-Display.setVideoItem = function (elm, cnt) {
+Display.setVideoItem = function (elm, cnt, style) {
 	// cnt
 	$(elm).children("div").eq(0).text (cnt.c1);
 	$(elm).children("div").eq(1).text (cnt.c2);
 	$(elm).children("div").eq(2).text (cnt.c3);
-
+	
+	if (typeof(style) != "undefined") {
+//		Main.log ("Display.setVideoItem: change style w1= " + style.w1 + " w2= " + style.w2 + " w3= " + style.w3);
+		$(elm).children("div").eq(0).css("width", style.w1 );
+		$(elm).children("div").eq(1).css("width", style.w2 );
+		$(elm).children("div").eq(2).css("width", style.w3 );
+	}
+	/*
 	var itm = $(elm).children("div").eq(1);
 	if (itm.outerHeight() > this.itemHeight) {
 		var temp = cnt.c2;
@@ -282,6 +331,7 @@ Display.setVideoItem = function (elm, cnt) {
 		    itm.text(temp + '...');
 		}	
 	}
+	*/
 };
 
 //Video Select Screen
@@ -295,7 +345,7 @@ Display.resetVideoList = function () {
 			break;
 	    }
 		Display.unselectItem(elm);	
-		Display.setVideoItem(elm, {c1: "", c2: "", c3: ""});
+		Display.setVideoItem(elm, {c1: "", c2: "", c3: ""}, {w1: "20%", w2:"70%", w3:"5%"});
 		i ++;
 	}    
 	
@@ -323,8 +373,8 @@ Display.handleDescription =function (selected) {
 
     	var d_str ="";
     	var msg = "";
-    	if (Main.state == 1) {
-    		// Live
+		switch (Main.state) {
+		case Main.eLIVE:
     		var now = Display.GetEpochTime();
 
         	d_str = hour + ":" + min;
@@ -333,20 +383,26 @@ Display.handleDescription =function (selected) {
         	msg += "<b>"+ prog + "</b><br>";
         	msg += "<br>Start: " + d_str + "<br>";
         	msg += "Duration: " + Display.durationString(length) + "h<br>";
-        	Main.log("itm.payload.start= " + itm.payload.start + " length= " + length + " now= " +now);
+//        	Main.log("itm.payload.start= " + itm.payload.start + " length= " + length + " now= " +now);
         	msg += "Remaining: " + Display.durationString((itm.payload.start + length - now));
-        	
-        	
-    	}
-    	else {
-    		// on-demand
+			msg += "<br><br>"+ desc;
+		break;
+		case Main.eREC:
         	d_str = mon + "/" + day + " " + hour + ":" + min;
 
         	msg += "<b>" + title + "</b>";
         	msg += "<br><br>" + d_str;
         	msg += " Duration: " + Display.durationString(length) + "h";
-    	}
-    	msg += "<br><br>"+ desc;
+			msg += "<br><br>"+ desc;
+		break;
+		case Main.eMED:
+        	msg += "<b>" + title + "</b>";
+		break;
+		default:
+			Main.logToServer("ERROR in Display.handleDescription: Should not be here");
+		break;
+		}
+
         Display.setDescription(msg);   	
     }
 	
@@ -365,9 +421,9 @@ Display.setVideoListPosition = function(position, move)
 
     this.handleDescription(position);
     
-    listHTML = (position + 1) + " / " + Data.getVideoCount();
-    Display.putInnerHTML(document.getElementById("videoCount"), listHTML);
-    
+//    listHTML = (position + 1) + " / " + Data.getVideoCount();
+//    Display.putInnerHTML(document.getElementById("videoCount"), listHTML);
+	$("#videoCount").text((position + 1) + " / " + Data.getVideoCount());
     
     if(Data.getVideoCount() < this.LASTIDX) {
         for (var i = 0; i < Data.getVideoCount(); i++)
@@ -443,6 +499,54 @@ Display.setDescription = function(description) {
     Display.putInnerHTML(descriptionElement, description);
 };
 
+Display.getDisplayTitle = function(item) {
+	var res = {c1:"", c2:"", c3:""};
+	switch (Main.state) {
+	case Main.eLIVE:
+		// Live
+		if (item.isFolder == true) {
+			res.c2 = item.title;
+			res.c3 = "<" + Display.getNumString(item.childs.length, 2) +">"; 			
+		}
+		else {
+			res.c2 = item.title;
+		}
+		break;
+	case Main.eREC:
+		// Recordings
+		if (item.isFolder == true) {
+			res.c1 = "<" + Display.getNumString(item.childs.length, 3) + ">";
+			res.c2 = item.title; 			
+		}
+		else {
+			var digi = new Date(parseInt(item.payload.start*1000));
+			var mon = Display.getNumString ((digi.getMonth()+1), 2);
+			var day = Display.getNumString (digi.getDate(), 2);
+			var hour = Display.getNumString (digi.getHours(), 2);
+			var min = Display.getNumString (digi.getMinutes(), 2);
+
+			var d_str = mon + "/" + day + " " + hour + ":" + min;
+			res.c1 = d_str;
+			res.c2 = item.title; 
+		}
+		break;
+	case Main.eMED:
+		if (item.isFolder == true) {
+			res.c3 = "<" + Display.getNumString(item.childs.length, 3) + ">";
+			res.c2 = item.title; 						
+		}
+		else {
+			res.c2 = item.title; 
+		}
+		break;
+	default:
+		Main.logToServer("ERROR in Display.getDisplayTitle: Shall be in state 1, 2 or 3. State= " + Main.state);
+		break;
+	}
+	return res;
+};
+
+
 
 /*
  * Overlay Functions
@@ -452,17 +556,49 @@ Display.setDescription = function(description) {
  * Progress Overlay
  * 
  */
+
+Display.initOlForLive = function () {
+	$("#olTitle").css("width", "50%");
+	$("#olStartStop").show();
+};
+
+Display.initOlForRecordings = function () {
+	$("#olStartStop").hide();
+	$("#olTitle").css("width", "75%");
+};
+ 
+Display.updateOlForLive = function (start_time, duration, now) {
+	
+	Display.setOlTitle(Data.getCurrentItem().childs[Main.selectedVideo].title + " - " +Data.getCurrentItem().childs[Main.selectedVideo].payload.prog);
+	Display.setStartStop (start_time, (start_time + duration));
+	Player.totalTime = Data.getCurrentItem().childs[Main.selectedVideo].payload.dur * 1000;
+	Player.totalTimeStr =Display.durationString(Player.totalTime / 1000.0);
+
+//		Display.updateTotalTime(Player.totalTime);
+	var digi = new Date((Data.getCurrentItem().childs[Main.selectedVideo].payload.start*1000));
+	Main.log (" Date(): StartTime= " + digi.getHours() + ":" + digi.getMinutes() + ":" + digi.getSeconds());
+//		Player.cptOffset = (now - Data.getCurrentItem().childs[Main.selectedVideo].payload.start) * 1000;
+	Player.setCurrentPlayTimeOffset((now - Data.getCurrentItem().childs[Main.selectedVideo].payload.start) * 1000);
+	Player.OnCurrentPlayTime(0);   // updates the HTML elements of the Progressbar 
+}; 
+ 
 Display.setOlTitle = function (title) {
 	this.olTitle = title;
-	var elm = document.getElementById("olTitle");
-	Display.putInnerHTML(elm, Display.olTitle);    
+	$("#olTitle").text(this.olTitle);
+//	Main.log("Display.setOlTitle: font-size=" + $("#olTitle").css("font-size"));
+//	Main.log("Display.setOlTitle: height=" + $("#olTitle").css("height"));
+//	Main.log("Display.setOlTitle: outerHeight=" + $("#olTitle").outerHeight());
+	
+//	var elm = document.getElementById("olTitle");
+//	Display.putInnerHTML(elm, Display.olTitle);    
 };
 
 Display.resetStartStop = function () {
 	Display.olStartStop = "";
-    var elm = document.getElementById("olStartStop");
+	$("#olStartStop").text("");
+/*    var elm = document.getElementById("olStartStop");
     Display.putInnerHTML(elm, Display.olStartStop);    
-	
+*/	
 };
 Display.setStartStop = function(start, stop) {
 	this.olStartStop = "";
@@ -480,9 +616,12 @@ Display.setStartStop = function(start, stop) {
     if (minutes<=9)
     	   minutes='0'+minutes;
     this.olStartStop = this.olStartStop + hours + ":" + minutes;    
-
-    var elm = document.getElementById("olStartStop");
+	
+	$("#olStartStop").text(Display.olStartStop);
+  
+/*	var elm = document.getElementById("olStartStop");
     Display.putInnerHTML(elm, Display.olStartStop);    
+	*/
 };
 
 Display.setSkipDuration = function(duration) {
@@ -490,8 +629,11 @@ Display.setSkipDuration = function(duration) {
 
     this.olStartStop = duration;    
 
-    var elm = document.getElementById("olStartStop");
+	$("#olStartStop").text("Next Skip: " + Display.olStartStop+"sec");
+
+/*    var elm = document.getElementById("olStartStop");
     Display.putInnerHTML(elm, "Next Skip: " + Display.olStartStop+"sec");    
+	*/
 };
 
 // Player.OnCurrentPlayTime
@@ -518,8 +660,9 @@ Display.updateRecBar = function (start_time, duration){
 };
 
 
+
 Display.status = function(status) {
-    Main.log(status);
+    Main.log("Display.status: " +status);
     Display.putInnerHTML(this.statusDiv, status);
     Display.putInnerHTML(this.statusPopup, status);
 };
@@ -537,45 +680,6 @@ Display.progress = function(status) {
 	Display.putInnerHTML(this.statusDiv, status);
 };
 
-
-Display.getDisplayTitle = function(item) {
-	var res = {c1:"", c2:"", c3:""};
-	switch (Main.state) {
-	case 1:
-		// Live
-		if (item.isFolder == true) {
-			res.c2 = item.title;
-			res.c3 = "<" + Display.getNumString(item.childs.length, 2) +">"; 			
-		}
-		else {
-			res.c2 = item.title;
-		}
-		break;
-	case 2:
-	case 3:
-		// Recordings
-		if (item.isFolder == true) {
-			res.c1 = "<" + Display.getNumString(item.childs.length, 3) + ">";
-			res.c2 = item.title; 			
-		}
-		else {
-			var digi = new Date(parseInt(item.payload.start*1000));
-			var mon = Display.getNumString ((digi.getMonth()+1), 2);
-			var day = Display.getNumString (digi.getDate(), 2);
-			var hour = Display.getNumString (digi.getHours(), 2);
-			var min = Display.getNumString (digi.getMinutes(), 2);
-
-			var d_str = mon + "/" + day + " " + hour + ":" + min;
-			res.c1 = d_str;
-			res.c2 = item.title; 
-		}
-		break;
-	default:
-		Main.log("ERROR: Shall be in state 1 or 2. State= " + Main.state);
-		break;
-	}
-	return res;
-};
 
 
 
@@ -676,18 +780,54 @@ Display.handlerShowProgress = function() {
 
     document.getElementById("olProgressBar").style.width = timePercent + "%";
 
-    var timeElement = document.getElementById("olTimeInfo");
-    Display.putInnerHTML(timeElement,  Player.curPlayTimeStr + " / " + Player.totalTimeStr);    
+	$("#olTimeInfo").text(Player.curPlayTimeStr + " / " + Player.totalTimeStr);
+//    var timeElement = document.getElementById("olTimeInfo");
+//    Display.putInnerHTML(timeElement,  Player.curPlayTimeStr + " / " + Player.totalTimeStr);    
 
-    var nowElement = document.getElementById("olNow");
     var Digital=new Date();
     var hours=Digital.getHours();
     var minutes=Digital.getMinutes();
     if (minutes<=9)
     	   minutes='0'+minutes;
-    Display.putInnerHTML(nowElement, hours + ':' + minutes);    
+	$("#olNow").text(hours + ':' + minutes);
+//	var nowElement = document.getElementById("olNow");
+//    Display.putInnerHTML(nowElement, hours + ':' + minutes);    
 };
 
+
+var ClockHandler = {
+	timeoutObj : null,
+	isActive : false,
+	elm : ""
+};
+
+ClockHandler.start = function(elm){
+	if (this.isActive ==true)
+		window.clearTimeout(this.timeoutObj);
+		
+	this.isActive = true;
+	this.elm = elm;
+	ClockHandler.update();
+};
+
+ClockHandler.update = function() {
+	var date = new Date();
+    var hours= date.getHours();
+    var minutes= date.getMinutes();
+    if (minutes<=9)
+    	   minutes='0'+minutes;
+	$(this.elm).text(hours + ':' + minutes);
+
+	this.timeoutObj = window.setTimeout(function() {ClockHandler.update(); }, (10*1000));
+};
+
+ClockHandler.stop = function(){
+	if (this.isActive == false )
+		return;
+
+	window.clearTimeout(this.timeoutObj);
+	this.isActive = false;
+};
 
 /*
  * OverlayHandler Class

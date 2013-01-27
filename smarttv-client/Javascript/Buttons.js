@@ -137,7 +137,7 @@ Buttons.selectBtnRight = function () {
 
 Buttons.onInput = function () {
     var keyCode = event.keyCode;
-	alert("Buttons Input= " + keyCode);
+//	alert("Buttons Input= " + keyCode);
     switch(keyCode) {
 		case tvKey.KEY_LEFT:
 			Main.log("Select Left");
@@ -158,8 +158,9 @@ Buttons.onInput = function () {
 				break;
 			case 1:
 				Main.logToServer("Buttons: Resume from "+Player.resumePos);
-				Player.playVideo(Player.resumePos);
-//				Server.getResume(Player.guid);
+//				Player.playVideo(Player.resumePos);
+				Spinner.show();
+				Server.getResume(Player.guid);
 				break;
 			}
 			Buttons.hide();

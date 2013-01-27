@@ -62,13 +62,8 @@ Server.createVideoList = function() {
 	Main.log ("creating Video list now");
 	Main.logToServer("creating Video list now");
 	
-//    var splashElement = document.getElementById("splashStatus");  
-//    Display.putInnerHTML(splashElement, "Creating Video list now" );
 
 	if (this.XHRObj.status != 200) {
-//		Display.putInnerHTML(splashElement, "XML Server Error " + this.XHRObj.status);
-//        Display.status("XML Server Error " + this.XHRObj.status);
-//    	Display.showPopup("XML Server Error " + this.XHRObj.status);
         if (this.errorCallback != null) {
         	this.errorCallback(this.XHRObj.responseText);
         }
@@ -78,7 +73,6 @@ Server.createVideoList = function() {
     	var xmlResponse = this.XHRObj.responseXML;
     	if (xmlResponse == null) {
             Display.status("xmlResponse == null" );
-//            Display.putInnerHTML(splashElement, "Error in XML File ");
         	Display.showPopup("Error in XML File");
             if (this.errorCallback != null) {
             	this.errorCallback("XmlError");
@@ -86,17 +80,14 @@ Server.createVideoList = function() {
             return;
     	}
     	var xmlElement = xmlResponse.documentElement;
-//    	var xmlElement = this.XHRObj.responseXML.documentElement;
         
         if (!xmlElement) {
-//        	Display.putInnerHTML(splashElement, "Failed to get valid XML!!!");
             Display.status("Failed to get valid XML");
         	Display.showPopup("Failed to get valid XML");
             return;
         }
         else
         {
-//        	Display.putInnerHTML(splashElement, "Parsing ...");
             var items = xmlElement.getElementsByTagName("item");          
             if (items.length == 0) {
             	Display.showPopup("Something wrong. Response does not contain any item");
@@ -141,6 +132,10 @@ Server.createVideoList = function() {
             	catch (e) {}
             	var desc = descriptionElement.firstChild.data;
 
+				if (Main.state == Main.eLIVE) {
+					Epg.guidTitle[guid] = titleElement.firstChild.data;
+//					Main.log("Server: Guid= " + guid +" -> " + Epg.guidTitle[guid]);
+				}
                 if (titleElement && linkElement) {
                 	var title_list = titleElement.firstChild.data.split("~");
                 	Data.addItem( title_list, {link : linkElement.firstChild.data, 
@@ -157,7 +152,6 @@ Server.createVideoList = function() {
                 
             }
             Data.completed(this.doSort);
-//            Display.putInnerHTML(splashElement, "Done...");
 
             if (this.dataReceivedCallback)
             {
@@ -167,17 +161,59 @@ Server.createVideoList = function() {
     }
 };
 
+Server.updateVdrStatus = function (){
+	Main.log ("get VDR Status");
+	$.ajax({
+		url: Config.serverUrl + "/vdrstatus.xml",
+		type : "GET",
+		success : function(data, status, XHR){
+			var free = $(data).find('free').text() / 1024.0;
+			var used = $(data).find('used').text() / 1024.0;
+			var percent = $(data).find('percent').text();
+	
+			var unit = "GB";
+			var free_str = free.toFixed(2);
+			if (free_str.length > 6) {
+				free = free / 1024.0;
+				free_str = free.toFixed(2);
+				unit = "TB";
+			}
+//			Main.log ("free.length= " + free_str.length);
+			$("#logoDisk").text("Free: " +free_str + unit);
+			$("#selectDisk").text("Free: " +free_str + unit);
+			},
+		error: function(jqXHR, status, error){
+			Main.log("VdrStatus: Error");
+			}
+	});
+}
 
 
 Server.getResume = function (guid) {
-	Main.log ("***** getResume *****");
+//	Main.log ("***** getResume *****");
 	$.ajax({
 		url: Config.serverUrl + "/getResume.xml",
 		type : "POST",
 		data : "filename:" + guid +"\n", 
 		success : function(data, status, XHR ) {
 			Main.log("**** Resome Success Response - status= " + status + " mime= " + XHR.responseType + " data= "+ data);
-			var xmlResponse = XHR.responseXML;
+
+			var resume_str = $(data).find("resume").text();
+			if (resume_str != "") {
+				var resume_val = parseFloat(resume_str);
+				Main.log("resume val= " + resume_val );
+				Main.logToServer("resume val= " + resume_val );
+				Player.resumePos = resume_val;
+//			Buttons.show();
+				Player.playVideo( resume_val);
+			}
+			else {
+	    		Display.hide();
+	        	Display.showProgress();
+				Player.playVideo(-1);
+			}
+
+/*			var xmlResponse = XHR.responseXML;
 			if (xmlResponse == null) {
 				Main.logToServer("Resume: xmlResponse is null");
 	    		Display.hide();
@@ -190,7 +226,6 @@ Server.getResume = function (guid) {
 	    		Display.hide();
 	        	Display.showProgress();
 				Player.playVideo();
-
 			}
 			var xml_str = (new XMLSerializer()).serializeToString(xmlElement);
 			Main.logToServer(" XML Response= " + xml_str + " NodeType= " + xmlElement.nodeType);
@@ -203,23 +238,42 @@ Server.getResume = function (guid) {
 				Main.log("resume val= " + resume_val );
 				Main.logToServer("resume val= " + resume_val );
 				Player.resumePos = resume_val;
-				Buttons.show();
-//				Player.playVideo( resume_val);
+//				Buttons.show();
+				Player.playVideo( resume_val);
 			}
 			catch (e) {
 				Main.log("Resume Parsing Error: " +e);
 	    		Display.hide();
 	        	Display.showProgress();
-				Player.playVideo();
+				Player.playVideo(-1);
 			}
-			
+			*/
 		},
 		error : function (jqXHR, status, error) {
 			Main.log("**** Resome Error Response - status= " + status + " error= "+ error);
     		Display.hide();
         	Display.showProgress();
-			Player.playVideo();
+			Player.playVideo(-1);
 		}
 	});
 };
+
+Server.saveResume = function() {
+    	// 
+//    	var msg = "devid:" + Network.getMac() + "\n"; 
+//    	Player.curPlayTime = 15.4 * 1000;
+	var msg = ""; 
+    msg += "filename:" + Data.getCurrentItem().childs[Main.selectedVideo].payload.guid + "\n"; 
+    msg += "resume:"+ (Player.curPlayTime/1000) + "\n" ;
+    	
+	$.post(Config.serverUrl + "/setResume.xml", msg, function(data, textStatus, XHR) {
+		Main.logToServer("SaveResume Status= " + XHR.status );
+	}, "text");
+
+/*	var XHRObj = new XMLHttpRequest();
+    XHRObj.open("POST", Config.serverUrl + "/setResume.xml", true);
+    XHRObj.send(msg);
+ */   	
+};
+
 

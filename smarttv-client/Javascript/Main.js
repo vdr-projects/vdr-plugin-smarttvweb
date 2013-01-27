@@ -132,17 +132,17 @@ Main.init = function () {
     if ( Player.init() && Server.init() && Audio.init()) {
     	Display.setVolume( Audio.getVolume() );
 
-//    	Epg.init();
         // Start retrieving data from server
         Server.dataReceivedCallback = function() {
-                /* Use video information when it has arrived */
-        		Display.setVideoList(Main.selectedVideo, Main.selectedVideo); 
+			/* Use video information when it has arrived */
+        	Display.setVideoList(Main.selectedVideo, Main.selectedVideo); 
 
-                Display.show();
-                if (Player.isLive == true) {
-                	Epg.startEpgUpdating();
-                }
-            };
+            Display.show();
+//            if (Player.isLive == true) {
+            if (Main.state == Main.eLIVE) {
+               	Epg.startEpgUpdating();
+               }
+        };
 
         // Enable key event processing
         this.enableKeys();
@@ -152,6 +152,14 @@ Main.init = function () {
        Main.log("Failed to initialise");
     }
 
+	ClockHandler.start("#selectNow");
+
+//	Epg.updateEpg("S19.2E-1-1101-28106");
+	Server.updateVdrStatus();
+
+//	Display.handlerShowProgress();
+//	Display.initOlForRecordings();
+//	Display.setOlTitle("Hallo Echo Hallo Echo Hallo Echo Hallo Echo Hallo Echo Hallo Echo Hallo Echo Hallo Echo  Hallo Echo  Hallo Echo  Hallo Echo");
     /*
      * 
      * Fetch JS file
@@ -195,6 +203,11 @@ Main.changeState = function (state) {
 	var old_state = this.state;
 	this.state = state;
 	
+	ClockHandler.stop();
+	Epg.stopUpdates();
+	
+	Server.updateVdrStatus();
+	
 	switch (this.state) {
 	case Main.eMAIN:
 		Main.selectMenuKeyHndl.select = old_state;
@@ -203,24 +216,32 @@ Main.changeState = function (state) {
 		Display.resetSelectItems(old_state);
         
 		document.getElementById("selectScreen").style.display="block";
+	
+		ClockHandler.start("#selectNow");
 		Display.hide();
 		Display.resetVideoList();		
 		break;
 	case Main.eLIVE:
 		document.getElementById("selectScreen").style.display="none";
+		ClockHandler.start("#logoNow");
 		Display.show();
+		Main.selectedVideo = 0;
 		Data.reset ();
 		Main.liveSelected();
 		break;
 	case Main.eREC:
 		document.getElementById("selectScreen").style.display="none";
+		ClockHandler.start("#logoNow");
 		Display.show();
+		Main.selectedVideo = 0;
 		Data.reset ();
 		Main.recordingsSelected();
 		break;
 	case Main.eMED:
 		document.getElementById("selectScreen").style.display="none";
+		ClockHandler.start("#logoNow");
 		Display.show();
+		Main.selectedVideo = 0;
 		Data.reset ();
 		Main.mediaSelected();
 		break;
@@ -237,17 +258,8 @@ Main.changeState = function (state) {
 
 Main.recordingsSelected = function() {
     Player.stopCallback = function() {
-    	// 
-//    	var msg = "devid:" + Network.getMac() + "\n"; 
-//    	Player.curPlayTime = 15.4 * 1000;
-    	var msg = ""; 
-    	msg += "filename:" + Data.getCurrentItem().childs[Main.selectedVideo].payload.guid + "\n"; 
-    	msg += "resume:"+ (Player.curPlayTime/1000) + "\n" ;
-    	
-        var XHRObj = new XMLHttpRequest();
-        XHRObj.open("POST", Config.serverUrl + "/setResume.xml", true);
-        XHRObj.send(msg);
-    	
+		Server.saveResume ();    	
+		Data.getCurrentItem().childs[Main.selectedVideo].payload.isnew = "false";
     	Display.show();
     };
     Server.errorCallback = function (msg) {
@@ -314,22 +326,23 @@ Main.enableKeys = function() {
     document.getElementById("anchor").focus();
 };
 
-Main.keyDown = function() {
+Main.keyDown = function(event) {
+event = event || window.event;
 	switch (this.state) {
 	case 0: 
 		// selectView
-        this.selectMenuKeyHndl.handleKeyDown();
+        this.selectMenuKeyHndl.handleKeyDown(event);
 		break;
 	case 1: 
 		// Live
 		Main.log("Live - Main.keyDown PlayerState= " + Player.getState());
 	    if(Player.getState() == Player.STOPPED) {
 	    	// Menu Key
-	        this.menuKeyHndl.handleKeyDown();
+	        this.menuKeyHndl.handleKeyDown(event);
 	    }
 	    else {
 	    	// Live State Keys
-	    	this.livePlayStateKeyHndl.handleKeyDown();
+	    	this.livePlayStateKeyHndl.handleKeyDown(event);
 	    };
 
 		break;
@@ -339,11 +352,11 @@ Main.keyDown = function() {
 		Main.log("Recordings - Main.keyDown PlayerState= " + Player.getState());
 	    if(Player.getState() == Player.STOPPED) {
 	    	// Menu Key
-	        this.menuKeyHndl.handleKeyDown();
+	        this.menuKeyHndl.handleKeyDown(event);
 	    }
 	    else {
 	    	// Play State Keys
-	        this.playStateKeyHndl.handleKeyDown();
+	        this.playStateKeyHndl.handleKeyDown(event);
 	    };
 
 		break;
@@ -368,22 +381,14 @@ Main.playItem = function (url) {
 		// Live
 		// Check for updates
 		Display.hide();
+		Display.initOlForLive();
     	Display.showProgress();
     	
-		Display.setOlTitle(Data.getCurrentItem().childs[Main.selectedVideo].title + " - " +Data.getCurrentItem().childs[Main.selectedVideo].payload.prog);
-		Display.setStartStop (start_time, (start_time + duration));
 		Player.isLive = true;
 		Player.bufferState = 0;
 		Player.isRecording = false;
-		Player.totalTime = Data.getCurrentItem().childs[Main.selectedVideo].payload.dur * 1000;
-	    Player.totalTimeStr =Display.durationString(Player.totalTime / 1000.0);
 
-//		Display.updateTotalTime(Player.totalTime);
-		var digi = new Date((Data.getCurrentItem().childs[Main.selectedVideo].payload.start*1000));
-		Main.log (" Date(): StartTime= " + digi.getHours() + ":" + digi.getMinutes() + ":" + digi.getSeconds());
-//		Player.cptOffset = (now - Data.getCurrentItem().childs[Main.selectedVideo].payload.start) * 1000;
-		Player.setCurrentPlayTimeOffset((now - Data.getCurrentItem().childs[Main.selectedVideo].payload.start) * 1000);
-		Player.OnCurrentPlayTime(0);
+		Display.updateOlForLive (start_time, duration, now);
 		Main.log ("Live now= " +  now + " StartTime= " + Data.getCurrentItem().childs[Main.selectedVideo].payload.start + " offset= " +Player.cptOffset );
 		Main.log("Live Content= " + Data.getCurrentItem().childs[Main.selectedVideo].title + " dur= " + Data.getCurrentItem().childs[Main.selectedVideo].payload.dur);
 
@@ -392,38 +397,15 @@ Main.playItem = function (url) {
 		Player.setVideoURL( Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
 		Player.playVideo(-1);
 	break;
-	case Main.eMED:
-		Display.hide();
-    	Display.showProgress();
-    	
-		Player.setCurrentPlayTimeOffset(0);
-		Player.isLive = false;
-		Player.isRecording = false;
-    	Main.log(" playItem: now= " + now + " start_time= " + start_time + " dur= " + duration + " (Start + Dur - now)= " + ((start_time + duration) -now));
-
-    	document.getElementById("olRecProgressBar").display="none";
-		Display.setOlTitle(Data.getCurrentItem().childs[Main.selectedVideo].title);
+	case Main.eREC: 
+		Display.initOlForRecordings();
 		Display.resetStartStop();
 
-		Player.setVideoURL( Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
-		Player.playVideo(-1);
-
-		Player.guid = "unknown";
-
-		break;
-	case Main.eREC: 
-		/*
-		 * Check is isnew = false
-		 * if yes, then open a popup with the choice to play or to resume
-		 * The player is in any case started from somewhere else
-	
-		 * If resume, then play is issued from resume callback
-		 */
 //		Main.getResume(Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
 		Player.setVideoURL( Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
 		Player.guid = Data.getCurrentItem().childs[Main.selectedVideo].payload.guid;
 
-		Server.getResume(Player.guid);
+//		Server.getResume(Player.guid);
 		
 		Player.setCurrentPlayTimeOffset(0);
 		Player.isLive = false;
@@ -447,11 +429,9 @@ Main.playItem = function (url) {
 	    	document.getElementById("olRecProgressBar").display="none";
 		}
 		Display.setOlTitle(Data.getCurrentItem().childs[Main.selectedVideo].title);
-		Display.resetStartStop();
 		Main.log("IsNew= " +Data.getCurrentItem().childs[Main.selectedVideo].payload.isnew);
 		
-		
-/*		if (Data.getCurrentItem().childs[Main.selectedVideo].payload.isnew == "false") {
+		if (Data.getCurrentItem().childs[Main.selectedVideo].payload.isnew == "false") {
 			Buttons.show();
 		}
 		else {
@@ -460,18 +440,41 @@ Main.playItem = function (url) {
 
         	Player.playVideo(-1);
 		}
-*/
+
 		break;
-	};
+	case Main.eMED:
+		Display.hide();
+		Display.initOlForRecordings();
+    	Display.showProgress();
+    	
+		Player.setCurrentPlayTimeOffset(0);
+		Player.isLive = false;
+		Player.isRecording = false;
+    	Main.log(" playItem: now= " + now + " start_time= " + start_time + " dur= " + duration + " (Start + Dur - now)= " + ((start_time + duration) -now));
+
+    	document.getElementById("olRecProgressBar").display="none";
+		Display.setOlTitle(Data.getCurrentItem().childs[Main.selectedVideo].title);
+		Display.resetStartStop();
+
+		Player.setVideoURL( Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
+		Player.playVideo(-1);
+
+		Player.guid = "unknown";
+
+		break;
+	default:
+		Main.logToServer("ERROR in Main.playItem: should not be here");
+		break;
+		};
 		
 };
 
 Main.selectPageUp = function() {
-	if (this.selectedVideo == 0) {
+/*	if (this.selectedVideo == 0) {
 		 Main.changeState(0);
 		 return;
 	};
-	
+*/	
 	Main.previousVideo(Display.LASTIDX + 1);
 /*	this.selectedVideo = (this.selectedVideo - (Display.LASTIDX + 1));
     if (this.selectedVideo < 0) {
@@ -503,7 +506,7 @@ Main.selectPageDown = function() {
 Main.nextVideo = function(no) {
 	// Just move the selectedVideo pointer and ensure wrap around
     this.selectedVideo = (this.selectedVideo + no) % Data.getVideoCount();	
-	Main.log("nextVideo= " + this.selectedVideo);
+	Main.log("Main.nextVideo= " + this.selectedVideo);
 };
 
 Main.previousVideo = function(no) {
@@ -512,8 +515,7 @@ Main.previousVideo = function(no) {
     if (this.selectedVideo < 0) {
         this.selectedVideo += Data.getVideoCount();
     }
-	Main.log("previousVideo= " + this.selectedVideo);
-
+	Main.log("Main.previousVideo= " + this.selectedVideo);
 };
 
 Main.selectNextVideo = function() {
@@ -524,8 +526,7 @@ Main.selectNextVideo = function() {
     Display.setVideoListPosition(this.selectedVideo, Main.DOWN);
 };
 
-Main.selectPreviousVideo = function()
-{
+Main.selectPreviousVideo = function() {
     Player.stopVideo();
     Main.previousVideo(1);
 
@@ -836,7 +837,8 @@ function cPlayStateKeyHndl(def_hndl) {
 };
 
 
-cPlayStateKeyHndl.prototype.handleKeyDown = function () {
+cPlayStateKeyHndl.prototype.handleKeyDown = function (event) {
+//    var keyCode = event.keyCode;
     var keyCode = event.keyCode;
 
     if(Player.getState() == Player.STOPPED) {
@@ -994,7 +996,7 @@ function cLivePlayStateKeyHndl(def_hndl) {
 };
 
 
-cLivePlayStateKeyHndl.prototype.handleKeyDown = function () {
+cLivePlayStateKeyHndl.prototype.handleKeyDown = function (event) {
  var keyCode = event.keyCode;
 
  if(Player.getState() == Player.STOPPED) {
@@ -1016,13 +1018,15 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function () {
  		if (Main.selectedVideo == (Data.getVideoCount() -1)) {
  			//Last VideoItem, check wrap around or folder fall-down
  			if (Data.isRootFolder() != "true") {
- 				Main.selectedVideo = Data.folderUp();
+// 				Main.selectedVideo = Data.folderUp();
+ 				var itm = Data.folderUp();
+				Main.selectedVideo = itm.id;
  			}
  		}
  		Main.nextVideo(1); // increase and wrap
  		// check, if new element is a folder again
  		if (Data.getCurrentItem().childs[Main.selectedVideo].isFolder == true) {
- 			Data.selectFolder(Main.selectedVideo);
+ 			Data.selectFolder(Main.selectedVideo, Main.selectedVideo);
  			Main.selectedVideo= 0;
  		}
 // 		Main.nextVideo(1);
@@ -1042,13 +1046,15 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function () {
  		if (Main.selectedVideo == 0) {
  			//First VideoItem, 
  			if (Data.isRootFolder() != "true") {
- 				Main.selectedVideo = Data.folderUp();
+// 				Main.selectedVideo = Data.folderUp();
+ 				var itm = Data.folderUp();
+				Main.selectedVideo = itm.id;
  			}
  		}
  		Main.previousVideo(1);
  		// check, if new element is a folder again
  		if (Data.getCurrentItem().childs[Main.selectedVideo].isFolder == true) {
- 			Data.selectFolder(Main.selectedVideo);
+ 			Data.selectFolder(Main.selectedVideo, Main.selectedVideo);
  			Main.selectedVideo= Data.getVideoCount()-1;
  		}
  		
@@ -1113,7 +1119,7 @@ function cMenuKeyHndl (def_hndl) {
 
 };
 
-cMenuKeyHndl.prototype.handleKeyDown = function () {
+cMenuKeyHndl.prototype.handleKeyDown = function (event) {
  var keyCode = event.keyCode;
  Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
  
@@ -1137,7 +1143,7 @@ cMenuKeyHndl.prototype.handleKeyDown = function () {
          
      	if (Data.getCurrentItem().childs[Main.selectedVideo].isFolder == true) {
      		Main.log ("selectFolder= " +Main.selectedVideo);
-     		Data.selectFolder(Main.selectedVideo);
+     		Data.selectFolder(Main.selectedVideo, (Main.selectedVideo - Display.currentWindow));
      		Main.selectedVideo= 0;
      		Display.setVideoList(Main.selectedVideo, Main.selectedVideo); // thlo
      	} 
@@ -1157,9 +1163,11 @@ cMenuKeyHndl.prototype.handleKeyDown = function () {
     		 Main.changeState(0);    		 
     	 }
     	 else {
-    		 Main.selectedVideo = Data.folderUp();
+//    		 Main.selectedVideo = Data.folderUp();
+    		 var itm = Data.folderUp();
+			 Main.selectedVideo = itm.id;
     		 Main.log("folderUp selectedVideo= " + Main.selectedVideo);
-    		 Display.setVideoList(Main.selectedVideo, Main.selectedVideo); // thlo
+    		 Display.setVideoList(Main.selectedVideo, itm.first); // thlo
     	 }
     	 widgetAPI.blockNavigation(event);
 
@@ -1193,7 +1201,7 @@ function cSelectMenuKeyHndl (def_hndl) {
 	this.selectMax = 4; // Highest Select Entry
 };
 
-cSelectMenuKeyHndl.prototype.handleKeyDown = function () {
+cSelectMenuKeyHndl.prototype.handleKeyDown = function (event) {
     var keyCode = event.keyCode;
     Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
     
