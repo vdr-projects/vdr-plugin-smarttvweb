@@ -381,7 +381,6 @@ Main.playItem = function (url) {
 		// Live
 		// Check for updates
 		Display.hide();
-		Display.initOlForLive();
     	Display.showProgress();
     	
 		Player.isLive = true;
@@ -398,7 +397,6 @@ Main.playItem = function (url) {
 		Player.playVideo(-1);
 	break;
 	case Main.eREC: 
-		Display.initOlForRecordings();
 		Display.resetStartStop();
 
 //		Main.getResume(Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
@@ -444,7 +442,6 @@ Main.playItem = function (url) {
 		break;
 	case Main.eMED:
 		Display.hide();
-		Display.initOlForRecordings();
     	Display.showProgress();
     	
 		Player.setCurrentPlayTimeOffset(0);

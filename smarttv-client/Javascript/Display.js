@@ -557,12 +557,12 @@ Display.getDisplayTitle = function(item) {
  * 
  */
 
-Display.initOlForLive = function () {
+Display.showOlStartStop = function () {
 	$("#olTitle").css("width", "50%");
 	$("#olStartStop").show();
 };
 
-Display.initOlForRecordings = function () {
+Display.hideOlStartStop = function () {
 	$("#olStartStop").hide();
 	$("#olTitle").css("width", "75%");
 };
@@ -595,6 +595,7 @@ Display.setOlTitle = function (title) {
 
 Display.resetStartStop = function () {
 	Display.olStartStop = "";
+	Display.hideOlStartStop();
 	$("#olStartStop").text("");
 /*    var elm = document.getElementById("olStartStop");
     Display.putInnerHTML(elm, Display.olStartStop);    
@@ -602,7 +603,8 @@ Display.resetStartStop = function () {
 };
 Display.setStartStop = function(start, stop) {
 	this.olStartStop = "";
-
+	Display.showOlStartStop();
+	
 	var digi =new Date(start * 1000);
     var hours=digi.getHours();
     var minutes=digi.getMinutes();
@@ -626,8 +628,9 @@ Display.setStartStop = function(start, stop) {
 
 Display.setSkipDuration = function(duration) {
 	this.olStartStop = "";
+	Display.showOlStartStop();
 
-    this.olStartStop = duration;    
+	this.olStartStop = duration;    
 
 	$("#olStartStop").text("Next Skip: " + Display.olStartStop+"sec");
 
