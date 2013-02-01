@@ -1,7 +1,7 @@
 /*
  * httpresource.h: VDR on Smart TV plugin
  *
- * Copyright (C) 2012 T. Lohmar
+ * Copyright (C) 2012, 2013 T. Lohmar
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -123,6 +123,7 @@ class cHttpResource {
   bool mAcceptRanges;
   cRange rangeHdr;
   unsigned long long mFileSize;
+  bool mStreamToEnd;
   uint64_t mRemLength;
   FILE *mFile;
   int mVdrIdx;
@@ -153,6 +154,7 @@ class cHttpResource {
   int sendManifest (struct stat *statbuf, bool is_hls = true);
 
   int receiveResume();
+  int deleteRecording();
 
   void writeM3U8(double duration, float seg_dur, int end_seg);
   void writeMPD(double duration, float seg_dur, int end_seg);
