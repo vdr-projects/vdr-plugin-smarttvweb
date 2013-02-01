@@ -1,7 +1,7 @@
 /*
  * httpresource.c: VDR on Smart TV plugin
  *
- * Copyright (C) 2012 T. Lohmar
+ * Copyright (C) 2012, 2013 T. Lohmar
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -129,7 +129,7 @@ cHttpResource::cHttpResource(int f, int id,string addr, int port, SmartTvServer*
   mMethod(), mResponseMessagePos(0), mBlkData(NULL), mBlkPos(0), mBlkLen(0), 
   mPath(), mVersion(), protocol(), mReqContentLength(0),
   mPayload(), mUserAgent(),
-  mAcceptRanges(true), rangeHdr(), mFileSize(-1), mRemLength(0), mFile(NULL), mVdrIdx(1), mFileStructure(), 
+  mAcceptRanges(true), rangeHdr(), mFileSize(-1), mStreamToEnd(false), mRemLength(0), mFile(NULL), mVdrIdx(1), mFileStructure(), 
   mIsRecording(false), mRecProgress(0.0) {
 
   mLog = Log::getInstance();
@@ -586,7 +586,7 @@ int cHttpResource::fillDataBlk() {
 		     << "--> Done " << endl;
       return ERROR;
     }
-    if (mRemLength == 0) {
+    if ((mRemLength == 0) && !mStreamToEnd){
 #ifndef DEBUG
       *(mLog->log()) << DEBUGPREFIX << " mRemLength is zero "
 		     << "--> Done " << endl;
@@ -595,12 +595,16 @@ int cHttpResource::fillDataBlk() {
       mFile = NULL;      
       return ERROR;
     }
-    to_read = ((mRemLength > MAXLEN) ? MAXLEN : mRemLength);
-
+    if (!mStreamToEnd)
+      to_read = ((mRemLength > MAXLEN) ? MAXLEN : mRemLength);
+    else
+      to_read = MAXLEN;
+      
     mBlkLen = fread(mBlkData, 1, to_read, mFile);
-    mRemLength -= mBlkLen;
+    if (!mStreamToEnd)
+      mRemLength -= mBlkLen;
 
-    if (mRemLength == 0) {
+    if ((mRemLength == 0) && (!mStreamToEnd)) {
 #ifndef DEBUG
       *(mLog->log()) << DEBUGPREFIX << " last Block read "
       		     << "--> Almost Done " << endl;
@@ -630,9 +634,13 @@ int cHttpResource::fillDataBlk() {
       } // Error: Open next file failed 
     
       if (mBlkLen == 0) {
+	if (!mStreamToEnd)
 	  to_read = ((mRemLength > MAXLEN) ? MAXLEN : mRemLength);
+	else
+	  to_read = MAXLEN;
 	mBlkLen = fread(mBlkData, 1, to_read, mFile);
-	mRemLength -= mBlkLen;  
+	if (!mStreamToEnd)
+	  mRemLength -= mBlkLen ;  
       }
     }
     break;
@@ -780,6 +788,14 @@ int cHttpResource::handlePost() {
     return OKAY;
   }
 
+  if (mPath.compare("/deleteRecording.xml") == 0) {
+    if (handleHeadRequest() != 0)
+      return OKAY;
+
+    deleteRecording();
+    return OKAY;
+  }
+
   // Should not reach the end of the function
   return ERROR;
 }
@@ -924,6 +940,8 @@ int cHttpResource::writeXmlItem(string name, string link, string programme, stri
   //  snprintf(f, sizeof(f), "%s - %s", );
   hdr += "<title>" + name +"</title>\n";
   hdr += "<link>" +link + "</link>\n";
+  hdr += "<enclosure url=\"" +link + "\" type=\"video/mpeg\" />\n";
+  
   hdr += "<guid>" + guid + "</guid>\n";
 
   hdr += "<programme>" + programme +"</programme>\n";
@@ -934,15 +952,6 @@ int cHttpResource::writeXmlItem(string name, string link, string programme, stri
   hdr += f;
   hdr += "</start>\n";
 
-  /*  hdr += "<startstr>";
-  if (start != 0) {
-    strftime(f, sizeof(f), "%y%m%d %H:%M", localtime(&start));
-    hdr += f;
-  } 
-  else
-    hdr += "0 0"; 
-  hdr += "</startstr>\n";
-*/
   snprintf(f, sizeof(f), "%d", dur);
   hdr += "<duration>";
   hdr += f;
@@ -1723,6 +1732,8 @@ int cHttpResource::sendChannelsXml (struct stat *statbuf) {
   hdr += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
   hdr += "<rss version=\"2.0\">\n";
   hdr+= "<channel>\n";
+  hdr+= "<title>VDR Channels List</title>\n";
+
 
   *mResponseMessage += hdr;
 
@@ -1736,6 +1747,19 @@ int cHttpResource::sendChannelsXml (struct stat *statbuf) {
   for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel)) {
     if (channel->GroupSep()) {
       group_sep = cUrlEncode::doXmlSaveEncode(channel->Name());
+      /*      *(mLog->log())<< DEBUGPREFIX
+	<< " group= " << group_sep
+		    << " group_sep[0]= " << group_sep[0] << endl;
+      if (group_sep[0] == '@') {
+	size_t pos = group_sep.find(' ', 1);
+	if (pos != string::npos) 
+	  group_sep = group_sep.substr( pos +1);	
+	else
+	  group_sep = "";
+	*(mLog->log()) << DEBUGPREFIX 
+		       << " group_sep= " << group_sep << endl;
+      }
+*/
       continue;
     }
     if (--count == 0) {
@@ -1917,6 +1941,34 @@ int cHttpResource::sendResumeXml () {
 #endif
 }
 
+int cHttpResource::deleteRecording() {
+  vector<sQueryAVP> avps;
+  parseQueryLine(&avps);
+  string id = "";
+
+  if (getQueryAttributeValue(&avps, "id", id) == ERROR){
+    *(mLog->log())<< DEBUGPREFIX
+		  << " ERROR: id not found" 
+		  << DEBUGHDR << endl;
+    sendError(400, "Bad Request", NULL, "no id in query line");
+    return OKAY;
+  }
+  mPath = cUrlEncode::doXmlSaveDecode(id);
+
+  cRecording* rec = Recordings.GetByName(mPath.c_str());
+  if ( rec->Delete() ) {
+    Recordings.DelByName(mPath.c_str());
+  }
+  else {
+    sendError(500, "Internal Server Error", NULL, "deletion failed!");
+    return OKAY;
+  }
+  
+  sendHeaders(200, "OK", NULL, NULL, -1, -1);
+  return OKAY;
+}
+
+
 int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
 #ifndef STANDALONE
 
@@ -1934,6 +1986,8 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
   string type = "";
   string has_4_hd_str = "";
   bool has_4_hd = true;
+  string mode = "";
+  bool add_desc = true; 
   
   if (getQueryAttributeValue(&avps, "model", model) == OKAY){
     *(mLog->log())<< DEBUGPREFIX
@@ -1959,6 +2013,15 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
     }
   }
 
+  if (getQueryAttributeValue(&avps, "mode", mode) == OKAY){
+    if (mode == "nodesc") {
+      add_desc = false;
+      *(mLog->log())<< DEBUGPREFIX
+		    << " Mode: No Description"
+		    << endl;
+    }
+  }
+
   if (getQueryAttributeValue(&avps, "has4hd", has_4_hd_str) == OKAY){
     *(mLog->log())<< DEBUGPREFIX
 		  << " Found a Has4Hd Parameter: " << has_4_hd_str
@@ -1979,6 +2042,7 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
   hdr += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
   hdr += "<rss version=\"2.0\">\n";
   hdr+= "<channel>\n";
+  hdr+= "<title>VDR Recordings List</title>\n";
 
   *mResponseMessage += hdr;
 
@@ -2087,10 +2151,9 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
     } // for
 
     if (recording->Info() != NULL) {
-      if (recording->Info()->Description() != NULL) {
+      if ((recording->Info()->Description() != NULL) && add_desc) {
 	desc = cUrlEncode::doXmlSaveEncode(recording->Info()->Description());
       }
-
     }
 
     if (writeXmlItem(cUrlEncode::doXmlSaveEncode(recording->Name()), link, "NA", desc, 
@@ -2117,14 +2180,23 @@ bool cHttpResource::isTimeRequest(struct stat *statbuf) {
   vector<sQueryAVP> avps;
   parseQueryLine(&avps);
   string time_str = "";
+  string mode = "";
   float time = 0.0;
 
   if (getQueryAttributeValue(&avps, "time", time_str) != OKAY){
     return false;
   }
+
+  if (getQueryAttributeValue(&avps, "mode", mode) == OKAY){
+    if (mode.compare ("streamtoend") ==0) {
+      mStreamToEnd = true;
+    }
+  }
+
   time = atof(time_str.c_str());
   *(mLog->log())<< DEBUGPREFIX
 		<< " Found a Time Parameter: " << time
+		<< " streamToEnd= " << ((mStreamToEnd) ? "true" : "false")
 		<< endl;
 
   mDir = mPath;
@@ -2240,6 +2312,23 @@ bool cHttpResource::isTimeRequest(struct stat *statbuf) {
   delete[] index_buf;  
 
   char pathbuf[4096];
+  snprintf(pathbuf, sizeof(pathbuf), mFileStructure.c_str(), mPath.c_str(), mVdrIdx);
+
+  *(mLog->log()) << DEBUGPREFIX
+		 << " Opening Path= "
+		 << pathbuf << endl;
+  if (openFile(pathbuf) != OKAY) {
+    sendError(403, "Forbidden", NULL, "Access denied.");
+    return true;
+  }
+
+  fseek(mFile, offset, SEEK_SET);
+
+  if (mStreamToEnd) {
+    sendHeaders(200, "OK", NULL, "video/mpeg", -1, -1);
+    return true;
+  }
+
   uint64_t file_size = 0;
   bool more_to_go = true;
   int vdr_idx = mVdrIdx;
@@ -2255,22 +2344,10 @@ bool cHttpResource::isTimeRequest(struct stat *statbuf) {
     vdr_idx ++;
   }
   mRemLength = file_size - offset;
-
-  snprintf(pathbuf, sizeof(pathbuf), mFileStructure.c_str(), mPath.c_str(), mVdrIdx);
-  
-  *(mLog->log()) << DEBUGPREFIX
-		 << " Opening Path= "
-		 << pathbuf << endl;
-  if (openFile(pathbuf) != OKAY) {
-    sendError(403, "Forbidden", NULL, "Access denied.");
-    return true;
-  }
-
+ 
   *(mLog->log()) << DEBUGPREFIX
 		 << " Done. Start Streaming " 
 		 << endl;
-
-  fseek(mFile, offset, SEEK_SET);
 
   if (rangeHdr.isRangeRequest) {
     snprintf(pathbuf, sizeof(pathbuf), "Content-Range: bytes 0-%lld/%lld", (mRemLength -1), mRemLength);
