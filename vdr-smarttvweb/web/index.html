@@ -28,7 +28,7 @@ $(document).ready(function(){
 
 	$.mobile.loading('show');
 	Server.setSort(true);
-	Server.fetchVideoList("/recordings.xml");
+	Server.fetchVideoList("/recordings.xml?mode=nodesc");
 
 	removeDomTree = function () {
 	// parent should not be deleted.
@@ -50,7 +50,7 @@ $(document).ready(function(){
 			$('#medbtn').removeClass('ui-btn-active');
 			$('#chnbtn').removeClass('ui-btn-active');
 			Server.setSort(true);
-			Server.fetchVideoList("/recordings.xml");
+			Server.fetchVideoList("/recordings.xml?mode=nodesc");
 			break;
 		case 'med':
 			state = 'med';
@@ -66,7 +66,7 @@ $(document).ready(function(){
 			$('#medbtn').removeClass('ui-btn-active');
 			$('#recbtn').removeClass('ui-btn-active');
 			Server.setSort(false);
-			Server.fetchVideoList("/channels.xml");
+			Server.fetchVideoList("/channels.xml?mode=nodesc");
 			break;
 		};
 	};
