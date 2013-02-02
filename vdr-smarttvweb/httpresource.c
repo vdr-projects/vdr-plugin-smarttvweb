@@ -2194,6 +2194,9 @@ bool cHttpResource::isTimeRequest(struct stat64 *statbuf) {
     }
   }
 
+  if (mIsRecording)
+    mStreamToEnd = true;
+
   time = atof(time_str.c_str());
   *(mLog->log())<< DEBUGPREFIX
 		<< " Found a Time Parameter: " << time
