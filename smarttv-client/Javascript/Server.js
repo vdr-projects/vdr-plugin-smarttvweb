@@ -1,5 +1,4 @@
-var Server =
-{
+var Server = {
     dataReceivedCallback : null,
     errorCallback : null,
     doSort : false,
@@ -26,7 +25,69 @@ Server.init = function()
 Server.setSort = function (val) {
 	this.doSort = val;
 };
+//---------------------------------------------
+Server.fetchVideoList = function(url) {
+//	Main.log ("***** getResume *****");
+	$.ajax({
+		url: url,
+		type : "GET",
+		success : function(data, status, XHR ) {
+			Main.log("Server.fetchVideoList Success Response - status= " + status + " mime= " + XHR.responseType + " data= "+ data);
 
+			$(data).find("item").each(function () {
+				var title = $(this).find('title').text();
+//				var link = $(this).find('link').text();
+				var link = $(this).find('enclosure').attr('url');
+				var guid = $(this).find('guid').text();
+				var programme = $(this).find('programme').text();
+				var description = $(this).find('description').text();
+				var startVal = parseInt($(this).find('start').text());
+				var durVal = parseInt($(this).find('duration').text());
+				var fps = parseFloat($(this).find('fps').text());
+				var ispes = $(this).find('ispes').text();
+				var isnew = $(this).find('isnew').text();
+//				Main.log("Server.fetchVideoList: title= " + title + " start= " + startVal + " dur= " + durVal + " fps= " + fps);
+				
+				if (Main.state == Main.eLIVE) {
+					Epg.guidTitle[guid] = title;
+//					Main.log("Server: Guid= " + guid +" -> " + Epg.guidTitle[guid]);
+				}
+
+                var title_list = title.split("~");
+//				Main.log("Server.createVideoList: guid= " + guid + " link= " + link);
+//				Main.log("Server.createVideoList: guid= " + guid + " startVal= " + startVal + " durVal= " +durVal);
+                Data.addItem( title_list, {link : link, prog: programme, desc: description, guid : guid, start: startVal, 
+                			dur: durVal, ispes : ispes, isnew : isnew, fps : fps});              	
+							
+				}); // each
+
+			Data.completed(Server.doSort);
+
+            if (Server.dataReceivedCallback) {
+                Server.dataReceivedCallback();
+            }
+			
+		},
+		error : function (jqXHR, status, error) {
+			Main.logToServer("Server.fetchVideoList Error Response - status= " + status + " error= "+ error);
+			Display.showPopup("Error with XML File: " + status);
+			Server.retries ++;
+		},
+		parsererror : function () {
+			Main.logToServer("Server.fetchVideoList parserError  " );
+			Display.showPopup("Error in XML File");
+			Server.retries ++;
+            if (Server.errorCallback != null) {
+            	Server.errorCallback("XmlError");
+            }
+
+		}
+	});
+};
+
+
+//---------------------------------------------
+/*
 Server.fetchVideoList = function(url) {
 	Main.log("fetching Videos url= " + url);
     if (this.XHRObj == null) {
@@ -113,6 +174,7 @@ Server.createVideoList = function() {
             	    startVal = parseInt(items[index].getElementsByTagName("start")[0].firstChild.data);
             	    durVal = parseInt(items[index].getElementsByTagName("duration")[0].firstChild.data);
             	    guid= items[index].getElementsByTagName("guid")[0].firstChild.data;
+					Main.log ("guid= " + items[index].getElementsByTagName("guid")[0].firstChild.data);
                 }
             	catch (e) {            		
             	    Main.log("ERROR: "+e);
@@ -127,7 +189,7 @@ Server.createVideoList = function() {
             	catch (e) {}
 
             	try {
-            	    fps = parseInt(items[index].getElementsByTagName("fps")[0].firstChild.data);
+            	    fps = parseFloat(items[index].getElementsByTagName("fps")[0].firstChild.data);
             	}
             	catch (e) {}
             	var desc = descriptionElement.firstChild.data;
@@ -138,6 +200,7 @@ Server.createVideoList = function() {
 				}
                 if (titleElement && linkElement) {
                 	var title_list = titleElement.firstChild.data.split("~");
+					Main.log("Server.createVideoList: guid= " + guid + " startVal= " + startVal + " durVal= " +durVal);
                 	Data.addItem( title_list, {link : linkElement.firstChild.data, 
                 			prog: progElement.firstChild.data, 
                 			desc: desc, 
@@ -155,11 +218,12 @@ Server.createVideoList = function() {
 
             if (this.dataReceivedCallback)
             {
-                this.dataReceivedCallback();    /* Notify all data is received and stored */
+                this.dataReceivedCallback();
             }
         }
     }
 };
+*/
 
 Server.updateVdrStatus = function (){
 	Main.log ("get VDR Status");
@@ -213,41 +277,6 @@ Server.getResume = function (guid) {
 				Player.playVideo(-1);
 			}
 
-/*			var xmlResponse = XHR.responseXML;
-			if (xmlResponse == null) {
-				Main.logToServer("Resume: xmlResponse is null");
-	    		Display.hide();
-	        	Display.showProgress();
-				Player.playVideo();
-			}
-			var xmlElement = xmlResponse.documentElement;
-			if (!xmlElement) {
-				Main.logToServer("Resume: Dont get xml");
-	    		Display.hide();
-	        	Display.showProgress();
-				Player.playVideo();
-			}
-			var xml_str = (new XMLSerializer()).serializeToString(xmlElement);
-			Main.logToServer(" XML Response= " + xml_str + " NodeType= " + xmlElement.nodeType);
-			Main.logToServer("xmlElement.firstChild.nodeType= " + xmlElement.firstChild.nodeType);
-			Main.logToServer("xmlElement.firstChild.nodeName= " + xmlElement.firstChild.nodeName);
-			Main.logToServer("xmlElement.firstChild.nodeValue= " + xmlElement.firstChild.nodeValue);
-			var resume_val = -1.0;
-			try {
-				resume_val = parseFloat(xmlElement.firstChild.nodeValue);
-				Main.log("resume val= " + resume_val );
-				Main.logToServer("resume val= " + resume_val );
-				Player.resumePos = resume_val;
-//				Buttons.show();
-				Player.playVideo( resume_val);
-			}
-			catch (e) {
-				Main.log("Resume Parsing Error: " +e);
-	    		Display.hide();
-	        	Display.showProgress();
-				Player.playVideo(-1);
-			}
-			*/
 		},
 		error : function (jqXHR, status, error) {
 			Main.log("**** Resome Error Response - status= " + status + " error= "+ error);
@@ -276,4 +305,35 @@ Server.saveResume = function() {
  */   	
 };
 
+Server.deleteRecording = function(guid) {
+/*	$.post(Config.serverUrl + "/deleteRecording.xml?id=" +guid, "", function(data, textStatus, XHR) {
+		Main.logToServer("deleteRecording Status= " + XHR.status );
+	}, "text");
+*/
+	Main.log("Server.deleteRecording guid=" + guid);
+	Main.logToServer("Server.deleteRecording guid=" + guid);
+	Notify.handlerShowNotify("Deleting...", false);
 
+	$.ajax({
+		url: Config.serverUrl + "/deleteRecording.xml?id=" +guid,
+		type : "POST",
+		success : function(data, status, XHR ) {
+			// Show popup
+			// delete from data
+			//update vdrstatus
+			Notify.showNotify("Deleted", true);
+			Data.deleteElm(Main.selectedVideo);
+			if (Main.selectedVideo >= Data.getVideoCount())
+				Main.selectedVideo = Data.getVideoCount() -1;
+			Server.updateVdrStatus();
+			Display.setVideoList(Main.selectedVideo, (Main.selectedVideo - Display.currentWindow));
+			Main.logToServer("Server.deleteRecording: Success" );
+			},
+		error : function (XHR, status, error) {
+			Main.logToServer("Server.deleteRecording: Error" );
+
+			// show popup
+			Notify.showNotify("Error", true);
+		}
+	});
+};
