@@ -326,7 +326,7 @@ int cHttpResource::processRequest() {
 #ifndef DEBUG
   *(mLog->log())<< DEBUGPREFIX << " processRequest for mPath= " << mPath << DEBUGHDR << endl;
 #endif
-  struct stat64 statbuf;
+  struct stat statbuf;
   bool ok_to_serve = false;
 
   if (mMethod.compare("POST")==0) {
@@ -400,7 +400,7 @@ int cHttpResource::processRequest() {
   if (mPath.compare("/widget.conf") == 0) {
     mPath = mFactory->getConfigDir() + "/widget.conf";
 
-    if (stat64(mPath.c_str(), &statbuf) < 0) {
+    if (stat(mPath.c_str(), &statbuf) < 0) {
       sendError(404, "Not Found", NULL, "File not found.");
       return OKAY;
     }
@@ -415,7 +415,7 @@ int cHttpResource::processRequest() {
   if (mPath.compare("/favicon.ico") == 0) {
     mPath = mFactory->getConfigDir() + "/web/favicon.ico";
 
-    if (stat64(mPath.c_str(), &statbuf) < 0) {
+    if (stat(mPath.c_str(), &statbuf) < 0) {
       sendError(404, "Not Found", NULL, "File not found.");
       return OKAY;
     }
@@ -464,7 +464,7 @@ int cHttpResource::processRequest() {
   }
 
 
-  if (stat64(mPath.c_str(), &statbuf) < 0) {
+  if (stat(mPath.c_str(), &statbuf) < 0) {
     // checking, whether the file or directory exists 
     *(mLog->log())<< DEBUGPREFIX
                   << " File Not found " << mPath << endl;
@@ -831,7 +831,7 @@ void cHttpResource::sendError(int status, const char *title, const char *extra, 
 }
 
 
-int cHttpResource::sendDir(struct stat64 *statbuf) {
+int cHttpResource::sendDir(struct stat *statbuf) {
   char pathbuf[4096];
   char f[400];
   int len;
@@ -851,7 +851,7 @@ int cHttpResource::sendDir(struct stat64 *statbuf) {
   }
 
   snprintf(pathbuf, sizeof(pathbuf), "%sindex.html", mPath.c_str());
-  if (stat64(pathbuf, statbuf) >= 0) {
+  if (stat(pathbuf, statbuf) >= 0) {
     mPath = pathbuf;
     mFileSize = statbuf->st_size;
     mContentType = SINGLEFILE;
@@ -895,7 +895,7 @@ int cHttpResource::sendDir(struct stat64 *statbuf) {
     //	printf (" -Entry: %s\n", de->d_name);
     strcat(pathbuf, de->d_name);
       
-    stat64(pathbuf, statbuf);
+    stat(pathbuf, statbuf);
     tm = gmtime(&(statbuf->st_mtime));
     strftime(timebuf, sizeof(timebuf), "%d-%b-%Y %H:%M:%S", tm);
       
@@ -1045,7 +1045,7 @@ int cHttpResource::getQueryAttributeValue(vector<sQueryAVP> *avps, string attr, 
   return found;
 }
 
-int cHttpResource::parseFiles(vector<sFileEntry> *entries, string prefix, string dir_base, string dir_name, struct stat64 *statbuf) {
+int cHttpResource::parseFiles(vector<sFileEntry> *entries, string prefix, string dir_base, string dir_name, struct stat *statbuf) {
   char pathbuf[4096];
   string link;
   DIR *dir;
@@ -1063,7 +1063,7 @@ int cHttpResource::parseFiles(vector<sFileEntry> *entries, string prefix, string
 #endif
 
   dir = opendir(dir_comp.c_str());
-  if (stat64(dir_comp.c_str(), statbuf) < 0)
+  if (stat(dir_comp.c_str(), statbuf) < 0)
     return ERROR;
 
   while ((de = readdir(dir)) != NULL) {
@@ -1074,7 +1074,7 @@ int cHttpResource::parseFiles(vector<sFileEntry> *entries, string prefix, string
     strcpy(pathbuf, dir_comp.c_str());
     strcat(pathbuf, de->d_name);
     
-    stat64(pathbuf, statbuf);
+    stat(pathbuf, statbuf);
 
     if (S_ISDIR(statbuf->st_mode)) {
       if (strcmp(&(pathbuf[strlen(pathbuf)-4]), ".rec") == 0) {
@@ -1113,7 +1113,7 @@ int cHttpResource::parseFiles(vector<sFileEntry> *entries, string prefix, string
   return OKAY;
 }
 
-int cHttpResource::sendManifest (struct stat64 *statbuf, bool is_hls) {
+int cHttpResource::sendManifest (struct stat *statbuf, bool is_hls) {
 #ifndef STANDALONE
 
   size_t pos = mPath.find_last_of ("/");
@@ -1256,7 +1256,7 @@ void cHttpResource::writeMPD(double duration, float seg_dur, int end_seg) {
   sendHeaders(200, "OK", NULL, "application/x-mpegURL", mResponseMessage->size(), -1);
 }
 
-int cHttpResource::sendMediaSegment (struct stat64 *statbuf) {
+int cHttpResource::sendMediaSegment (struct stat *statbuf) {
 #ifndef STANDALONE
 
   *(mLog->log()) << DEBUGPREFIX << " sendMediaSegment " << mPath << endl;
@@ -1375,7 +1375,7 @@ int cHttpResource::sendMediaSegment (struct stat64 *statbuf) {
 		   << endl;
 #endif
     snprintf(seg_fn, sizeof(seg_fn), mFileStructure.c_str(), mDir.c_str(), mVdrIdx);
-    if (stat64(seg_fn, statbuf) < 0) {
+    if (stat(seg_fn, statbuf) < 0) {
       *(mLog->log()) << DEBUGPREFIX
 		     << " file=  " <<seg_fn << " does not exist" 
 		     << endl;
@@ -1387,7 +1387,7 @@ int cHttpResource::sendMediaSegment (struct stat64 *statbuf) {
     // loop over all idx files between start_idx and end_idx
     for (int idx = (start_idx+1); idx < end_idx; idx ++) {
       snprintf(seg_fn, sizeof(seg_fn), mFileStructure.c_str(), mDir.c_str(), idx);
-      if (stat64(seg_fn, statbuf) < 0) {
+      if (stat(seg_fn, statbuf) < 0) {
 	*(mLog->log()) << DEBUGPREFIX
 		       << " for loop file=  " <<seg_fn << " does not exist" 
 		       << endl;
@@ -1429,7 +1429,7 @@ int cHttpResource::sendMediaSegment (struct stat64 *statbuf) {
   return OKAY;
 }
 
-int cHttpResource::sendMediaXml (struct stat64 *statbuf) {
+int cHttpResource::sendMediaXml (struct stat *statbuf) {
   char pathbuf[4096];
   string link;
   string media_folder = mFactory->getConfig()->getMediaFolder();
@@ -1479,7 +1479,7 @@ int cHttpResource::sendMediaXml (struct stat64 *statbuf) {
   return OKAY;
 }
 
-int cHttpResource::sendVdrStatusXml (struct stat64 *statbuf) {
+int cHttpResource::sendVdrStatusXml (struct stat *statbuf) {
 
 #ifndef STANDALONE
 
@@ -1518,7 +1518,7 @@ int cHttpResource::sendVdrStatusXml (struct stat64 *statbuf) {
   return OKAY;
 }
 
-int cHttpResource::sendEpgXml (struct stat64 *statbuf) {
+int cHttpResource::sendEpgXml (struct stat *statbuf) {
 #ifndef STANDALONE
 
   char f[400];
@@ -1685,7 +1685,7 @@ int cHttpResource::sendEpgXml (struct stat64 *statbuf) {
   return OKAY;
 }
 
-int cHttpResource::sendChannelsXml (struct stat64 *statbuf) {
+int cHttpResource::sendChannelsXml (struct stat *statbuf) {
 #ifndef STANDALONE
 
   char f[400];
@@ -1877,7 +1877,7 @@ int cHttpResource::receiveResume() {
   return OKAY;
 }
 
-//int cHttpResource::sendResumeXml (struct stat64 *statbuf) {
+//int cHttpResource::sendResumeXml (struct stat *statbuf) {
 int cHttpResource::sendResumeXml () {
 #ifndef STANDALONE
 
@@ -1957,8 +1957,13 @@ int cHttpResource::deleteRecording() {
   mPath = cUrlEncode::doXmlSaveDecode(id);
 
   cRecording* rec = Recordings.GetByName(mPath.c_str());
+  if (rec == NULL) {
+    sendError(404, "Not Found.", NULL, "Recording not found. Deletion failed!");
+    return OKAY;
+  }
   if ( rec->Delete() ) {
-    Recordings.DelByName(mPath.c_str());
+    Recordings.DelByName(rec->FileName());
+    //    Recordings.DelByName(mPath.c_str());
   }
   else {
     sendError(500, "Internal Server Error", NULL, "deletion failed!");
@@ -1970,7 +1975,7 @@ int cHttpResource::deleteRecording() {
 }
 
 
-int cHttpResource::sendRecordingsXml(struct stat64 *statbuf) {
+int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
 #ifndef STANDALONE
 
   mResponseMessage = new string();
@@ -2176,7 +2181,7 @@ int cHttpResource::sendRecordingsXml(struct stat64 *statbuf) {
   return OKAY;
 }
 
-bool cHttpResource::isTimeRequest(struct stat64 *statbuf) {
+bool cHttpResource::isTimeRequest(struct stat *statbuf) {
 
   vector<sQueryAVP> avps;
   parseQueryLine(&avps);
@@ -2338,7 +2343,7 @@ bool cHttpResource::isTimeRequest(struct stat64 *statbuf) {
   int vdr_idx = mVdrIdx;
   while (more_to_go) {
     snprintf(pathbuf, sizeof(pathbuf), mFileStructure.c_str(), mPath.c_str(), vdr_idx);
-    if (stat64(pathbuf, statbuf) >= 0) {
+    if (stat(pathbuf, statbuf) >= 0) {
       *(mLog->log())<< " found for " <<   pathbuf << endl;
       file_size += statbuf->st_size;
     }
@@ -2363,7 +2368,7 @@ bool cHttpResource::isTimeRequest(struct stat64 *statbuf) {
   return true;
 }
 
-int cHttpResource::sendVdrDir(struct stat64 *statbuf) {
+int cHttpResource::sendVdrDir(struct stat *statbuf) {
 
 #ifndef DEBUG
   *(mLog->log())<< DEBUGPREFIX  << " *** sendVdrDir mPath= "  << mPath  << endl;
@@ -2401,7 +2406,7 @@ int cHttpResource::sendVdrDir(struct stat64 *statbuf) {
   while (more_to_go) {
     vdr_idx ++;
     snprintf(pathbuf, sizeof(pathbuf), mFileStructure.c_str(), mPath.c_str(), vdr_idx);
-    if (stat64(pathbuf, statbuf) >= 0) {
+    if (stat(pathbuf, statbuf) >= 0) {
 #ifndef DEBUG
       *(mLog->log())<< " found for " <<   pathbuf << endl;
 #endif
@@ -2587,9 +2592,14 @@ void cHttpResource::sendHeaders(int status, const char *title, const char *extra
 
 }
 
-int cHttpResource::sendFile(struct stat64 *statbuf) {
+int cHttpResource::sendFile(struct stat *statbuf32) {
   // Send the First Datachunk, incl all headers
+  struct stat64 statbuf;
 
+  if (stat64(mPath.c_str(), &statbuf) < 0) {
+    sendError(404, "Not Found", NULL, "File not found.");
+    return OKAY;
+  }
   *(mLog->log())<< DEBUGPREFIX
 		<< mReqId << " SendFile mPath= " << mPath 
 		<< endl;
@@ -2608,11 +2618,11 @@ int cHttpResource::sendFile(struct stat64 *statbuf) {
     return OKAY;
   }
 
-  mFileSize = S_ISREG(statbuf->st_mode) ? statbuf->st_size : -1;
+  mFileSize = S_ISREG(statbuf.st_mode) ? statbuf.st_size : -1;
 
   if (!rangeHdr.isRangeRequest) {
     mRemLength = mFileSize;
-    sendHeaders(200, "OK", NULL, getMimeType(mPath.c_str()), mFileSize, statbuf->st_mtime);
+    sendHeaders(200, "OK", NULL, getMimeType(mPath.c_str()), mFileSize, statbuf.st_mtime);
   }
   else { // Range request
     fseek(mFile, rangeHdr.begin, SEEK_SET);
@@ -2620,7 +2630,7 @@ int cHttpResource::sendFile(struct stat64 *statbuf) {
       rangeHdr.end = mFileSize;
     mRemLength = (rangeHdr.end-rangeHdr.begin);
     snprintf(f, sizeof(f), "Content-Range: bytes %lld-%lld/%lld", rangeHdr.begin, (rangeHdr.end -1), mFileSize);
-    sendHeaders(206, "Partial Content", f, getMimeType(mPath.c_str()), (rangeHdr.end-rangeHdr.begin), statbuf->st_mtime);
+    sendHeaders(206, "Partial Content", f, getMimeType(mPath.c_str()), (rangeHdr.end-rangeHdr.begin), statbuf.st_mtime);
   }
 
 #ifndef DEBUG

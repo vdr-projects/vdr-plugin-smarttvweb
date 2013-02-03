@@ -1,7 +1,7 @@
 /*
  * url.c: VDR on Smart TV plugin
  *
- * Copyright (C) 2012 T. Lohmar
+ * Copyright (C) 2012, 2013 T. Lohmar
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -123,7 +123,7 @@ string cUrlEncode::doUrlSaveDecode(string input) {
 string cUrlEncode::doXmlSaveEncode(string in) {
   string res = "";
   unsigned char num = 0;
-  char buf[5];
+  //  char buf[5];
   
   bool done = false;
   unsigned int idx = 0;
