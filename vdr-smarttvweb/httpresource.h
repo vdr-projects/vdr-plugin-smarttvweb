@@ -141,17 +141,17 @@ class cHttpResource {
 
   int readRequestPayload();
   void sendError(int status, const char *title, const char *extra, const char *text);
-  int sendDir(struct stat64 *statbuf);
-  int sendVdrDir(struct stat64 *statbuf);
-  int sendRecordingsXml (struct stat64 *statbuf);
-  int sendChannelsXml (struct stat64 *statbuf);
+  int sendDir(struct stat *statbuf);
+  int sendVdrDir(struct stat *statbuf);
+  int sendRecordingsXml (struct stat *statbuf);
+  int sendChannelsXml (struct stat *statbuf);
   int sendResumeXml ();
-  int sendVdrStatusXml (struct stat64 *statbuf);
-  //  int sendResumeXml (struct stat64 *statbuf);
-  int sendEpgXml (struct stat64 *statbuf);
-  int sendMediaXml (struct stat64 *statbuf);
+  int sendVdrStatusXml (struct stat *statbuf);
+  //  int sendResumeXml (struct stat *statbuf);
+  int sendEpgXml (struct stat *statbuf);
+  int sendMediaXml (struct stat *statbuf);
 
-  int sendManifest (struct stat64 *statbuf, bool is_hls = true);
+  int sendManifest (struct stat *statbuf, bool is_hls = true);
 
   int receiveResume();
   int deleteRecording();
@@ -160,25 +160,25 @@ class cHttpResource {
   void writeMPD(double duration, float seg_dur, int end_seg);
 
 
-  int sendMediaSegment (struct stat64 *statbuf);
+  int sendMediaSegment (struct stat *statbuf);
 
   void sendHeaders(int status, const char *title, const char *extra, const char *mime,
 		   long long int length, time_t date);
 
-  int sendFile(struct stat64 *statbuf);
+  int sendFile(struct stat *statbuf);
 
   // Helper Functions
   const char *getMimeType(const char *name);
   string getConnStateName();
   void checkRecording();
-  bool isTimeRequest(struct stat64 *statbuf);
+  bool isTimeRequest(struct stat *statbuf);
   int parseRangeHeaderValue(string);
   int parseHttpRequestLine(string);
   int parseHttpHeaderLine (string);
   int parseQueryLine (vector<sQueryAVP> *avps);
   int parseResume(cResumeEntry &entry, string &id);
 
-  int parseFiles(vector<sFileEntry> *entries, string prefix, string dir_base, string dir_name, struct stat64 *statbuf);
+  int parseFiles(vector<sFileEntry> *entries, string prefix, string dir_base, string dir_name, struct stat *statbuf);
 
   int getQueryAttributeValue(vector<sQueryAVP> *avps, string id, string &val);
   int openFile(const char *name);
