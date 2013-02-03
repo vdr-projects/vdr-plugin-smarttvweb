@@ -4,6 +4,12 @@ var Data =
 	folderList : [],
 };
 
+Array.prototype.remove = function(from, to) {
+  var rest = this.slice((to || from) + 1 || this.length);
+  this.length = from < 0 ? this.length + from : from;
+  return this.push.apply(this, rest);
+};
+
 Data.reset = function() {
 	this.assets = null;
 	this.assets = new Item;
@@ -71,7 +77,9 @@ Data.getVideoCount = function() {
 	return this.folderList[this.folderList.length-1].item.childs.length;
 };
 
-
+Data.deleteElm = function (pos) {
+	Data.getCurrentItem().childs.remove(pos);
+};
 //-----------------------------------------
 function Item() {
     this.title = "root";

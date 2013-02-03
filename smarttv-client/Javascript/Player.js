@@ -9,6 +9,12 @@ var Player =
     mFrontPanel : null,
     isLive : false,
     isRecording : false,
+    mFormat : 0,
+    eUND : 0, // undefined
+    ePDL : 1,
+    eHLS : 2,
+    eHAS : 3,
+    
     
     url : "",
     guid : "unknown",
@@ -33,12 +39,37 @@ var Player =
     
     trickPlaySpeed : 1, // Multiple of 2 only.
     trickPlayDirection : 1,
-
+    
+    
     STOPPED : 0,
     PLAYING : 1,
     PAUSED : 2,  
     FORWARD : 3,
-    REWIND : 4
+    REWIND : 4,
+	
+	aspectRatio :0,
+	
+	eASP16to9 :0,
+	eASP4to3 :1,
+	
+	bufferStartTime : 0,
+	requestStartTime :0
+};
+
+Player.toggleAspectRatio = function () {
+	if (this.aspectRatio == this.eASP16to9) {
+		// Do 4 to 3
+		this.plugin.SetDisplayArea(120, 0, 720, 540);
+		// 4/3 = x/540
+		this.aspectRatio = this.eASP4to3;
+		Main.logToServer("Player.toggleAspectRatio: 4 by 3 Now");
+	}
+	else {
+		// do 16 to 9
+		Player.setFullscreen();
+		this.aspectRatio = this.eASP16to9;
+		Main.logToServer("Player.toggleAspectRatio: 16 by 9 Now");
+	}
 };
 
 Player.init = function() {
@@ -111,7 +142,7 @@ Player.setBuffer = function (){
 	var buffer_byte = (Config.totalBufferDuration * Config.tgtBufferBitrate) / 8.0;
 	var initial_buf = Config.initialBuffer;
 	if (Player.isLive == true)
-		initial_buf = initial_buf *2;
+		initial_buf = initial_buf *4;
 	
 	Main.logToServer("Seting TotalBufferSize to " + Math.round(buffer_byte) +"Byte dur= " +Config.totalBufferDuration + "sec init_buffer_perc= " +initial_buf +"% pend_buffer_perc= " +Config.pendingBuffer + "% initialTimeOut= " +Config.initialTimeOut + "sec");
 	
@@ -145,7 +176,7 @@ Player.setBuffer = function (){
 
 Player.setVideoURL = function(url) {
     this.url = url;
-    Main.log("URL = " + this.url);
+    Main.log("Player.setVideoURL: URL = " + this.url);
 };
 
 
@@ -185,11 +216,17 @@ Player.playVideo = function(resume_pos) {
 
         Main.log ("Player.playVideo: StartPlayback for " + this.url);
 
+        this.requestStartTime = new Date().getTime();
         if (resume_pos == -1)
         	this.plugin.Play( this.url );
-        else
+        else {
+        	Main.logToServer ("Player.playVideo: resume_pos= " +resume_pos);
         	this.plugin.ResumePlay(this.url, resume_pos);
+        }
 
+        if ((this.mFormat != this.ePDL) && (this.isLive == false)){
+        	Notify.showNotify("No Trickplay", true);
+        }
         Audio.plugin.SetSystemMute(false); 
         pluginObj.setOffScreenSaver();
         this.pluginBD.DisplayVFD_Show(0100); // Play
@@ -215,13 +252,22 @@ Player.stopVideo = function() {
 		this.state = this.STOPPED;
         Display.status("Stop");
         this.plugin.Stop();
-        Player.bufferState = 0;
+        
 //        Display.setTime(0);
 
         if (this.stopCallback) {
         	Main.log(" StopCallback");
             this.stopCallback();
         }
+        
+        // Cleanup
+        Player.bufferState = 0;
+        Player.ResetTrickPlay();
+        Player.adjustSkipDuration(0);
+        Player.bufferState = 0;
+        Player.curPlayTime = 0;
+        Player.totalTime = -11;
+        
         Spinner.hide();
 		pluginObj.setOnScreenSaver();
 	    this.pluginBD.DisplayVFD_Show(0101); // Stop
@@ -248,28 +294,38 @@ Player.jumpToVideo = function(percent) {
 	if (this.isLive == true) {
 		return;
 	}
+	Spinner.show();
+
     Player.bufferState = 0;
 	Display.showProgress();
     if (this.state != this.PLAYING) {
-    	Main.log ("Player not Playing");
+    	Main.logToServer ("Player.jumpToVideo: Player not Playing");
     	return;
     }
 	if (this.totalTime == -1 && this.isLive == false) 
 		this.totalTime = this.plugin.GetDuration();
 	var tgt = Math.round(((percent-2)/100.0) *  this.totalTime/ 1000.0);
+	var res = false;
+
+	this.requestStartTime = new Date().getTime();
+
+	if (tgt > (Player.curPlayTime/1000.0))
+		res = this.plugin.JumpForward(tgt - (Player.curPlayTime/1000.0));
+	else 
+		res = this.plugin.JumpBackward( (Player.curPlayTime/1000.0)- tgt);
 	
-	Main.log("jumpToVideo= " + percent + "% of " + (this.totalTime/1000) + "sec tgt = " + tgt + "sec curPTime= " + (this.curPlayTime/1000) +"sec");	
+	Main.logToServer("Player.jumpToVideo: jumpTo= " + percent + "% of " + (this.totalTime/1000) + "sec tgt = " + tgt + "sec cpt= " + (this.curPlayTime/1000) +"sec" + " res = " + res);	
 //    Display.showPopup("jumpToVideo= " + percent + "% of " + (this.totalTime/1000) + "sec<br>--> tgt = " + tgt + "sec curPTime= " + (this.curPlayTime/1000)+"sec");
-	this.plugin.Stop();
-	
 //	Display.showStatus();
 
-	var res = this.plugin.ResumePlay(this.url, tgt );
+	//	this.plugin.Stop();
+//	var res = this.plugin.ResumePlay(this.url, tgt );
 	if (res == false)
 		Display.showPopup("ResumePlay ret= " +  ((res == true) ? "True" : "False"));  
 };
 
 Player.skipForwardVideo = function() {
+	this.requestStartTime = new Date().getTime();
     var res = this.plugin.JumpForward(Player.skipDuration);
     if (res == false) {
     	Display.showPopup("Jump Forward ret= " +  ((res == true) ? "True" : "False"));    	
@@ -278,6 +334,7 @@ Player.skipForwardVideo = function() {
 };
 
 Player.skipBackwardVideo = function() {
+	this.requestStartTime = new Date().getTime();
     var res = this.plugin.JumpBackward(Player.skipDuration);
     if (res == false) {
     	Display.showPopup("Jump Backward ret= " +  ((res == true) ? "True" : "False"));
@@ -311,56 +368,88 @@ Player.adjustSkipDuration = function (dir) {
 	};
 };
 
+Player.isInTrickplay = function() {
+	return (this.trickPlaySpeed != 1) ? true: false;
+};
 
 Player.fastForwardVideo = function() {
 	if (this.trickPlayDirection == 1)
 		this.trickPlaySpeed = this.trickPlaySpeed * 2;
 	else {
+		// I am in rewind mode, thus decrease speed
 		this.trickPlaySpeed = this.trickPlaySpeed / 2;
 
-		if (this.trickPlaySpeed < 1) {
+		if (this.trickPlaySpeed <= 1) {
 			this.trickPlaySpeed = 1;
-			this.trickPlayDirection = -1;
+			this.trickPlayDirection = 1;
 		}
 
 	}
-	
+
+	if  (this.trickPlaySpeed != 1) {
+		Main.log("Player.fastForwardVideo: updating display");
+		Display.setTrickplay (this.trickPlayDirection, this.trickPlaySpeed);		
+	}
+	else {
+		Player.ResetTrickPlay();
+		return;
+	}
+
 	Main.log("FastForward: Direction= " + ((this.trickPlayDirection == 1) ? "Forward": "Backward") + "trickPlaySpeed= " + this.trickPlaySpeed);
 	Main.logToServer("FastForward: Direction= " + ((this.trickPlayDirection == 1) ? "Forward": "Backward") + "trickPlaySpeed= " + this.trickPlaySpeed);
 	if (this.plugin.SetPlaybackSpeed(this.trickPlaySpeed * this.trickPlayDirection) == false) {
     	Display.showPopup("trick play returns false. Reset Trick-Play" );	
-    	this.trickPlaySpeed = 1;
-    	this.trickPlayDirection = 1;
+    	Player.ResetTrickPlay();
+//    	this.trickPlaySpeed = 1;
+//    	this.trickPlayDirection = 1;
 	}
-
 };
 
 Player.RewindVideo = function() {
-	if (this.trickPlayDirection == 1) {
+
+	if ((this.trickPlayDirection == 1) && (this.trickPlaySpeed == 1)){
+		this.trickPlayDirection = -1;
+		this.trickPlaySpeed = this.trickPlaySpeed * 2;
+		
+	}
+	else if (this.trickPlayDirection == 1) {
+		// I am in fast forward mode, so decrease
 		this.trickPlaySpeed = this.trickPlaySpeed / 2;
 		if (this.trickPlaySpeed < 1) {
 			this.trickPlaySpeed = 1;
-			this.trickPlayDirection = 1;
+			this.trickPlayDirection = -1;
 		}
 		
 	}
 	else
 		this.trickPlaySpeed = this.trickPlaySpeed * 2;
 
+	if (this.trickPlaySpeed != 1) {
+		Display.setTrickplay (this.trickPlayDirection, this.trickPlaySpeed);		
+	}
+	else {
+		Player.ResetTrickPlay();
+		return;
+	}
+	Main.log("Rewind: Direction= " + ((this.trickPlayDirection == 1) ? "Forward": "Backward") + "trickPlaySpeed= " + this.trickPlaySpeed);
+
 	if (this.plugin.SetPlaybackSpeed(this.trickPlaySpeed * this.trickPlayDirection) == false) {
     	Display.showPopup("trick play returns false. Reset Trick-Play" );	
-    	this.trickPlaySpeed = 1;
-    	this.trickPlayDirection = 1;
+    	Player.ResetTrickPlay();
+//    	this.trickPlaySpeed = 1;
+//    	this.trickPlayDirection = 1;
 	}
+
 
 	Main.log("Rewind: Direction= " + ((this.trickPlayDirection == 1) ? "Forward": "Backward") + "trickPlaySpeed= " + this.trickPlaySpeed);
 	Main.logToServer("Rewind: Direction= " + ((this.trickPlayDirection == 1) ? "Forward": "Backward") + "trickPlaySpeed= " + this.trickPlaySpeed);
-	if (this.plugin.SetPlaybackSpeed(this.trickPlaySpeed * this.trickPlayDirection) == false) {
+
+	/*	if (this.plugin.SetPlaybackSpeed(this.trickPlaySpeed * this.trickPlayDirection) == false) {
     	Display.showPopup("trick play returns false. Reset Trick-Play" );	
     	this.trickPlaySpeed = 1;
     	this.trickPlayDirection = 1;
 	}
-
+*/
 };
 
 Player.ResetTrickPlay = function() {
@@ -375,6 +464,12 @@ Player.ResetTrickPlay = function() {
 		}
 		
 	}
+	if (Player.skipDuration != 30) {
+		Display.setSkipDuration(Player.skipDuration );
+	}
+	else {
+		Display.resetStartStop();
+	}
 };
 
 Player.getState = function() {
@@ -386,8 +481,13 @@ Player.getState = function() {
 //------------------------------------------------
 
 Player.onBufferingStart = function() {
-	Main.logToServer("Buffer Start: " + Player.curPlayTime);
+	Main.logToServer("Buffer Start: cpt= " + (Player.curPlayTime/1000.0) +"sec");
 	Player.bufferStartTime = new Date().getTime();
+
+	if (this.requestStartTime != 0) {
+		Main.logToServer("Player.onBufferingStart Server RTT= " + (Player.bufferStartTime -this.requestStartTime ) + "ms");
+		this.requestStartTime  = 0;
+	}
 
 	Spinner.show();
 	Player.bufferState = 0;
@@ -413,7 +513,7 @@ Player.onBufferingComplete = function() {
 	Display.hideStatus();
 	Spinner.hide();
 
-	Main.logToServer("Buffer Completed - Buffering Duration= " + (new Date().getTime() - Player.bufferStartTime) + " ms");
+	Main.logToServer("onBufferingComplete cpt= " +(Player.curPlayTime/1000.0) +"sec - Buffering Duration= " + (new Date().getTime() - Player.bufferStartTime) + " ms");
 
     Player.bufferState = 100;
 	Display.bufferUpdate();
@@ -422,7 +522,7 @@ Player.onBufferingComplete = function() {
     Player.setFullscreen();
     Display.hide();   
     
-	Main.logToServer("onBufferingComplete ");
+//	Main.logToServer("onBufferingComplete ");
 /*	Player.pauseVideo();
 	window.setTimeout(Player.resumeVideo, 1000);	*/
 };
@@ -445,17 +545,16 @@ Player.OnCurrentPlayTime = function(time) {
 
 Player.OnStreamInfoReady = function() {
     Main.log("*** OnStreamInfoReady ***");
-	Main.logToServer("GetCurrentBitrates= " + Player.plugin.GetCurrentBitrates());
+//	Main.logToServer("GetCurrentBitrates= " + Player.plugin.GetCurrentBitrates());
 	if ((Player.isLive == false) && (Player.isRecording == false)) {
 		Player.totalTime = Player.plugin.GetDuration();
 	}
 //    Player.curPlayTimeStr =  Display.durationString(Player.totalTime / 1000.0);
     Player.totalTimeStr =Display.durationString(Player.totalTime / 1000.0);
     
-    var height = Player.plugin.GetVideoHeight();
-    var width = Player.plugin.GetVideoWidth();
-//    Display.showPopup("Resolution= " + height + " x " +width);
-    Main.logToServer("Resolution= " + width + " x " + height );
+//    var height = Player.plugin.GetVideoHeight();
+//    var width = Player.plugin.GetVideoWidth();
+//    Main.logToServer("Resolution= " + width + " x " + height );
 };
 
 Player.OnRenderingComplete = function() {

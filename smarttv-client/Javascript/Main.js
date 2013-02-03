@@ -97,6 +97,7 @@ Main.onLoad = function() {
     });  
 	Display.init();
     Display.selectItem(document.getElementById("selectItem1"));
+	Notify.init();
     Spinner.init();
 	Helpbar.init();
 	Options.init();
@@ -136,7 +137,7 @@ Main.init = function () {
         Server.dataReceivedCallback = function() {
 			/* Use video information when it has arrived */
         	Display.setVideoList(Main.selectedVideo, Main.selectedVideo); 
-
+        	Spinner.hide();
             Display.show();
 //            if (Player.isLive == true) {
             if (Main.state == Main.eLIVE) {
@@ -156,20 +157,26 @@ Main.init = function () {
 
 //	Epg.updateEpg("S19.2E-1-1101-28106");
 	Server.updateVdrStatus();
-
+//	Buttons.ynShow();
+//	Buttons.show();
+//	Notify.showNotify("test...", true);
+//	Server.deleteRecording("/hd2/video/The_Green_Hornet/2013-01-06.20.04.4-0.rec");
 //	Display.handlerShowProgress();
 //	Display.initOlForRecordings();
 //	Display.setOlTitle("Hallo Echo Hallo Echo Hallo Echo Hallo Echo Hallo Echo Hallo Echo Hallo Echo Hallo Echo  Hallo Echo  Hallo Echo  Hallo Echo");
     /*
      * 
      * Fetch JS file
+	 */
+
+	 /*
+	 Read widget conf. find the file to log
 	xhttp=new XMLHttpRequest();
-	xhttp.open("GET","$MANAGER_WIDGET/Common/API/Plugin.js",false);
+	xhttp.open("GET","$MANAGER_WIDGET/Common/webapi/1.0/webapis.js",false);
 	xhttp.send("");
 	xmlDoc=xhttp.responseText;
 	Main.logToServer (xmlDoc);
-*/
-
+	*/
 };
 
 Main.log = function (msg) {
@@ -263,33 +270,44 @@ Main.recordingsSelected = function() {
     	Display.show();
     };
     Server.errorCallback = function (msg) {
-    	Display.showPopup(msg);
-    	Main.changeState(0);
+    	Server.errorCallback = Main.serverError;
     };
 
     Player.isLive = false;   
     Server.setSort(true);
-    if (Config.format == "") {
-        Server.fetchVideoList(Config.serverUrl + "/recordings.xml?model=samsung"); /* Request video information from server */
+/*    if (Config.format == "") {
+        Server.fetchVideoList(Config.serverUrl + "/recordings.xml?model=samsung"); 
         Main.log("fetchVideoList from: " + Config.serverUrl + "/recordings.xml?model=samsung");
     }
     else {
     	Main.logToServer("Using format " + Config.format);
     	if (Config.format == "")
-        	Server.fetchVideoList(Config.serverUrl + "/recordings.xml?model=samsung&has4hd=false"); /* Request video information from server */
+        	Server.fetchVideoList(Config.serverUrl + "/recordings.xml?model=samsung&has4hd=false"); 
     	else
-    		Server.fetchVideoList(Config.serverUrl + "/recordings.xml?model=samsung&has4hd=false&type="+Config.format); /* Request video information from server */
+    		Server.fetchVideoList(Config.serverUrl + "/recordings.xml?model=samsung&has4hd=false&type="+Config.format); 
     }
+	*/
+    Spinner.show();
+	Server.fetchVideoList(Config.serverUrl + "/recordings.xml"); /* Request video information from server */
+    Main.log("fetchVideoList from: " + Config.serverUrl + "/recordings.xml");
 };
 
 Main.serverError = function(errorcode) {
-	if (Server.retries == 0) {
+	if (Server.retries < 2) {
 		switch (this.state) {
-		case 1: // live
+		case this.eLIVE: // live
 		    Server.fetchVideoList( Config.serverUrl + "/channels.xml?mode=nodesc"); /* Request video information from server */
+			break;
+		case this.eRECE: 
+		    Server.fetchVideoList( Config.serverUrl + "/recordings.xml?mode=nodesc"); /* Request video information from server */
 			break;
 		}		
 	}
+	else {
+		Display.showPopup(msg);
+		Main.changeState(0);		
+	}
+
 };
 
 Main.liveSelected = function() {
@@ -299,6 +317,7 @@ Main.liveSelected = function() {
     Player.isLive = true;
     Server.setSort(false);
     Server.errorCallback = Main.serverError;
+    Spinner.show();
     Server.fetchVideoList(Config.serverUrl + "/channels.xml?channels="+Config.liveChannels); /* Request video information from server */
     
 };
@@ -314,6 +333,7 @@ Main.mediaSelected = function() {
     };
     Player.isLive = false;   
     Server.setSort(true);
+    Spinner.show();
     Server.fetchVideoList(Config.serverUrl + "/media.xml"); /* Request video information from server */
 };
 
@@ -375,7 +395,8 @@ Main.playItem = function (url) {
 	var now = Display.GetEpochTime();
 	
 	document.getElementById("olRecProgressBar").style.display="none";
-
+	Player.mFormat = Player.eUND; // default val
+	
 	switch (this.state) {
 	case Main.eLIVE:
 		// Live
@@ -400,9 +421,8 @@ Main.playItem = function (url) {
 		Display.resetStartStop();
 
 //		Main.getResume(Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
-		Player.setVideoURL( Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
-		Player.guid = Data.getCurrentItem().childs[Main.selectedVideo].payload.guid;
-
+		var url_ext = "";
+		Player.mFormat = Player.ePDL;
 //		Server.getResume(Player.guid);
 		
 		Player.setCurrentPlayTimeOffset(0);
@@ -413,6 +433,20 @@ Main.playItem = function (url) {
     	Player.totalTime = Data.getCurrentItem().childs[Main.selectedVideo].payload.dur * 1000;
 	    Player.totalTimeStr =Display.durationString(Player.totalTime / 1000.0);
 
+	  //thlo
+		if ((Data.getCurrentItem().childs[Main.selectedVideo].payload.fps <= 30) && (Data.getCurrentItem().childs[Main.selectedVideo].payload.ispes == "false")) {
+			// HLS only works for framerate smaller 30fps
+			// HLS only works for TS streams
+			if (Config.format == "hls") {
+				Player.mFormat = Player.eHLS;
+				url_ext = "/manifest-seg.m3u8|COMPONENT=HLS";
+			}
+			Player.mFormat = Player.eHAS;
+			if (Config.format == "has") {
+				url_ext = "/manifest-seg.mpd|COMPONENT=HAS";
+			}
+		}
+
     	if ((now - (start_time + duration)) < 0) {
 			// still recording
 			Main.log("*** Still Recording! ***");
@@ -420,16 +454,20 @@ Main.playItem = function (url) {
 			Player.startTime = start_time;
 			Player.duration = duration;
 			document.getElementById("olRecProgressBar").style.display="block";
-
 			Display.updateRecBar(start_time, duration);
 		}
 		else {
 	    	document.getElementById("olRecProgressBar").display="none";
 		}
+		Player.setVideoURL( Data.getCurrentItem().childs[Main.selectedVideo].payload.link + url_ext);
+		Player.guid = Data.getCurrentItem().childs[Main.selectedVideo].payload.guid;
+		Main.log("Main.playItem - Player.guid= " +Player.guid);
+
 		Display.setOlTitle(Data.getCurrentItem().childs[Main.selectedVideo].title);
 		Main.log("IsNew= " +Data.getCurrentItem().childs[Main.selectedVideo].payload.isnew);
 		
-		if (Data.getCurrentItem().childs[Main.selectedVideo].payload.isnew == "false") {
+		Buttons.show();
+/*		if (Data.getCurrentItem().childs[Main.selectedVideo].payload.isnew == "false") {
 			Buttons.show();
 		}
 		else {
@@ -438,11 +476,12 @@ Main.playItem = function (url) {
 
         	Player.playVideo(-1);
 		}
-
+*/
 		break;
 	case Main.eMED:
 		Display.hide();
     	Display.showProgress();
+		Player.mFormat = Player.ePDL;
     	
 		Player.setCurrentPlayTimeOffset(0);
 		Player.isLive = false;
@@ -844,6 +883,7 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (event) {
     }
 
     Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
+    Main.logToServer(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
     
     switch(keyCode)
     {
@@ -893,33 +933,53 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (event) {
         	Player.jumpToVideo(90);
         	break;
            
-        case tvKey.KEY_FF:
+//        case tvKey.KEY_FF:
         case tvKey.KEY_RIGHT:
             Main.log("Right: Skip Forward");
             Display.showProgress();
-            Player.skipForwardVideo();
+			if (Player.trickPlaySpeed != 1) {
+				Notify.showNotify("Trickplay!", true);				
+			}
+			else
+				Player.skipForwardVideo();
             break;
         
-        case tvKey.KEY_RW:
+//        case tvKey.KEY_RW:
         case tvKey.KEY_LEFT:
             Main.log("Left: Skip Backward");
             Display.showProgress();
-            Player.skipBackwardVideo();
+			if (Player.trickPlaySpeed != 1) {
+				Notify.showNotify("Trickplay!", true);				
+			}
+			else
+				Player.skipBackwardVideo();
             break;
 
 /* Works only for progressive streams, not Adaptive HTTP */
-/*        case tvKey.KEY_FF:
+        case tvKey.KEY_FF:
             Main.log("FF");
             Display.showProgress();
-            Player.fastForwardVideo();
+			if (Player.isRecording == true) {
+				Notify.showNotify("Recording!!!", true);
+			}
+			else if (Player.mFormat != Player.ePDL )
+				Notify.showNotify("Not supported", true);
+			else
+				Player.fastForwardVideo();
 
             break;
         case tvKey.KEY_RW:
             Main.log("RW");
             Display.showProgress();
-            Player.RewindVideo();
+			if (Player.isRecording == true) {
+				Notify.showNotify("Recording!!!", true);
+			}
+			else if (Player.mFormat != Player.ePDL )
+				Notify.showNotify("Not supported", true);
+			else
+				Player.RewindVideo();
             break;
-*/           
+           
         case tvKey.KEY_ENTER:
         case tvKey.KEY_PLAY:
         case tvKey.KEY_PANEL_ENTER:
@@ -927,8 +987,10 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (event) {
             if(Player.getState() == Player.PAUSED) {
                 Player.resumeVideo();
             }
-            Player.ResetTrickPlay();
-            if (Display.isProgressOlShown()) {
+            if (Player.isInTrickplay() == true) {
+                Player.ResetTrickPlay();            	
+            }
+            else if (Display.isProgressOlShown()) {
             	Player.adjustSkipDuration(0); // reset skip duration to default
         		Display.resetStartStop();
             }
@@ -938,7 +1000,6 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (event) {
         case tvKey.KEY_PANEL_RETURN:
         case tvKey.KEY_STOP:
         	Main.log("STOP");
-//        	Player.setWindow();
         	Player.stopVideo();
 			widgetAPI.blockNavigation(event);
 
@@ -955,6 +1016,9 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (event) {
         	Player.adjustSkipDuration(2);
             Display.showProgress();
         	break;
+		case tvKey.KEY_ASPECT:
+			Player.toggleAspectRatio();
+			break;
 /*        case tvKey.KEY_UP:
         case tvKey.KEY_PANEL_VOL_UP:
         case tvKey.KEY_VOL_UP:
@@ -1081,6 +1145,9 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function (event) {
      case tvKey.KEY_PAUSE:
          Main.log("PAUSE");
          break;
+     case tvKey.KEY_ASPECT:
+    	 Player.toggleAspectRatio();
+    	 break;
 
 /*     case tvKey.KEY_UP:
      case tvKey.KEY_PANEL_VOL_UP:

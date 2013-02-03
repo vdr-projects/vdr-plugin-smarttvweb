@@ -594,6 +594,7 @@ Display.setOlTitle = function (title) {
 };
 
 Display.resetStartStop = function () {
+	Main.log("Display.resetStartStop");
 	Display.olStartStop = "";
 	Display.hideOlStartStop();
 	$("#olStartStop").text("");
@@ -627,8 +628,10 @@ Display.setStartStop = function(start, stop) {
 };
 
 Display.setSkipDuration = function(duration) {
+	Main.log("Display.setSkipDuration: duration= " +duration);
 	this.olStartStop = "";
-	Display.showOlStartStop();
+//	if (this.olStartStop == "")
+		Display.showOlStartStop();
 
 	this.olStartStop = duration;    
 
@@ -638,6 +641,21 @@ Display.setSkipDuration = function(duration) {
     Display.putInnerHTML(elm, "Next Skip: " + Display.olStartStop+"sec");    
 	*/
 };
+
+Display.setTrickplay = function(direction, multiple) {
+	this.olStartStop = "";
+//	if (this.olStartStop == "")
+		Display.showOlStartStop();
+
+	this.olStartStop = multiple;    
+
+	$("#olStartStop").text( ((direction == 1) ? "FF": "RW") + ": " + Display.olStartStop+"x");
+
+/*    var elm = document.getElementById("olStartStop");
+    Display.putInnerHTML(elm, "Next Skip: " + Display.olStartStop+"sec");    
+	*/
+};
+
 
 // Player.OnCurrentPlayTime
 Display.updatePlayTime = function() {

@@ -42,8 +42,9 @@ body {
     left: 0px; top: 0px;
     width: 960px; height: 540px;
     background: url("../Images/selectScreen-bg.png");
+	background: radial-gradient(ellipse at 80% 80%, #c5deea 0%,#8abbd7 31%,#066dab 100%);
     background: -webkit-radial-gradient(80% 80%, ellipse cover, rgba(197,222,234,1) 0%,rgba(138,187,215,1) 31%,rgba(6,109,171,1) 100%);
-}
+	}
 
 #selectView {
     position: absolute;
@@ -52,11 +53,13 @@ body {
     border-style:solid;
 	border-width:2px;  
     font-size:16px;
+	border-radius: 7px;
 	-webkit-border-radius: 7px;
 	padding-top:5px;
     padding-left:20px;
     padding-right:20px;
     background: rgba(6,109,171,1) 100%;
+	background: linear-gradient(135deg, #1e5799 0%,#2989d8 41%,#7db9e8 100%);
 	background: -webkit-linear-gradient(-45deg, #1e5799 0%,#2989d8 41%,#7db9e8 100%);
 	-webkit-box-shadow:3px 3px 7px 4px rgba(0,0,0, 0.5);
 }
@@ -109,6 +112,25 @@ body {
     padding-left:20px;
     padding-right:20px;
     background-color: rgba(0,0,0,0.5);
+}
+
+#notify {
+    position: absolute;
+	display: none;
+    left: 70%; top: 10px;
+    width: 20%; height: 6%;
+	-webkit-border-radius: 1em;
+	-webkit-box-shadow:3px 3px 7px 4px rgba(0,0,0, 0.5);
+    border-style:solid;
+	border-width:2px;  
+    font-size:16px;
+	
+	padding-top:20px;
+    padding-left:20px;
+    padding-right:20px;
+    background-color: rgba(0,0,0,0.5);
+	z-index:20;
+
 }
 
 #popup{
