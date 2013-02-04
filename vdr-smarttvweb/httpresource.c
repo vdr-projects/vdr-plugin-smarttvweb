@@ -1086,6 +1086,7 @@ int cHttpResource::parseFiles(vector<sFileEntry> *entries, string prefix, string
 	//	char [20] rest;
 	int start = -1;
 	sscanf(de->d_name, "%4d-%02d-%02d.%02d.%02d", &t.tm_year, &t.tm_mon, &t.tm_mday, &t.tm_hour, &t.tm_min);
+
 	//	sscanf(de->d_name, "%4d-%02d-%02d.%02d%.%02d", &t.tm_year, &t.tm_mon, &t.tm_mday, &t.tm_hour, &t.tm_min);
 	t.tm_year -= 1900;
 	t.tm_mon--;
@@ -2387,8 +2388,9 @@ int cHttpResource::sendVdrDir(struct stat *statbuf) {
   mVdrIdx = 1;
   mFileStructure = "%s/%03d.vdr";
 
-  if (mPath.compare(mPath.size() - 9, 9, "99.99.rec") != 0) {
-    mFileStructure = "%s/%05d.ts";
+  snprintf(pathbuf, sizeof(pathbuf), mFileStructure.c_str(), mPath.c_str(), 1);
+  if (stat(pathbuf, statbuf) < 0) {
+    mFileStructure = "%s/%05d.ts";    
 #ifndef DEBUG
     *(mLog->log())<< DEBUGPREFIX  << " using dir format: " << mFileStructure.c_str() << endl;
 #endif
@@ -2620,15 +2622,22 @@ int cHttpResource::sendFile(struct stat *statbuf32) {
 
   mFileSize = S_ISREG(statbuf.st_mode) ? statbuf.st_size : -1;
 
+  *(mLog->log())<< "fd= " <<  mFd << " mReqId= "<< mReqId 
+		<< " mFileSize= " <<mFileSize << endl;
+
   if (!rangeHdr.isRangeRequest) {
     mRemLength = mFileSize;
     sendHeaders(200, "OK", NULL, getMimeType(mPath.c_str()), mFileSize, statbuf.st_mtime);
   }
   else { // Range request
-    fseek(mFile, rangeHdr.begin, SEEK_SET);
+    fseeko64(mFile, rangeHdr.begin, SEEK_SET);
     if (rangeHdr.end == 0)
       rangeHdr.end = mFileSize;
     mRemLength = (rangeHdr.end-rangeHdr.begin);
+    *(mLog->log())<< "fd= " <<  mFd << " mReqId= "<< mReqId 
+		  << " rangeHdr.begin= " <<rangeHdr.begin << " rangeHdr.end= " << rangeHdr.end 
+		  << " Content-Length= " << mRemLength << endl;
+
     snprintf(f, sizeof(f), "Content-Range: bytes %lld-%lld/%lld", rangeHdr.begin, (rangeHdr.end -1), mFileSize);
     sendHeaders(206, "Partial Content", f, getMimeType(mPath.c_str()), (rangeHdr.end-rangeHdr.begin), statbuf.st_mtime);
   }
