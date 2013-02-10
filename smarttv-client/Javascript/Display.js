@@ -193,6 +193,7 @@ Display.unselectItem = function (item) {
 	item.style.color = "white";
 	item.style.backgroundColor = "transparent";
 	item.style.background = "transparent";
+	item.style.borderRadius= "0px";
 	item.style["-webkit-box-shadow"] = "";
 };
 
@@ -270,13 +271,12 @@ Display.tuneLeftSide = function() {
 			Main.logToServer("ERROR in Display.tuneLeftSide. Should not be here");
 		break;
 	}
-	Main.log("Display.tuneLeftSide: w1= " + res.w1 +" w2= " + res.w2 + " w3= " + res.w3  );
+//	Main.log("Display.tuneLeftSide: w1= " + res.w1 +" w2= " + res.w2 + " w3= " + res.w3  );
 	return res;
 };
 
 
 Display.setVideoList = function(selected, first) {
-	// 
     var listHTML = "";
     var res = {};
 //    var first_item = selected;
@@ -286,20 +286,43 @@ Display.setVideoList = function(selected, first) {
 
 	tab_style = Display.tuneLeftSide();
     var i=0;
+	var max_idx = (Data.getVideoCount() < (this.LASTIDX +1)) ? Data.getVideoCount() :(this.LASTIDX+1) ;
     Main.log("Display.setVideoList title= " +Data.getCurrentItem().childs[selected].title + " selected= " + selected + " first_item= " + first_item);
     this.handleDescription(selected);
 
-    for (i = 0; i <= this.LASTIDX; i++) {
-    	if ((first_item+i) >= Data.getVideoCount()) {
-    		res = {c1: "", c2: "", c3: ""};
+	
+//    for (i = 0; i <= this.LASTIDX; i++) {
+    var idx = 0;
+    for (i = 0; i < max_idx; i++) {
+    	if ((first_item+i) <0) {
+			// wrap around
+//    		res = {c1: "", c2: "", c3: ""};
+//			Main.log ("first_item= " + first_item + " i= " + i + " VideoCount()= " +Data.getVideoCount() );
+    		idx = (first_item+i) + Data.getVideoCount();
+            res = Display.getDisplayTitle (Data.getCurrentItem().childs[(first_item+i) + Data.getVideoCount()]); 
     	}
-    	else {
+    	else if ((first_item+i) >= Data.getVideoCount()) {
+			Main.log ("first_item= " + first_item + " i= " + i + " VideoCount()= " +Data.getVideoCount() );
+			idx = (first_item+i) - Data.getVideoCount();
+            res = Display.getDisplayTitle (Data.getCurrentItem().childs[(first_item+i) - Data.getVideoCount()]); 
+		}
+		else {
+			idx = first_item+i; 
             res = Display.getDisplayTitle (Data.getCurrentItem().childs[first_item+i]); 
     	}
         this.videoList[i] = document.getElementById("video"+i);
-		Display.setVideoItem(this.videoList[i], res, tab_style);
+		Display.setVideoItem(this.videoList[i], res, (idx == 0)? true : false, tab_style);
+				// TODO: mark element with position == 0
 		
         this.unselectItem(this.videoList[i]);
+    }
+
+    if (max_idx < (this.LASTIDX +1)) {
+    	for (i = max_idx; i <= this.LASTIDX; i++) {
+            this.videoList[i] = document.getElementById("video"+i);
+    		Display.setVideoItem(this.videoList[i], {c1: "", c2: "", c3: ""}, false, tab_style);
+
+    	}
     }
     
     this.currentWindow = (selected - first_item);
@@ -310,28 +333,26 @@ Display.setVideoList = function(selected, first) {
 //    Display.putInnerHTML(document.getElementById("videoCount"), listHTML);
 };
 
-Display.setVideoItem = function (elm, cnt, style) {
+Display.setVideoItem = function (elm, cnt, top, style) {
 	// cnt
 	$(elm).children("div").eq(0).text (cnt.c1);
 	$(elm).children("div").eq(1).text (cnt.c2);
 	$(elm).children("div").eq(2).text (cnt.c3);
-	
+
+		
 	if (typeof(style) != "undefined") {
 //		Main.log ("Display.setVideoItem: change style w1= " + style.w1 + " w2= " + style.w2 + " w3= " + style.w3);
 		$(elm).children("div").eq(0).css("width", style.w1 );
 		$(elm).children("div").eq(1).css("width", style.w2 );
 		$(elm).children("div").eq(2).css("width", style.w3 );
 	}
-	/*
-	var itm = $(elm).children("div").eq(1);
-	if (itm.outerHeight() > this.itemHeight) {
-		var temp = cnt.c2;
-		while(itm.outerHeight() > this.itemHeight) {
-		    temp = temp.substr(0, temp.length-1);
-		    itm.text(temp + '...');
-		}	
-	}
-	*/
+	if (typeof(top) != "undefined")
+		if (top == true) {
+			$(elm).css("border-top-style", "solid");
+			$(elm).css("border-top-width", "1px");
+		}
+	else
+		$(elm).css("border-top-width", "0px");
 };
 
 //Video Select Screen
@@ -345,15 +366,20 @@ Display.resetVideoList = function () {
 			break;
 	    }
 		Display.unselectItem(elm);	
-		Display.setVideoItem(elm, {c1: "", c2: "", c3: ""}, {w1: "20%", w2:"70%", w3:"5%"});
+		Display.setVideoItem(elm, {c1: "", c2: "", c3: ""}, false, {w1: "20%", w2:"70%", w3:"5%"});
 		i ++;
 	}    
 	
 };
 
+Display.resetDescription = function () {
+	$("#description").text(""); // reset 
+
+};
+
 //Video Select Screen
 Display.handleDescription =function (selected) {
-	Main.log("Display.handleDescription ");
+//	Main.log("Display.handleDescription ");
 	
 	if (Data.getCurrentItem().childs[selected].isFolder == true) {
         Display.setDescription( "Dir: " +Data.getCurrentItem().childs[selected].title );
@@ -413,20 +439,18 @@ Display.handleDescription =function (selected) {
 /*
  * this.currentWindow: Cursor (selected item)
  */
-Display.setVideoListPosition = function(position, move)
-{    
-    var listHTML = "";
-//    var res = {}; //thlo: unused?
-    Main.log ("Display.setVideoListPosition title= " +Data.getCurrentItem().childs[position].title + " move= " +move);
-
+Display.setVideoListPosition = function(position, move) {    
+//    Main.log ("Display.setVideoListPosition title= " +Data.getCurrentItem().childs[position].title + " move= " +move);
+//	Main.log("Display.setVideoListPosition vidCount= " + Data.getVideoCount() + " LASTIDX= " + this.LASTIDX);
     this.handleDescription(position);
     
-//    listHTML = (position + 1) + " / " + Data.getVideoCount();
-//    Display.putInnerHTML(document.getElementById("videoCount"), listHTML);
 	$("#videoCount").text((position + 1) + " / " + Data.getVideoCount());
     
-    if(Data.getVideoCount() < this.LASTIDX) {
-        for (var i = 0; i < Data.getVideoCount(); i++)
+    if(Data.getVideoCount() <= (this.LASTIDX+1)) {
+		// videos fit into the video list. No spill overs.
+		this.currentWindow  = position;
+//		Main.log("Display.setVideoListPosition: currentWindow= " + this.currentWindow)
+		for (var i = 0; i < Data.getVideoCount(); i++)
         {
             if(i == position)
             	this.selectItem(this.videoList[i]);
@@ -452,43 +476,25 @@ Display.setVideoListPosition = function(position, move)
     }
     else if(this.currentWindow == this.LASTIDX && move == Main.DOWN) {
     	// Next Page
-        if(position == this.FIRSTIDX) {
-        	// very top element selected
-        	this.currentWindow = this.FIRSTIDX;
-            
-            for(i = 0; i <= this.LASTIDX; i++) {
-        		Display.setVideoItem(this.videoList[i], Display.getDisplayTitle (Data.getCurrentItem().childs[i]));
-                
-                if(i == this.currentWindow)
-                	this.selectItem(this.videoList[i]);
-                else
-                	this.unselectItem(this.videoList[i]);
-                }
-        }
-        else {            
-            for(i = 0; i <= this.LASTIDX; i++) {
-        		Display.setVideoItem(this.videoList[i], Display.getDisplayTitle (Data.getCurrentItem().childs[i + position - this.currentWindow]));
-            }
-        }
+		Main.log("Display.setVideoListPosition: next page. position= " + position);
+		var c_pos = position - this.currentWindow;
+		if (c_pos < 0) 
+			c_pos += Data.getVideoCount();
+		for(i = 0; i <= this.LASTIDX; i++) {
+//					var idx = (i + position - this.currentWindow) %Data.getVideoCount();
+			var idx = (i + c_pos) %Data.getVideoCount();
+			Main.log("idx= " + idx);
+			Display.setVideoItem(this.videoList[i], Display.getDisplayTitle (Data.getCurrentItem().childs[idx]), (idx == 0)? true: false);
+				// TODO: mark element with position == 0
+			}
     }
     else if(this.currentWindow == this.FIRSTIDX && move == Main.UP)  {
     	// Previous Page
-        if(position == Data.getVideoCount()-1) {
-        	// very bottom element selected
-        	this.currentWindow = this.LASTIDX;
-            
-            for(i = 0; i <= this.LASTIDX; i++) {
-        		Display.setVideoItem(this.videoList[i], Display.getDisplayTitle (Data.getCurrentItem().childs[i + position - this.currentWindow]));
-                if(i == this.currentWindow)
-                	this.selectItem(this.videoList[i]);
-                else
-                	this.unselectItem(this.videoList[i]);
-            }
-        }
-        else {            
-            for(i = 0; i <= this.LASTIDX; i++) {
-        		Display.setVideoItem(this.videoList[i], Display.getDisplayTitle (Data.getCurrentItem().childs[i + position]));
-            }
+		Main.log("Display.setVideoListPosition: previous page. position= " + position);
+		for(i = 0; i <= this.LASTIDX; i++) {
+			var idx = (i + position) %Data.getVideoCount();
+        	Display.setVideoItem(this.videoList[i], Display.getDisplayTitle (Data.getCurrentItem().childs[idx]), (idx == 0) ?true: false);
+				// TODO: mark element with position == 0
         }
     }
 };
@@ -557,6 +563,25 @@ Display.getDisplayTitle = function(item) {
  * 
  */
 
+Display.resetAtStop = function () {
+	// this function should reset all overlay features to plan recordings.
+	// Hide Recording bar
+	Notify.notifyOlHandler.cancel();
+
+	Player.resetAtStop(); // Needs to be done at beginning to reset parameters
+	Display.resetStartStop();
+
+	// Buffer Progress
+	Display.bufferUpdate();
+	
+	// Progress Bar
+	Display.updateProgressBar();
+
+	// Playtime info
+	Display.updatePlayTime();
+	$("#olRecProgressBar").hide();	
+};
+ 
 Display.showOlStartStop = function () {
 	$("#olTitle").css("width", "50%");
 	$("#olStartStop").show();
@@ -660,13 +685,15 @@ Display.setTrickplay = function(direction, multiple) {
 // Player.OnCurrentPlayTime
 Display.updatePlayTime = function() {
 //    Player.curPlayTimeStr =  Display.getHumanTimeRepresentation(Player.curPlayTime);
-    var timeElement = document.getElementById("olTimeInfo");
-    Display.putInnerHTML(timeElement,  Player.curPlayTimeStr + " / " + Player.totalTimeStr);    
+//    var timeElement = document.getElementById("olTimeInfo");
+//    Display.putInnerHTML(timeElement,  Player.curPlayTimeStr + " / " + Player.totalTimeStr);    
+	$("#olTimeInfo").text(Player.curPlayTimeStr + " / " + Player.totalTimeStr);
 };
 
 Display.updateProgressBar = function () {
 	var timePercent = (Player.curPlayTime *100)/ Player.totalTime;
-    document.getElementById("olProgressBar").style.width = Math.round(timePercent) + "%";	
+//    document.getElementById("olProgressBar").style.width = Math.round(timePercent) + "%";	
+	$("#olProgressBar").css("width", (Math.round(timePercent) + "%"));
 };
 
 Display.updateRecBar = function (start_time, duration){
@@ -674,10 +701,12 @@ Display.updateRecBar = function (start_time, duration){
 
 	var remaining = Math.round(((start_time + duration) - now) * 100/ duration);
 //    Main.log (" remaining= " + remaining + " start= " + start_time + " dur= " + duration);
-	var elm = document.getElementById("olRecProgressBar");
-    elm.style.display="block";
-    elm.style.width = remaining + "%";
-    elm.style.left = (100 - remaining) + "%";
+//	var elm = document.getElementById("olRecProgressBar");
+	$("#olRecProgressBar").show();
+//    elm.style.display="block";
+	$("#olRecProgressBar").css({"width": (remaining + "%"), "left": ((100 - remaining) + "%")});
+//    elm.style.width = remaining + "%";
+//    elm.style.left = (100 - remaining) + "%";
 };
 
 

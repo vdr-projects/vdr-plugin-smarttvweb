@@ -52,17 +52,17 @@ Epg.startEpgUpdating = function() {
 	var delay = Math.round(res.min - now) *1000;
 	this.curGuid = res.guid;
 
-	Main.log("Epg.startEpgUpdating: Next update for GUID= " + res.guid + " with Min= " + res.min + " delay= " + (delay/1000.0) + "sec"); 
 	
 	if (this.lastGuid == res.guid) {
 		// lastGuid is only changed, when the last response was successful
 		// number of repetitive errors are checked in the error response procedure
 		this.sameGuidCount ++;
-		Main.logToServer("WARNING in Epg.startEpgUpdating: again same Guid guid= " + res.guid + "(" +Epg.guidTitle[res.guid] +") (sameGuidCount= " +this.sameGuidCount+"). OrgDelay= " + (delay/1000.0) + "sec. Delaying...");
+//		Main.logToServer("WARNING in Epg.startEpgUpdating: again same Guid guid= " + res.guid + "(" +Epg.guidTitle[res.guid] +") (sameGuidCount= " +this.sameGuidCount+"). OrgDelay= " + (delay/1000.0) + "sec. Delaying...");
 		delay = 1000;
 		if (this.sameGuidCount > 60) {
 			Epg.insertFakeEntry(res.guid);
-			Main.logToServer("ERROR in EPG.updateEPG: insertFakeEntry for guid= " + res.guid + " (" + Epg.guidTitle[res.guid] +")");
+			Main.logToServer("WARNING in EPG.updateEPG: insertFakeEntry for guid= " + res.guid + " (" + Epg.guidTitle[res.guid] +")");
+			Main.log("WARNING in EPG.updateEPG: insertFakeEntry for guid= " + res.guid + " (" + Epg.guidTitle[res.guid] +")");
 			Epg.isActive = false;
 			Epg.startEpgUpdating();
 //			Main.logToServer("ERROR in EPG.updateEPG: 10x same guid !!! - Please file a bug report! - Bitte eine Fehlermeldung posten");
@@ -71,26 +71,28 @@ Epg.startEpgUpdating = function() {
 		}
 	}
 	else {
+		Main.log("Epg.startEpgUpdating: Next update for GUID= " + res.guid + " with Min= " + res.min + " delay= " + (delay/1000.0) + "sec"); 
 		this.sameGuidCount = 0;
 	}
 
 	if (delay <0) {
 		delay = 300; //bit delay in msec
 	}
-//	var guid = res.guid;
 	if (!(res.guid in this.guidErrors)) {
 		this.guidErrors[res.guid] = 0;
 	};
 
-	Main.log("Iter over this.guidErrors");
+/*	Main.log("Iter over this.guidErrors");
 	for (var prop in this.guidErrors) {
 		Main.log(" " +prop + " == " + this.guidErrors[prop]);
 	}
 	Main.log("Iter Done");
-	
-	Main.log("Epg.startEpgUpdating: next Update for guid= " + res.guid + " (" +Epg.guidTitle[res.guid] +") guidErrors= "+this.guidErrors[res.guid]+ " in " + (delay/1000.0) +"sec");
-	Main.logToServer("Epg.startEpgUpdating: next Update for guid= " + res.guid + " (" +Epg.guidTitle[res.guid]+ ") guidErrors= "+this.guidErrors[res.guid]+ " in " + (delay/1000.0) +"sec");
+*/	
+	if (this.guidErrors[res.guid] == 0) {
+		Main.log("Epg.startEpgUpdating: next Update for guid= " + res.guid + " (" +Epg.guidTitle[res.guid] +") guidErrors= "+this.guidErrors[res.guid]+ " in " + (delay/1000.0) +"sec");
+		Main.logToServer("Epg.startEpgUpdating: next Update for guid= " + res.guid + " (" +Epg.guidTitle[res.guid]+ ") guidErrors= "+this.guidErrors[res.guid]+ " in " + (delay/1000.0) +"sec");
 //	Main.logToServer("Epg.startEpgUpdating: next Update for guid= " + res.guid + " in " + (delay/1000.0) +"sec");
+	}
 	
 	this.timeoutObj = window.setTimeout(function() { Epg.updateEpg(res.guid); }, delay);
 };
@@ -99,7 +101,7 @@ Epg.updateEpg = function (guid) {
 	var url = Config.serverUrl + "/epg.xml?id=" + guid;
 	
 	if (Epg.guidErrors[guid] >2) {
-		Main.logToServer("WARNING in Epg.updateEpg: guid= " + guid + " uses mode=nodesc" );
+//		Main.logToServer("WARNING in Epg.updateEpg: guid= " + guid + " uses mode=nodesc" );
 		url = url +"&mode=nodesc";
 	}
 	Main.log("Epg.updateEpg: Prep for guid= " + guid + " with ErrorCount= " + Epg.guidErrors[guid] +" and url= " + url);
@@ -115,17 +117,17 @@ Epg.updateEpg = function (guid) {
 Epg.handleError = function (XHR, textStatus, errorThrown) {
 	
 	Epg.guidErrors[Epg.curGuid] += 1;
-	Main.log("EPG.updateEPG Error ("+XHR.status +": " +XHR.responseText+")EPG.curGuid= "+Epg.curGuid +" Epg.guidErrors[Epg.curGuid]= " +Epg.guidErrors[Epg.curGuid]);
-	Main.logToServer("EPG.updateEPG Error Response("+ XHR.status + ") EPG.curGuid= "+Epg.curGuid +" Epg.guidErrors[Epg.curGuid]= " +Epg.guidErrors[Epg.curGuid]);
+//	Main.log("EPG.updateEPG Error ("+XHR.status +": " +XHR.responseText+")EPG.curGuid= "+Epg.curGuid +" Epg.guidErrors[Epg.curGuid]= " +Epg.guidErrors[Epg.curGuid]);
+//	Main.logToServer("EPG.updateEPG Error Response("+ XHR.status + ") EPG.curGuid= "+Epg.curGuid +" Epg.guidErrors[Epg.curGuid]= " +Epg.guidErrors[Epg.curGuid]);
 
 	Epg.isActive = false;
-	Main.log("--------------------------------------------");
-	if (Epg.guidErrors[Epg.curGuid] < 10) {
+//	Main.log("--------------------------------------------");
+	if (Epg.guidErrors[Epg.curGuid] < 6) {
 		Epg.startEpgUpdating();
 	}
 	else {
 		Epg.insertFakeEntry(Epg.curGuid);
-		Main.logToServer("ERROR in EPG.updateEPG: insertingFakeEntry for guid= " + res.guid + " (" + Epg.guidTitle[res.guid] +")");
+		Main.logToServer("ERROR in EPG.updateEPG: insertingFakeEntry for guid= " + Epg.curGuid + " (" + Epg.guidTitle[Epg.curGuid] +") with Epg.guidErrors= " +Epg.guidErrors[Epg.curGuid]);
 		Epg.startEpgUpdating();
 //		Display.showPopup("EPG.updateEPG: stop updating !!!<br>Please file a bug report!<br>Bitte eine Fehlermeldung posten");
 	}
@@ -133,7 +135,7 @@ Epg.handleError = function (XHR, textStatus, errorThrown) {
 };
 
 Epg.insertFakeEntry = function (guid) {
-	Main.logToServer("Epg.insertFakeEntry for guid= " + guid + " (" + Epg.guidErrors[guid] +")");
+//	Main.logToServer("Epg.insertFakeEntry for guid= " + guid + " (" + Epg.guidErrors[guid] +")");
 	var now = Display.GetEpochTime();
 
 	entry={};
@@ -181,7 +183,7 @@ Epg.parseResponse = function (message,text, XHR) {
 
 		Epg.lastGuid = guid;
 		Epg.isActive = false;
-		Main.log("--------------------------------------------");
+//		Main.log("--------------------------------------------");
 		Epg.startEpgUpdating();
 	});
 };

@@ -165,7 +165,7 @@ Item.prototype.findEpgUpdateTime = function (min, guid, level) {
     		if ((this.childs[i].payload['start'] != 0) && ((this.childs[i].payload['start'] + this.childs[i].payload['dur']) < min)) {
     			min = this.childs[i].payload['start'] + this.childs[i].payload['dur'];
     			guid = this.childs[i].payload['guid'] ;
-    			Main.log(prefix + "New Min= " + min + " new id= " + guid + " title= " + this.childs[i].title);
+//    			Main.log(prefix + "New Min= " + min + " new id= " + guid + " title= " + this.childs[i].title);
 //    			Main.logToServer(prefix + "New Min= " + min + " new id= " + guid + " title= " + this.childs[i].title);
     		}
     	}

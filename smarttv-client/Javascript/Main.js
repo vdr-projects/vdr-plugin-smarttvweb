@@ -10,6 +10,7 @@ try {
 catch (e) {
 }
 
+
 /*
  * Config.deviceType is used to differentiate main devices.
  * Config.deviceType == 0 is a Samsung ES Series Device (2012)
@@ -21,26 +22,21 @@ catch (e) {
  *  Handle KeyCodes: global variable tvKey holds an enum
  *  event.keyCode: is used to get the key pressed 
  *  
- *  Display.putInnerHTML: Samsung specific way to hanle innerHTML 
  *  Display.GetEpochTime: returns the current time (UTC) in seconds
  * 
- *  Audio: Get and Set Volume
  *  Player: All operations to get the video playing
  *   
  */
 
-//var custom = window.deviceapis.customdevice || {};
-
 
 /*
  * TODO:
- * Resume
  * Audio Track Select
  * Screensaver (using setOnScreenSaver() from common modules)
- * VDR Status on main screne
  */ 
 
 
+ 
 var Main = {
 	state : 0,  // selectScreen
 	selectedVideo : 0,
@@ -127,6 +123,17 @@ showHandler = function() {
 
 // Called by Config, when done
 Main.init = function () {
+	if (Config.debug == true) {
+		Main.logToServer = function (msg) {
+			if (Config.serverUrl == "" )
+				return;
+
+			var XHRObj = new XMLHttpRequest();
+			XHRObj.open("POST", Config.serverUrl + "/log", true);
+			XHRObj.send("CLOG: " + msg);
+		};
+	}
+
 	Main.log("Main.init()");
 	
 	Buttons.init();
@@ -155,21 +162,23 @@ Main.init = function () {
 
 	ClockHandler.start("#selectNow");
 
-//	Epg.updateEpg("S19.2E-1-1101-28106");
 	Server.updateVdrStatus();
-//	Buttons.ynShow();
-//	Buttons.show();
-//	Notify.showNotify("test...", true);
-//	Server.deleteRecording("/hd2/video/The_Green_Hornet/2013-01-06.20.04.4-0.rec");
-//	Display.handlerShowProgress();
-//	Display.initOlForRecordings();
-//	Display.setOlTitle("Hallo Echo Hallo Echo Hallo Echo Hallo Echo Hallo Echo Hallo Echo Hallo Echo Hallo Echo  Hallo Echo  Hallo Echo  Hallo Echo");
+
+	//	Display.initOlForRecordings();
     /*
-     * 
      * Fetch JS file
 	 */
-
-	 /*
+/*	if (Config.uploadJsFile != "undefined") {
+		Main.logToServer ("Upload: " + Config.uploadJsFile );
+		xhttp=new XMLHttpRequest();
+		xhttp.open("GET",Config.uploadJsFile,false);
+		xhttp.send("");
+		xmlDoc=xhttp.responseText;
+		Main.logToServer (xmlDoc);
+	
+	}
+*/	 /*
+	  *
 	 Read widget conf. find the file to log
 	xhttp=new XMLHttpRequest();
 	xhttp.open("GET","$MANAGER_WIDGET/Common/webapi/1.0/webapis.js",false);
@@ -191,12 +200,14 @@ Main.log = function (msg) {
 };
 
 Main.logToServer = function (msg) {
-	if (Config.serverUrl == "" )
+//replaced, when widget.debug is true
+/*	if (Config.serverUrl == "" )
 		return;
 
 	var XHRObj = new XMLHttpRequest();
     XHRObj.open("POST", Config.serverUrl + "/log", true);
     XHRObj.send("CLOG: " + msg);
+*/
 };
 
 Main.onUnload = function()
@@ -208,6 +219,8 @@ Main.onUnload = function()
 Main.changeState = function (state) {
 	Main.log("change state: OldState= " + this.state + " NewState= " + state);
 	var old_state = this.state;
+
+	
 	this.state = state;
 	
 	ClockHandler.stop();
@@ -222,40 +235,48 @@ Main.changeState = function (state) {
 		Main.log ("old Select= " + Main.selectMenuKeyHndl.select);
 		Display.resetSelectItems(old_state);
         
-		document.getElementById("selectScreen").style.display="block";
+//		document.getElementById("selectScreen").style.display="block";
+		$("#selectScreen").show();
 	
 		ClockHandler.start("#selectNow");
 		Display.hide();
-		Display.resetVideoList();		
+		Data.reset ();
+		Display.resetVideoList();	
+		Display.resetDescription ();
+		
 		break;
 	case Main.eLIVE:
-		document.getElementById("selectScreen").style.display="none";
+//		document.getElementById("selectScreen").style.display="none";
+		$("#selectScreen").hide();
 		ClockHandler.start("#logoNow");
 		Display.show();
 		Main.selectedVideo = 0;
-		Data.reset ();
+//		Data.reset ();
 		Main.liveSelected();
 		break;
 	case Main.eREC:
-		document.getElementById("selectScreen").style.display="none";
+//		document.getElementById("selectScreen").style.display="none";
+		$("#selectScreen").hide();
 		ClockHandler.start("#logoNow");
 		Display.show();
 		Main.selectedVideo = 0;
-		Data.reset ();
+//		Data.reset ();
 		Main.recordingsSelected();
 		break;
 	case Main.eMED:
-		document.getElementById("selectScreen").style.display="none";
+//		document.getElementById("selectScreen").style.display="none";
+		$("#selectScreen").hide();
 		ClockHandler.start("#logoNow");
 		Display.show();
 		Main.selectedVideo = 0;
-		Data.reset ();
+//		Data.reset ();
 		Main.mediaSelected();
 		break;
 	case Main.eOPT:
 		// Options
 //    	Options.init();
-		document.getElementById("selectScreen").style.display="none";
+//		document.getElementById("selectScreen").style.display="none";
+		$("#selectScreen").hide();
 		Options.show();
 //		document.getElementById("optionsScreen").style.display="block";
 		Main.optionsSelected();
@@ -263,17 +284,32 @@ Main.changeState = function (state) {
 	}
 };
 
-Main.recordingsSelected = function() {
+Main.liveSelected = function() {
+	Server.retries = 0;
     Player.stopCallback = function() {
-		Server.saveResume ();    	
-		Data.getCurrentItem().childs[Main.selectedVideo].payload.isnew = "false";
     	Display.show();
     };
-    Server.errorCallback = function (msg) {
-    	Server.errorCallback = Main.serverError;
+    Player.isLive = true;
+    Server.setSort(false);
+    Server.errorCallback = Main.serverError;
+    Spinner.show();
+    Server.fetchVideoList(Config.serverUrl + "/channels.xml?channels="+Config.liveChannels); /* Request video information from server */    
+};
+
+Main.recordingsSelected = function() {
+	Server.retries = 0;
+    Player.stopCallback = function() {
+    	Display.show();
+		Server.saveResume ();    	
+		Data.getCurrentItem().childs[Main.selectedVideo].payload.isnew = "false";
     };
 
-    Player.isLive = false;   
+    Server.errorCallback = Main.serverError;
+/*    Server.errorCallback = function (msg) {
+    	Server.errorCallback = Main.serverError;
+    };
+*/
+//    Player.isLive = false;   // TODO: obsolete
     Server.setSort(true);
 /*    if (Config.format == "") {
         Server.fetchVideoList(Config.serverUrl + "/recordings.xml?model=samsung"); 
@@ -291,6 +327,28 @@ Main.recordingsSelected = function() {
 	Server.fetchVideoList(Config.serverUrl + "/recordings.xml"); /* Request video information from server */
     Main.log("fetchVideoList from: " + Config.serverUrl + "/recordings.xml");
 };
+
+
+Main.mediaSelected = function() {
+	Server.retries = 0;
+    Player.stopCallback = function() {
+    	// 
+    	Display.show();
+    };
+    Server.errorCallback = function (msg) {
+    	Display.showPopup(msg);
+    	Main.changeState(0);
+    };
+//    Player.isLive = false;   
+    Server.setSort(true);
+    Spinner.show();
+    Server.fetchVideoList(Config.serverUrl + "/media.xml"); /* Request video information from server */
+};
+
+Main.optionsSelected = function() {
+	Main.log ("Main.optionsSelected");
+};
+
 
 Main.serverError = function(errorcode) {
 	if (Server.retries < 2) {
@@ -310,36 +368,6 @@ Main.serverError = function(errorcode) {
 
 };
 
-Main.liveSelected = function() {
-	Server.retries = 0;
-    Player.stopCallback = function() {
-    };
-    Player.isLive = true;
-    Server.setSort(false);
-    Server.errorCallback = Main.serverError;
-    Spinner.show();
-    Server.fetchVideoList(Config.serverUrl + "/channels.xml?channels="+Config.liveChannels); /* Request video information from server */
-    
-};
-
-Main.mediaSelected = function() {
-    Player.stopCallback = function() {
-    	// 
-    	Display.show();
-    };
-    Server.errorCallback = function (msg) {
-    	Display.showPopup(msg);
-    	Main.changeState(0);
-    };
-    Player.isLive = false;   
-    Server.setSort(true);
-    Spinner.show();
-    Server.fetchVideoList(Config.serverUrl + "/media.xml"); /* Request video information from server */
-};
-
-Main.optionsSelected = function() {
-	Main.log ("Main.optionsSelected");
-};
 
 Main.enableKeys = function() {
 	Main.log("Main.enableKeys");
@@ -369,7 +397,7 @@ event = event || window.event;
 	case 2: 
 	case 3:
 		// recordings
-		Main.log("Recordings - Main.keyDown PlayerState= " + Player.getState());
+//		Main.log("Recordings - Main.keyDown PlayerState= " + Player.getState());
 	    if(Player.getState() == Player.STOPPED) {
 	    	// Menu Key
 	        this.menuKeyHndl.handleKeyDown(event);
@@ -394,8 +422,8 @@ Main.playItem = function (url) {
 	var duration = Data.getCurrentItem().childs[Main.selectedVideo].payload.dur;
 	var now = Display.GetEpochTime();
 	
-	document.getElementById("olRecProgressBar").style.display="none";
-	Player.mFormat = Player.eUND; // default val
+//	document.getElementById("olRecProgressBar").style.display="none";
+//	Player.mFormat = Player.eUND; // default val
 	
 	switch (this.state) {
 	case Main.eLIVE:
@@ -405,9 +433,9 @@ Main.playItem = function (url) {
     	Display.showProgress();
     	
 		Player.isLive = true;
-		Player.bufferState = 0;
-		Player.isRecording = false;
-
+//		Player.bufferState = 0; //TODO: Obsolete
+//		Player.isRecording = false; //TODO: Obsolete
+ 
 		Display.updateOlForLive (start_time, duration, now);
 		Main.log ("Live now= " +  now + " StartTime= " + Data.getCurrentItem().childs[Main.selectedVideo].payload.start + " offset= " +Player.cptOffset );
 		Main.log("Live Content= " + Data.getCurrentItem().childs[Main.selectedVideo].title + " dur= " + Data.getCurrentItem().childs[Main.selectedVideo].payload.dur);
@@ -418,79 +446,96 @@ Main.playItem = function (url) {
 		Player.playVideo(-1);
 	break;
 	case Main.eREC: 
-		Display.resetStartStop();
+//		Display.resetStartStop(); //TODO Obsolete
 
 //		Main.getResume(Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
 		var url_ext = "";
 		Player.mFormat = Player.ePDL;
 //		Server.getResume(Player.guid);
 		
-		Player.setCurrentPlayTimeOffset(0);
-		Player.isLive = false;
-		Player.isRecording = false;
+//		Player.setCurrentPlayTimeOffset(0); //TODO: reset at stop
+//		Player.isLive = false; //TODO: reset at stop
+//		Player.isRecording = false; //TODO: reset at stop
     	Main.log(" playItem: now= " + now + " start_time= " + start_time + " dur= " + duration + " (Start + Dur - now)= " + ((start_time + duration) -now));
 
     	Player.totalTime = Data.getCurrentItem().childs[Main.selectedVideo].payload.dur * 1000;
 	    Player.totalTimeStr =Display.durationString(Player.totalTime / 1000.0);
 
 	  //thlo
-		if ((Data.getCurrentItem().childs[Main.selectedVideo].payload.fps <= 30) && (Data.getCurrentItem().childs[Main.selectedVideo].payload.ispes == "false")) {
-			// HLS only works for framerate smaller 30fps
-			// HLS only works for TS streams
-			if (Config.format == "hls") {
-				Player.mFormat = Player.eHLS;
-				url_ext = "/manifest-seg.m3u8|COMPONENT=HLS";
+	    if (Config.usePdlForRecordings == false) {	
+	    	Main.log("Main.playItem: use AHS for recordings");
+	    	Main.logToServer("Main.playItem: use AHS for recordings");
+			if ((Data.getCurrentItem().childs[Main.selectedVideo].payload.fps <= 30) && (Data.getCurrentItem().childs[Main.selectedVideo].payload.ispes == "false")) {
+				// in case fps is smaller than 30 and ts recording use HLS or HAS
+				if (Config.format == "hls") {
+					Player.mFormat = Player.eHLS;
+					url_ext = "/manifest-seg.m3u8|COMPONENT=HLS";
+				}
+				Player.mFormat = Player.eHAS;
+				if (Config.format == "has") {
+					url_ext = "/manifest-seg.mpd|COMPONENT=HAS";
+				}
 			}
-			Player.mFormat = Player.eHAS;
-			if (Config.format == "has") {
-				url_ext = "/manifest-seg.mpd|COMPONENT=HAS";
-			}
-		}
+	    }
 
     	if ((now - (start_time + duration)) < 0) {
 			// still recording
 			Main.log("*** Still Recording! ***");
-			Player.isRecording = true;
+			Player.isRecording = true; 
 			Player.startTime = start_time;
 			Player.duration = duration;
-			document.getElementById("olRecProgressBar").style.display="block";
+//			document.getElementById("olRecProgressBar").style.display="block";
+			$("#olRecProgressBar").show();
 			Display.updateRecBar(start_time, duration);
+
+// New recording in progress handling
+			url_ext = "";
+			Player.mFormat = Player.ePDL;
+
+/*			if ((Data.getCurrentItem().childs[Main.selectedVideo].payload.fps <= 30) && (Data.getCurrentItem().childs[Main.selectedVideo].payload.ispes == "false")) {
+				// HLS only works for framerate smaller 30fps
+				// HLS only works for TS streams
+				if (Config.format == "hls") {
+					Player.mFormat = Player.eHLS;
+					url_ext = "/manifest-seg.m3u8|COMPONENT=HLS";
+				}
+				Player.mFormat = Player.eHAS;
+				if (Config.format == "has") {
+					url_ext = "/manifest-seg.mpd|COMPONENT=HAS";
+				}
+			}
+*/
 		}
-		else {
-	    	document.getElementById("olRecProgressBar").display="none";
+/*		else {
+			// TODO: Obsolete
+			$("#olRecProgressBar").hide();
+//	    	document.getElementById("olRecProgressBar").display="none";
 		}
+*/
 		Player.setVideoURL( Data.getCurrentItem().childs[Main.selectedVideo].payload.link + url_ext);
 		Player.guid = Data.getCurrentItem().childs[Main.selectedVideo].payload.guid;
 		Main.log("Main.playItem - Player.guid= " +Player.guid);
 
 		Display.setOlTitle(Data.getCurrentItem().childs[Main.selectedVideo].title);
-		Main.log("IsNew= " +Data.getCurrentItem().childs[Main.selectedVideo].payload.isnew);
+//		Main.log("IsNew= " +Data.getCurrentItem().childs[Main.selectedVideo].payload.isnew);
+		Player.OnCurrentPlayTime(0);   // updates the HTML elements of the Progressbar 
 		
 		Buttons.show();
-/*		if (Data.getCurrentItem().childs[Main.selectedVideo].payload.isnew == "false") {
-			Buttons.show();
-		}
-		else {
-    		Display.hide();
-        	Display.showProgress();
-
-        	Player.playVideo(-1);
-		}
-*/
+		
 		break;
 	case Main.eMED:
 		Display.hide();
     	Display.showProgress();
 		Player.mFormat = Player.ePDL;
     	
-		Player.setCurrentPlayTimeOffset(0);
-		Player.isLive = false;
-		Player.isRecording = false;
+//		Player.setCurrentPlayTimeOffset(0); //TODO: reset at stop
+//		Player.isLive = false; //TODO: reset at stop
+//		Player.isRecording = false;//TODO: reset at stop
     	Main.log(" playItem: now= " + now + " start_time= " + start_time + " dur= " + duration + " (Start + Dur - now)= " + ((start_time + duration) -now));
 
-    	document.getElementById("olRecProgressBar").display="none";
+  //  	document.getElementById("olRecProgressBar").display="none"; //TODO: reset at stop
 		Display.setOlTitle(Data.getCurrentItem().childs[Main.selectedVideo].title);
-		Display.resetStartStop();
+//		Display.resetStartStop(); //TODO: reset at stop
 
 		Player.setVideoURL( Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
 		Player.playVideo(-1);
@@ -535,23 +580,28 @@ Main.selectPageDown = function() {
 */
     var first_item = this.selectedVideo - Display.currentWindow;
 
-    Main.log("selectPageDown: this.selectedVideo= " + this.selectedVideo + " first_item= " + first_item);
+    Main.log("selectPageDown: this.selectedVideo= " + this.selectedVideo + " first_item= " + first_item + " curWind= " + Display.currentWindow);
     Display.setVideoList(this.selectedVideo, first_item);
 };
 
 Main.nextVideo = function(no) {
 	// Just move the selectedVideo pointer and ensure wrap around
-    this.selectedVideo = (this.selectedVideo + no) % Data.getVideoCount();	
-	Main.log("Main.nextVideo= " + this.selectedVideo);
+
+    this.selectedVideo = (this.selectedVideo + (no% Data.getVideoCount())) % Data.getVideoCount();	
+	Main.log("Main.nextVideo= " + this.selectedVideo + " no= " + no);
 };
 
 Main.previousVideo = function(no) {
 // Just move the selectedVideo pointer and ensure wrap around
-	this.selectedVideo = (this.selectedVideo - no);
+
+	// Issue: I deduct a number, which is larger than  videoCount
+	// only jumps, which are mod videoCount?
+	this.selectedVideo = (this.selectedVideo - (no% Data.getVideoCount()));
     if (this.selectedVideo < 0) {
+		Main.log("Main.previousVideo: below Zero (" +this.selectedVideo+"), adding " + Data.getVideoCount());
         this.selectedVideo += Data.getVideoCount();
     }
-	Main.log("Main.previousVideo= " + this.selectedVideo);
+	Main.log("Main.previousVideo= " + this.selectedVideo + " no= " +no);
 };
 
 Main.selectNextVideo = function() {
@@ -571,6 +621,525 @@ Main.selectPreviousVideo = function() {
 };
 
 
+
+//---------------------------------------------------
+// PlayState Key Handler
+//---------------------------------------------------
+
+function cPlayStateKeyHndl(def_hndl) {
+	this.defaultKeyHandler = def_hndl;
+	this.handlerName = "PlayStateKeyHanlder";
+	Main.log(this.handlerName + " created");
+
+};
+
+
+cPlayStateKeyHndl.prototype.handleKeyDown = function (event) {
+//    var keyCode = event.keyCode;
+    var keyCode = event.keyCode;
+
+    if(Player.getState() == Player.STOPPED) {
+    	Main.log("ERROR: Wrong state - STOPPED");
+    	return;
+    }
+
+    Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
+    Main.logToServer(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
+    
+    switch(keyCode)
+    {
+        case tvKey.KEY_1:
+        	Main.log("KEY_1 pressed");
+        	Display.showProgress();
+        	Player.jumpToVideo(10);
+        	break;
+        case tvKey.KEY_2:
+        	Main.log("KEY_2 pressed");
+        	Display.showProgress();
+        	Player.jumpToVideo(20);
+        	break;
+        case tvKey.KEY_3:
+        	Main.log("KEY_3 pressed");
+        	Display.showProgress();
+        	Player.jumpToVideo(30);
+        	break;
+        case tvKey.KEY_4:
+        	Main.log("KEY_4 pressed");
+        	Display.showProgress();
+        	Player.jumpToVideo(40);
+        	break;
+        case tvKey.KEY_5:
+        	Main.log("KEY_5 pressed");
+        	Display.showProgress();
+        	Player.jumpToVideo(50);
+        	break;
+        case tvKey.KEY_6:
+        	Main.log("KEY_6 pressed");
+        	Display.showProgress();
+        	Player.jumpToVideo(60);
+        	break;
+        case tvKey.KEY_7:
+        	Main.log("KEY_7 pressed");
+        	Display.showProgress();
+        	Player.jumpToVideo(70);
+        	break;
+        case tvKey.KEY_8:
+        	Main.log("KEY_8 pressed");
+        	Display.showProgress();
+        	Player.jumpToVideo(80);
+        	break;
+        case tvKey.KEY_9:
+        	Main.log("KEY_9 pressed");
+        	Display.showProgress();
+        	Player.jumpToVideo(90);
+        	break;
+           
+//        case tvKey.KEY_FF:
+        case tvKey.KEY_RIGHT:
+            Main.log("Right: Skip Forward");
+            Display.showProgress();
+			if (Player.trickPlaySpeed != 1) {
+				Notify.showNotify("Trickplay!", true);				
+			}
+			else
+				Player.skipForwardVideo();
+            break;
+        
+//        case tvKey.KEY_RW:
+        case tvKey.KEY_LEFT:
+            Main.log("Left: Skip Backward");
+            Display.showProgress();
+			if (Player.trickPlaySpeed != 1) {
+				Notify.showNotify("Trickplay!", true);				
+			}
+			else
+				Player.skipBackwardVideo();
+            break;
+
+/* Works only for progressive streams, not Adaptive HTTP */
+        case tvKey.KEY_FF:
+            Main.log("FF");
+            Display.showProgress();
+/*			if (Player.isRecording == true) {
+				Notify.showNotify("Recording!!!", true);
+			}
+			else */
+            if (Player.mFormat != Player.ePDL )
+				Notify.showNotify("Not supported", true);
+			else
+				Player.fastForwardVideo();
+
+            break;
+        case tvKey.KEY_RW:
+            Main.log("RW");
+            Display.showProgress();
+/*			if (Player.isRecording == true) {
+				Notify.showNotify("Recording!!!", true);
+			}
+			else */
+            if (Player.mFormat != Player.ePDL )
+				Notify.showNotify("Not supported", true);
+			else
+				Player.RewindVideo();
+            break;
+           
+        case tvKey.KEY_ENTER:
+        case tvKey.KEY_PLAY:
+        case tvKey.KEY_PANEL_ENTER:
+            Main.log("ENTER");
+            if(Player.getState() == Player.PAUSED) {
+                Player.resumeVideo();
+            }
+            if (Player.isInTrickplay() == true) {
+                Player.ResetTrickPlay();            	
+            }
+            else if (Display.isProgressOlShown()) {
+            	Player.adjustSkipDuration(0); // reset skip duration to default
+        		Display.resetStartStop();
+            }
+            Display.showProgress();
+            break;
+        case tvKey.KEY_RETURN:
+        case tvKey.KEY_PANEL_RETURN:
+        case tvKey.KEY_STOP:
+        	Main.log("STOP");
+        	Player.stopVideo();
+			widgetAPI.blockNavigation(event);
+
+            break;           
+        case tvKey.KEY_PAUSE:
+            Main.log("PAUSE");
+            Player.pauseVideo();
+            break;
+        case tvKey.KEY_UP:
+        	Player.adjustSkipDuration(1);
+            Display.showProgress();
+        	break;
+        case tvKey.KEY_DOWN:
+        	Player.adjustSkipDuration(2);
+            Display.showProgress();
+        	break;
+		case tvKey.KEY_ASPECT:
+			Player.toggleAspectRatio();
+			break;
+/*        case tvKey.KEY_UP:
+        case tvKey.KEY_PANEL_VOL_UP:
+        case tvKey.KEY_VOL_UP:
+            Main.log("VOL_UP");
+        	Display.showVolume();
+            if(Main.mute == 0)
+                Audio.setRelativeVolume(0);
+            break;
+            
+        case tvKey.KEY_DOWN:
+        case tvKey.KEY_PANEL_VOL_DOWN:
+        case tvKey.KEY_VOL_DOWN:
+            Main.log("VOL_DOWN");
+        	Display.showVolume();
+            if(Main.mute == 0)
+                Audio.setRelativeVolume(1);
+            break;      
+*/
+        default:
+            Main.log("Calling Default Key Hanlder");
+        	this.defaultKeyHandler.handleDefKeyDown(keyCode);
+            break;
+    }
+};
+
+
+//---------------------------------------------------
+// Live Play State Key Handler
+//---------------------------------------------------
+
+function cLivePlayStateKeyHndl(def_hndl) {
+	this.defaultKeyHandler = def_hndl;
+	this.handlerName = "LivePlayStateKeyHanlder";
+	Main.log(this.handlerName + " created");
+
+};
+
+
+cLivePlayStateKeyHndl.prototype.handleKeyDown = function (event) {
+ var keyCode = event.keyCode;
+
+ if(Player.getState() == Player.STOPPED) {
+ 	Main.log("ERROR: Wrong state - STOPPED");
+ 	return;
+ }
+
+ Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
+ 
+ switch(keyCode) {
+// 	case tvKey.KEY_1:
+ 	case tvKey.KEY_UP:
+ 	case tvKey.KEY_CH_UP:
+ 		Main.log("Prog Up");
+        Display.showProgress();
+ 		Player.stopVideo();
+
+ 		// Check, weather I am the last element of a folder. If yes, go one level up
+ 		if (Main.selectedVideo == (Data.getVideoCount() -1)) {
+ 			//Last VideoItem, check wrap around or folder fall-down
+ 			if (Data.isRootFolder() != "true") {
+// 				Main.selectedVideo = Data.folderUp();
+ 				var itm = Data.folderUp();
+				Main.selectedVideo = itm.id;
+ 			}
+ 		}
+ 		Main.nextVideo(1); // increase and wrap
+ 		// check, if new element is a folder again
+ 		if (Data.getCurrentItem().childs[Main.selectedVideo].isFolder == true) {
+ 			Data.selectFolder(Main.selectedVideo, Main.selectedVideo);
+ 			Main.selectedVideo= 0;
+ 		}
+// 		Main.nextVideo(1);
+ 		
+ 		Main.playItem(); 
+ 		break;
+
+// 	case tvKey.KEY_4:
+ 	case tvKey.KEY_DOWN:
+ 	case tvKey.KEY_CH_DOWN:
+ 		Main.log("Prog Down");
+        Display.showProgress();
+ 		Player.stopVideo();
+
+ 		// check, if I am the first element of a folder
+ 		// if yes, then one up
+ 		if (Main.selectedVideo == 0) {
+ 			//First VideoItem, 
+ 			if (Data.isRootFolder() != "true") {
+// 				Main.selectedVideo = Data.folderUp();
+ 				var itm = Data.folderUp();
+				Main.selectedVideo = itm.id;
+ 			}
+ 		}
+ 		Main.previousVideo(1);
+ 		// check, if new element is a folder again
+ 		if (Data.getCurrentItem().childs[Main.selectedVideo].isFolder == true) {
+ 			Data.selectFolder(Main.selectedVideo, Main.selectedVideo);
+ 			Main.selectedVideo= Data.getVideoCount()-1;
+ 		}
+ 		
+// 		Main.previousVideo(1);
+	 
+ 		Main.playItem(); 
+ 		break;
+
+     case tvKey.KEY_ENTER:
+     case tvKey.KEY_PLAY:
+     case tvKey.KEY_PANEL_ENTER:
+         Main.log("ENTER");
+         Display.hide();
+         Display.showProgress();
+         break;
+     case tvKey.KEY_LEFT:
+     case tvKey.KEY_RETURN:
+     case tvKey.KEY_PANEL_RETURN:
+     case tvKey.KEY_STOP:
+     	Main.log("STOP");
+     	Player.stopVideo();
+     	Display.setVideoList(Main.selectedVideo, Main.selectedVideo- ( Main.selectedVideo % (Display.LASTIDX +1)));
+     	Display.show();
+		widgetAPI.blockNavigation(event);
+
+        break;           
+     case tvKey.KEY_PAUSE:
+         Main.log("PAUSE");
+         break;
+     case tvKey.KEY_ASPECT:
+    	 Player.toggleAspectRatio();
+    	 break;
+
+/*     case tvKey.KEY_UP:
+     case tvKey.KEY_PANEL_VOL_UP:
+     case tvKey.KEY_VOL_UP:
+         Main.log("VOL_UP");
+     	Display.showVolume();
+         if(Main.mute == 0)
+             Audio.setRelativeVolume(0);
+         break;
+         
+     case tvKey.KEY_DOWN:
+     case tvKey.KEY_PANEL_VOL_DOWN:
+     case tvKey.KEY_VOL_DOWN:
+         Main.log("VOL_DOWN");
+     	Display.showVolume();
+         if(Main.mute == 0)
+             Audio.setRelativeVolume(1);
+         break;      
+*/
+     default:
+     	this.defaultKeyHandler.handleDefKeyDown(keyCode);
+         break;
+ }
+};
+
+//---------------------------------------------------
+//Menu Key Handler
+//---------------------------------------------------
+function cMenuKeyHndl (def_hndl) {
+	this.defaultKeyHandler = def_hndl;
+	this.handlerName = "MenuKeyHandler";
+	Main.log(this.handlerName + " created");
+
+};
+
+cMenuKeyHndl.prototype.handleKeyDown = function (event) {
+ var keyCode = event.keyCode;
+ 
+ switch(keyCode) {
+ 
+     	
+     case tvKey.KEY_RIGHT:
+         Main.log("Right");
+         Main.selectPageDown();
+         break;
+     
+     case tvKey.KEY_LEFT:
+         Main.log("Left");
+         Main.selectPageUp();
+         break;
+     case tvKey.KEY_DOWN:
+         Main.log("DOWN");
+         Main.selectNextVideo();
+         break;
+         
+     case tvKey.KEY_UP:
+         Main.log("UP");
+         Main.selectPreviousVideo();           
+         break;            
+
+     case tvKey.KEY_ENTER:
+     case tvKey.KEY_PLAY:
+     case tvKey.KEY_PANEL_ENTER:
+         Main.log("ENTER");
+         
+     	if (Data.getCurrentItem().childs[Main.selectedVideo].isFolder == true) {
+     		Main.log ("selectFolder= " +Main.selectedVideo);
+     		Data.selectFolder(Main.selectedVideo, (Main.selectedVideo - Display.currentWindow));
+     		Main.selectedVideo= 0;
+     		Display.setVideoList(Main.selectedVideo, Main.selectedVideo); // thlo
+     	} 
+     	else{
+/*     		Display.hide();
+        	Display.showProgress();
+*/
+        	Main.playItem(); 
+     	}
+        break;
+
+//     case tvKey.KEY_EXIT:
+     case tvKey.KEY_RETURN:
+     case tvKey.KEY_PANEL_RETURN:
+    	 if (Data.isRootFolder() == true) {
+    		 Main.log ("root reached");
+    		 Main.changeState(0);    		 
+    	 }
+    	 else {
+//    		 Main.selectedVideo = Data.folderUp();
+    		 var itm = Data.folderUp();
+			 Main.selectedVideo = itm.id;
+    		 Main.log("folderUp selectedVideo= " + Main.selectedVideo);
+    		 Display.setVideoList(Main.selectedVideo, itm.first); // thlo
+    	 }
+    	 widgetAPI.blockNavigation(event);
+
+         break;
+         
+     default:
+		Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
+     	this.defaultKeyHandler.handleDefKeyDown(keyCode);
+         break;
+ }
+};
+
+
+//---------------------------------------------------
+// Select Menu Key Handler
+//---------------------------------------------------
+function cSelectMenuKeyHndl (def_hndl) {
+	this.defaultKeyHandler = def_hndl;
+	this.handlerName = "SelectMenuKeyHandler";
+	Main.log(this.handlerName + " created");
+
+	this.select = 1;
+	this.selectMax = 4; // Highest Select Entry
+};
+
+cSelectMenuKeyHndl.prototype.handleKeyDown = function (event) {
+    var keyCode = event.keyCode;
+    Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
+    
+    switch(keyCode) {
+    case tvKey.KEY_1:
+    	Main.log("KEY_1 pressed");
+    	this.select = 1;
+        Main.changeState (this.select);
+    	break;
+    case tvKey.KEY_2:
+    	Main.log("KEY_2 pressed");
+    	this.select = 2;
+        Main.changeState (this.select);
+
+        break;
+    case tvKey.KEY_3:
+    	Main.log("KEY_3 pressed");
+    	this.select = 3;
+        Main.changeState (this.select);
+
+    	break;
+    case tvKey.KEY_4:
+    	Main.log("KEY_4 pressed");
+    	this.select = 4;
+        Main.changeState (this.select);
+    	break;
+    	
+        case tvKey.KEY_ENTER:
+        case tvKey.KEY_PLAY:
+        case tvKey.KEY_PANEL_ENTER:
+            Main.log("ENTER");
+    		Main.log ("CurSelect= " + this.select);
+
+            Main.changeState (this.select);
+
+        case tvKey.KEY_DOWN:
+            Display.unselectItem(document.getElementById("selectItem"+this.select));
+            if (++this.select > this.selectMax) 	          	
+            	this.select = 1;
+            Display.selectItem(document.getElementById("selectItem"+this.select));
+            Main.log("DOWN " +this.select);
+            break;
+            
+        case tvKey.KEY_UP:
+            Display.unselectItem(document.getElementById("selectItem"+this.select));
+
+            if (--this.select < 1)
+            	this.select = this.selectMax;
+            Display.selectItem(document.getElementById("selectItem"+this.select));
+
+            Main.log("UP "+ this.select);
+            break;            
+        default:
+        	this.defaultKeyHandler.handleDefKeyDown(keyCode);
+            break;
+    }
+};
+
+
+//---------------------------------------------------
+// Default Key Handler
+//---------------------------------------------------
+
+function cDefaulKeyHndl() {
+	this.handlerName = "DefaultKeyHanlder";
+	Main.log(this.handlerName + " created");
+};
+
+cDefaulKeyHndl.prototype.handleDefKeyDown = function (keyCode) {
+    Main.log("cDefaulKeyHndl::handleKeyDown: " + Main.getKeyCode(keyCode));
+    
+    switch(keyCode) {
+        case tvKey.KEY_EXIT:
+        	Main.log(this.handlerName +"Exit");
+        	if (Main.state != 0) {
+                Player.stopVideo();
+                Main.changeState(0);
+                widgetAPI.blockNavigation(event);
+        	}
+        	else {
+                widgetAPI.sendReturnEvent(); 
+        		
+        	}
+            break;
+
+/*        case tvKey.KEY_VOL_UP:
+            Main.log(this.handlerName + "VOL_UP");
+        	Display.showVolume();
+            if(Main.mute == 0)
+                Audio.setRelativeVolume(0);
+            break;
+            
+        case tvKey.KEY_VOL_DOWN:
+            Main.log(this.handlerName + "VOL_DOWN");
+        	Display.showVolume();
+            if(Main.mute == 0)
+                Audio.setRelativeVolume(1);
+            break;      
+        case tvKey.KEY_MUTE:
+            Main.log(this.handlerName + "MUTE");
+            Main.muteMode();
+            break;
+*/
+        default:
+            Main.log(this.handlerName + "Unhandled key");
+            break;
+    }
+};
+
+
+// ---------------------------------------------
 // -----------------------------------------------
 
 Main.getKeyCode = function(code) {
@@ -860,520 +1429,3 @@ Main.tvKeys = {
 	
 };
 
-
-//---------------------------------------------------
-// PlayState Key Handler
-//---------------------------------------------------
-
-function cPlayStateKeyHndl(def_hndl) {
-	this.defaultKeyHandler = def_hndl;
-	this.handlerName = "PlayStateKeyHanlder";
-	Main.log(this.handlerName + " created");
-
-};
-
-
-cPlayStateKeyHndl.prototype.handleKeyDown = function (event) {
-//    var keyCode = event.keyCode;
-    var keyCode = event.keyCode;
-
-    if(Player.getState() == Player.STOPPED) {
-    	Main.log("ERROR: Wrong state - STOPPED");
-    	return;
-    }
-
-    Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
-    Main.logToServer(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
-    
-    switch(keyCode)
-    {
-        case tvKey.KEY_1:
-        	Main.log("KEY_1 pressed");
-        	Display.showProgress();
-        	Player.jumpToVideo(10);
-        	break;
-        case tvKey.KEY_2:
-        	Main.log("KEY_2 pressed");
-        	Display.showProgress();
-        	Player.jumpToVideo(20);
-        	break;
-        case tvKey.KEY_3:
-        	Main.log("KEY_3 pressed");
-        	Display.showProgress();
-        	Player.jumpToVideo(30);
-        	break;
-        case tvKey.KEY_4:
-        	Main.log("KEY_4 pressed");
-        	Display.showProgress();
-        	Player.jumpToVideo(40);
-        	break;
-        case tvKey.KEY_5:
-        	Main.log("KEY_5 pressed");
-        	Display.showProgress();
-        	Player.jumpToVideo(50);
-        	break;
-        case tvKey.KEY_6:
-        	Main.log("KEY_6 pressed");
-        	Display.showProgress();
-        	Player.jumpToVideo(60);
-        	break;
-        case tvKey.KEY_7:
-        	Main.log("KEY_7 pressed");
-        	Display.showProgress();
-        	Player.jumpToVideo(70);
-        	break;
-        case tvKey.KEY_8:
-        	Main.log("KEY_8 pressed");
-        	Display.showProgress();
-        	Player.jumpToVideo(80);
-        	break;
-        case tvKey.KEY_9:
-        	Main.log("KEY_9 pressed");
-        	Display.showProgress();
-        	Player.jumpToVideo(90);
-        	break;
-           
-//        case tvKey.KEY_FF:
-        case tvKey.KEY_RIGHT:
-            Main.log("Right: Skip Forward");
-            Display.showProgress();
-			if (Player.trickPlaySpeed != 1) {
-				Notify.showNotify("Trickplay!", true);				
-			}
-			else
-				Player.skipForwardVideo();
-            break;
-        
-//        case tvKey.KEY_RW:
-        case tvKey.KEY_LEFT:
-            Main.log("Left: Skip Backward");
-            Display.showProgress();
-			if (Player.trickPlaySpeed != 1) {
-				Notify.showNotify("Trickplay!", true);				
-			}
-			else
-				Player.skipBackwardVideo();
-            break;
-
-/* Works only for progressive streams, not Adaptive HTTP */
-        case tvKey.KEY_FF:
-            Main.log("FF");
-            Display.showProgress();
-			if (Player.isRecording == true) {
-				Notify.showNotify("Recording!!!", true);
-			}
-			else if (Player.mFormat != Player.ePDL )
-				Notify.showNotify("Not supported", true);
-			else
-				Player.fastForwardVideo();
-
-            break;
-        case tvKey.KEY_RW:
-            Main.log("RW");
-            Display.showProgress();
-			if (Player.isRecording == true) {
-				Notify.showNotify("Recording!!!", true);
-			}
-			else if (Player.mFormat != Player.ePDL )
-				Notify.showNotify("Not supported", true);
-			else
-				Player.RewindVideo();
-            break;
-           
-        case tvKey.KEY_ENTER:
-        case tvKey.KEY_PLAY:
-        case tvKey.KEY_PANEL_ENTER:
-            Main.log("ENTER");
-            if(Player.getState() == Player.PAUSED) {
-                Player.resumeVideo();
-            }
-            if (Player.isInTrickplay() == true) {
-                Player.ResetTrickPlay();            	
-            }
-            else if (Display.isProgressOlShown()) {
-            	Player.adjustSkipDuration(0); // reset skip duration to default
-        		Display.resetStartStop();
-            }
-            Display.showProgress();
-            break;
-        case tvKey.KEY_RETURN:
-        case tvKey.KEY_PANEL_RETURN:
-        case tvKey.KEY_STOP:
-        	Main.log("STOP");
-        	Player.stopVideo();
-			widgetAPI.blockNavigation(event);
-
-            break;           
-        case tvKey.KEY_PAUSE:
-            Main.log("PAUSE");
-            Player.pauseVideo();
-            break;
-        case tvKey.KEY_UP:
-        	Player.adjustSkipDuration(1);
-            Display.showProgress();
-        	break;
-        case tvKey.KEY_DOWN:
-        	Player.adjustSkipDuration(2);
-            Display.showProgress();
-        	break;
-		case tvKey.KEY_ASPECT:
-			Player.toggleAspectRatio();
-			break;
-/*        case tvKey.KEY_UP:
-        case tvKey.KEY_PANEL_VOL_UP:
-        case tvKey.KEY_VOL_UP:
-            Main.log("VOL_UP");
-        	Display.showVolume();
-            if(Main.mute == 0)
-                Audio.setRelativeVolume(0);
-            break;
-            
-        case tvKey.KEY_DOWN:
-        case tvKey.KEY_PANEL_VOL_DOWN:
-        case tvKey.KEY_VOL_DOWN:
-            Main.log("VOL_DOWN");
-        	Display.showVolume();
-            if(Main.mute == 0)
-                Audio.setRelativeVolume(1);
-            break;      
-*/
-        default:
-            Main.log("Calling Default Key Hanlder");
-        	this.defaultKeyHandler.handleDefKeyDown(keyCode);
-            break;
-    }
-};
-
-
-//---------------------------------------------------
-// Live Play State Key Handler
-//---------------------------------------------------
-
-function cLivePlayStateKeyHndl(def_hndl) {
-	this.defaultKeyHandler = def_hndl;
-	this.handlerName = "LivePlayStateKeyHanlder";
-	Main.log(this.handlerName + " created");
-
-};
-
-
-cLivePlayStateKeyHndl.prototype.handleKeyDown = function (event) {
- var keyCode = event.keyCode;
-
- if(Player.getState() == Player.STOPPED) {
- 	Main.log("ERROR: Wrong state - STOPPED");
- 	return;
- }
-
- Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
- 
- switch(keyCode) {
-// 	case tvKey.KEY_1:
- 	case tvKey.KEY_UP:
- 	case tvKey.KEY_CH_UP:
- 		Main.log("Prog Up");
-        Display.showProgress();
- 		Player.stopVideo();
-
- 		// Check, weather I am the last element of a folder. If yes, go one level up
- 		if (Main.selectedVideo == (Data.getVideoCount() -1)) {
- 			//Last VideoItem, check wrap around or folder fall-down
- 			if (Data.isRootFolder() != "true") {
-// 				Main.selectedVideo = Data.folderUp();
- 				var itm = Data.folderUp();
-				Main.selectedVideo = itm.id;
- 			}
- 		}
- 		Main.nextVideo(1); // increase and wrap
- 		// check, if new element is a folder again
- 		if (Data.getCurrentItem().childs[Main.selectedVideo].isFolder == true) {
- 			Data.selectFolder(Main.selectedVideo, Main.selectedVideo);
- 			Main.selectedVideo= 0;
- 		}
-// 		Main.nextVideo(1);
- 		
- 		Main.playItem(); 
- 		break;
-
-// 	case tvKey.KEY_4:
- 	case tvKey.KEY_DOWN:
- 	case tvKey.KEY_CH_DOWN:
- 		Main.log("Prog Down");
-        Display.showProgress();
- 		Player.stopVideo();
-
- 		// check, if I am the first element of a folder
- 		// if yes, then one up
- 		if (Main.selectedVideo == 0) {
- 			//First VideoItem, 
- 			if (Data.isRootFolder() != "true") {
-// 				Main.selectedVideo = Data.folderUp();
- 				var itm = Data.folderUp();
-				Main.selectedVideo = itm.id;
- 			}
- 		}
- 		Main.previousVideo(1);
- 		// check, if new element is a folder again
- 		if (Data.getCurrentItem().childs[Main.selectedVideo].isFolder == true) {
- 			Data.selectFolder(Main.selectedVideo, Main.selectedVideo);
- 			Main.selectedVideo= Data.getVideoCount()-1;
- 		}
- 		
-// 		Main.previousVideo(1);
-	 
- 		Main.playItem(); 
- 		break;
-
-     case tvKey.KEY_ENTER:
-     case tvKey.KEY_PLAY:
-     case tvKey.KEY_PANEL_ENTER:
-         Main.log("ENTER");
-         Display.hide();
-         Display.showProgress();
-         break;
-     case tvKey.KEY_LEFT:
-     case tvKey.KEY_RETURN:
-     case tvKey.KEY_PANEL_RETURN:
-     case tvKey.KEY_STOP:
-     	Main.log("STOP");
-     	Player.stopVideo();
-     	Display.setVideoList(Main.selectedVideo, Main.selectedVideo- ( Main.selectedVideo % (Display.LASTIDX +1)));
-     	Display.show();
-		widgetAPI.blockNavigation(event);
-
-        break;           
-     case tvKey.KEY_PAUSE:
-         Main.log("PAUSE");
-         break;
-     case tvKey.KEY_ASPECT:
-    	 Player.toggleAspectRatio();
-    	 break;
-
-/*     case tvKey.KEY_UP:
-     case tvKey.KEY_PANEL_VOL_UP:
-     case tvKey.KEY_VOL_UP:
-         Main.log("VOL_UP");
-     	Display.showVolume();
-         if(Main.mute == 0)
-             Audio.setRelativeVolume(0);
-         break;
-         
-     case tvKey.KEY_DOWN:
-     case tvKey.KEY_PANEL_VOL_DOWN:
-     case tvKey.KEY_VOL_DOWN:
-         Main.log("VOL_DOWN");
-     	Display.showVolume();
-         if(Main.mute == 0)
-             Audio.setRelativeVolume(1);
-         break;      
-*/
-     default:
-     	this.defaultKeyHandler.handleDefKeyDown(keyCode);
-         break;
- }
-};
-
-//---------------------------------------------------
-//Menu Key Handler
-//---------------------------------------------------
-function cMenuKeyHndl (def_hndl) {
-	this.defaultKeyHandler = def_hndl;
-	this.handlerName = "MenuKeyHandler";
-	Main.log(this.handlerName + " created");
-
-};
-
-cMenuKeyHndl.prototype.handleKeyDown = function (event) {
- var keyCode = event.keyCode;
- Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
- 
- switch(keyCode) {
- 
-     	
-     case tvKey.KEY_RIGHT:
-         Main.log("Right");
-         Main.selectPageDown();
-         break;
-     
-     case tvKey.KEY_LEFT:
-         Main.log("Left");
-         Main.selectPageUp();
-         break;
-
-     case tvKey.KEY_ENTER:
-     case tvKey.KEY_PLAY:
-     case tvKey.KEY_PANEL_ENTER:
-         Main.log("ENTER");
-         
-     	if (Data.getCurrentItem().childs[Main.selectedVideo].isFolder == true) {
-     		Main.log ("selectFolder= " +Main.selectedVideo);
-     		Data.selectFolder(Main.selectedVideo, (Main.selectedVideo - Display.currentWindow));
-     		Main.selectedVideo= 0;
-     		Display.setVideoList(Main.selectedVideo, Main.selectedVideo); // thlo
-     	} 
-     	else{
-/*     		Display.hide();
-        	Display.showProgress();
-*/
-        	Main.playItem(); 
-     	}
-        break;
-
-//     case tvKey.KEY_EXIT:
-     case tvKey.KEY_RETURN:
-     case tvKey.KEY_PANEL_RETURN:
-    	 if (Data.isRootFolder() == true) {
-    		 Main.log ("root reached");
-    		 Main.changeState(0);    		 
-    	 }
-    	 else {
-//    		 Main.selectedVideo = Data.folderUp();
-    		 var itm = Data.folderUp();
-			 Main.selectedVideo = itm.id;
-    		 Main.log("folderUp selectedVideo= " + Main.selectedVideo);
-    		 Display.setVideoList(Main.selectedVideo, itm.first); // thlo
-    	 }
-    	 widgetAPI.blockNavigation(event);
-
-         break;
-     case tvKey.KEY_DOWN:
-         Main.log("DOWN");
-         Main.selectNextVideo();
-         break;
-         
-     case tvKey.KEY_UP:
-         Main.log("UP");
-         Main.selectPreviousVideo();           
-         break;            
-         
-     default:
-     	this.defaultKeyHandler.handleDefKeyDown(keyCode);
-         break;
- }
-};
-
-
-//---------------------------------------------------
-// Select Menu Key Handler
-//---------------------------------------------------
-function cSelectMenuKeyHndl (def_hndl) {
-	this.defaultKeyHandler = def_hndl;
-	this.handlerName = "SelectMenuKeyHandler";
-	Main.log(this.handlerName + " created");
-
-	this.select = 1;
-	this.selectMax = 4; // Highest Select Entry
-};
-
-cSelectMenuKeyHndl.prototype.handleKeyDown = function (event) {
-    var keyCode = event.keyCode;
-    Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
-    
-    switch(keyCode) {
-    case tvKey.KEY_1:
-    	Main.log("KEY_1 pressed");
-    	this.select = 1;
-        Main.changeState (this.select);
-    	break;
-    case tvKey.KEY_2:
-    	Main.log("KEY_2 pressed");
-    	this.select = 2;
-        Main.changeState (this.select);
-
-        break;
-    case tvKey.KEY_3:
-    	Main.log("KEY_3 pressed");
-    	this.select = 3;
-        Main.changeState (this.select);
-
-    	break;
-    case tvKey.KEY_4:
-    	Main.log("KEY_4 pressed");
-    	this.select = 4;
-        Main.changeState (this.select);
-    	break;
-    	
-        case tvKey.KEY_ENTER:
-        case tvKey.KEY_PLAY:
-        case tvKey.KEY_PANEL_ENTER:
-            Main.log("ENTER");
-    		Main.log ("CurSelect= " + this.select);
-
-            Main.changeState (this.select);
-
-        case tvKey.KEY_DOWN:
-            Display.unselectItem(document.getElementById("selectItem"+this.select));
-            if (++this.select > this.selectMax) 	          	
-            	this.select = 1;
-            Display.selectItem(document.getElementById("selectItem"+this.select));
-            Main.log("DOWN " +this.select);
-            break;
-            
-        case tvKey.KEY_UP:
-            Display.unselectItem(document.getElementById("selectItem"+this.select));
-
-            if (--this.select < 1)
-            	this.select = this.selectMax;
-            Display.selectItem(document.getElementById("selectItem"+this.select));
-
-            Main.log("UP "+ this.select);
-            break;            
-        default:
-        	this.defaultKeyHandler.handleDefKeyDown(keyCode);
-            break;
-    }
-};
-
-
-//---------------------------------------------------
-// Default Key Handler
-//---------------------------------------------------
-
-function cDefaulKeyHndl() {
-	this.handlerName = "DefaultKeyHanlder";
-	Main.log(this.handlerName + " created");
-};
-
-cDefaulKeyHndl.prototype.handleDefKeyDown = function (keyCode) {
-    Main.log("cDefaulKeyHndl::handleKeyDown: " + Main.getKeyCode(keyCode));
-    
-    switch(keyCode) {
-        case tvKey.KEY_EXIT:
-        	Main.log(this.handlerName +"Exit");
-        	if (Main.state != 0) {
-                Player.stopVideo();
-                Main.changeState(0);
-                widgetAPI.blockNavigation(event);
-        	}
-        	else {
-                widgetAPI.sendReturnEvent(); 
-        		
-        	}
-            break;
-
-/*        case tvKey.KEY_VOL_UP:
-            Main.log(this.handlerName + "VOL_UP");
-        	Display.showVolume();
-            if(Main.mute == 0)
-                Audio.setRelativeVolume(0);
-            break;
-            
-        case tvKey.KEY_VOL_DOWN:
-            Main.log(this.handlerName + "VOL_DOWN");
-        	Display.showVolume();
-            if(Main.mute == 0)
-                Audio.setRelativeVolume(1);
-            break;      
-        case tvKey.KEY_MUTE:
-            Main.log(this.handlerName + "MUTE");
-            Main.muteMode();
-            break;
-*/
-        default:
-            Main.log(this.handlerName + "Unhandled key");
-            break;
-    }
-};
-
-
-// ---------------------------------------------
