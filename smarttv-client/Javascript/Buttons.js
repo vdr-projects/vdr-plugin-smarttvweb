@@ -338,6 +338,7 @@ ButtonHandler.prototype.onInput = function () {
 
 		break;
 		case tvKey.KEY_RETURN:
+		case tvKey.KEY_EXIT:
 			Buttons.hide();
 			if (this.returnCallback  != null)
 				this.returnCallback(); 	    	

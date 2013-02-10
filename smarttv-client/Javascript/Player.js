@@ -56,6 +56,33 @@ var Player =
 	requestStartTime :0
 };
 
+// This function is called when Stop was pressed
+Player.resetAtStop = function () {
+	// the default is for plain on-demand recording
+	// should be called with the Diplayer overlay Reset
+	
+	if (this.state != Player.STOPPED) {
+		Main.log("ERROR in Player.reset: should not be here");
+		return;
+	}
+	this.aspectRatio = this.eASP16to9;
+	this.bufferState = 0;
+	
+	Player.ResetTrickPlay(); // is the GUI resetted as well?
+	Player.adjustSkipDuration (0);
+
+	this.cptOffset  = 0;
+	this.curPlayTime = 0;
+	this.totalTime = -1;  // negative on purpose
+	this.totalTimeStr = "0:00:00";
+	this.curPlayTimeStr = "0:00:00";
+
+	this.isLive =false;
+    this.isRecording = false;
+    this.mFormat =Player.eUND;	
+	
+	};
+
 Player.toggleAspectRatio = function () {
 	if (this.aspectRatio == this.eASP16to9) {
 		// Do 4 to 3
@@ -217,11 +244,20 @@ Player.playVideo = function(resume_pos) {
         Main.log ("Player.playVideo: StartPlayback for " + this.url);
 
         this.requestStartTime = new Date().getTime();
-        if (resume_pos == -1)
-        	this.plugin.Play( this.url );
+        if (Player.isRecording == false) {
+            if (resume_pos == -1)
+            	this.plugin.Play( this.url );
+            else {
+            	Main.logToServer ("Player.playVideo: resume_pos= " +resume_pos);
+				this.plugin.ResumePlay(this.url, resume_pos);        
+            }
+        }
         else {
-        	Main.logToServer ("Player.playVideo: resume_pos= " +resume_pos);
-        	this.plugin.ResumePlay(this.url, resume_pos);
+        	if (resume_pos == -1) 
+        		resume_pos = 0;
+			Player.setCurrentPlayTimeOffset(resume_pos * 1000.0);
+			this.plugin.Play( this.url+ "?time=" + resume_pos );
+			Main.logToServer("Player.play with ?time=" + resume_pos);        
         }
 
         if ((this.mFormat != this.ePDL) && (this.isLive == false)){
@@ -261,12 +297,7 @@ Player.stopVideo = function() {
         }
         
         // Cleanup
-        Player.bufferState = 0;
-        Player.ResetTrickPlay();
-        Player.adjustSkipDuration(0);
-        Player.bufferState = 0;
-        Player.curPlayTime = 0;
-        Player.totalTime = -11;
+		Display.resetAtStop();
         
         Spinner.hide();
 		pluginObj.setOnScreenSaver();
@@ -294,14 +325,15 @@ Player.jumpToVideo = function(percent) {
 	if (this.isLive == true) {
 		return;
 	}
-	Spinner.show();
-
-    Player.bufferState = 0;
-	Display.showProgress();
     if (this.state != this.PLAYING) {
     	Main.logToServer ("Player.jumpToVideo: Player not Playing");
     	return;
     }
+	Spinner.show();
+    Player.bufferState = 0;
+	Display.showProgress();
+
+	//TODO: the totalTime should be set already
 	if (this.totalTime == -1 && this.isLive == false) 
 		this.totalTime = this.plugin.GetDuration();
 	var tgt = Math.round(((percent-2)/100.0) *  this.totalTime/ 1000.0);
@@ -309,11 +341,26 @@ Player.jumpToVideo = function(percent) {
 
 	this.requestStartTime = new Date().getTime();
 
-	if (tgt > (Player.curPlayTime/1000.0))
-		res = this.plugin.JumpForward(tgt - (Player.curPlayTime/1000.0));
-	else 
-		res = this.plugin.JumpBackward( (Player.curPlayTime/1000.0)- tgt);
-	
+	if (Player.isRecording == false) {
+		if (tgt > (Player.curPlayTime/1000.0)) 
+			res = this.plugin.JumpForward(tgt - (Player.curPlayTime/1000.0));
+		else 
+			res = this.plugin.JumpBackward( (Player.curPlayTime/1000.0)- tgt);
+	}
+	else {
+		this.plugin.Stop();
+		var old = Player.curPlayTime;
+
+		Player.setCurrentPlayTimeOffset(tgt * 1000.0);
+		res = this.plugin.Play( this.url+ "?time=" + tgt );
+		Main.logToServer("Player.play with ?time=" + tgt);
+		if (res == false)
+			Player.setCurrentPlayTimeOffset(old);
+			
+		// set currentPlayTimeOffsert to tgt
+		// set new url with time
+		// play
+	}
 	Main.logToServer("Player.jumpToVideo: jumpTo= " + percent + "% of " + (this.totalTime/1000) + "sec tgt = " + tgt + "sec cpt= " + (this.curPlayTime/1000) +"sec" + " res = " + res);	
 //    Display.showPopup("jumpToVideo= " + percent + "% of " + (this.totalTime/1000) + "sec<br>--> tgt = " + tgt + "sec curPTime= " + (this.curPlayTime/1000)+"sec");
 //	Display.showStatus();
@@ -326,21 +373,48 @@ Player.jumpToVideo = function(percent) {
 
 Player.skipForwardVideo = function() {
 	this.requestStartTime = new Date().getTime();
-    var res = this.plugin.JumpForward(Player.skipDuration);
+	Display.showProgress();
+	var res = false;
+	if (Player.isRecording == false)
+		res = this.plugin.JumpForward(Player.skipDuration);
+	else {
+		this.bufferState = 0;
+		this.plugin.Stop();
+		var old = Player.curPlayTime;
+		var tgt = (Player.curPlayTime/1000.0) + Player.skipDuration;
+		Player.setCurrentPlayTimeOffset(tgt * 1000.0);
+		res = this.plugin.Play( this.url+ "?time=" + tgt );		
+		Main.logToServer("Player.skipForwardVideo with ?time=" + tgt);
+		if (res == false)
+			Player.setCurrentPlayTimeOffset(old);			
+	}
     if (res == false) {
     	Display.showPopup("Jump Forward ret= " +  ((res == true) ? "True" : "False"));    	
     }
-
 };
 
 Player.skipBackwardVideo = function() {
 	this.requestStartTime = new Date().getTime();
-    var res = this.plugin.JumpBackward(Player.skipDuration);
-    if (res == false) {
-    	Display.showPopup("Jump Backward ret= " +  ((res == true) ? "True" : "False"));
-    	
-    }
+	Display.showProgress();
+	var res = false;
+	if (Player.isRecording == false)
+		res = this.plugin.JumpBackward(Player.skipDuration);
+	else {
+		this.bufferState = 0;
+		this.plugin.Stop();
+		var tgt = (Player.curPlayTime/1000.0) - Player.skipDuration;
+		if (tgt < 0)
+			tgt = 0;
+		Player.setCurrentPlayTimeOffset(tgt * 1000.0);
+		res = this.plugin.Play( this.url+ "?time=" + tgt );		
+		Main.logToServer("Player.skipBackwardVideo with ?time=" + tgt);
+		if (res == false)
+			Player.setCurrentPlayTimeOffset(old);
 
+	}
+    if (res == false) {
+    	Display.showPopup("Jump Backward ret= " +  ((res == true) ? "True" : "False"));    	
+    }
 };
 
 Player.adjustSkipDuration = function (dir) {
@@ -373,8 +447,9 @@ Player.isInTrickplay = function() {
 };
 
 Player.fastForwardVideo = function() {
-	if (this.trickPlayDirection == 1)
+	if (this.trickPlayDirection == 1) {
 		this.trickPlaySpeed = this.trickPlaySpeed * 2;
+	}
 	else {
 		// I am in rewind mode, thus decrease speed
 		this.trickPlaySpeed = this.trickPlaySpeed / 2;
@@ -384,6 +459,10 @@ Player.fastForwardVideo = function() {
 			this.trickPlayDirection = 1;
 		}
 
+	}
+	if (Player.isRecording == true) {
+		if (this.trickPlaySpeed > 2)
+			this.trickPlaySpeed = 2;
 	}
 
 	if  (this.trickPlaySpeed != 1) {
@@ -424,6 +503,13 @@ Player.RewindVideo = function() {
 	else
 		this.trickPlaySpeed = this.trickPlaySpeed * 2;
 
+	if (Player.isRecording == true) {
+		if (this.trickPlayDirection <0 )
+			Player.ResetTrickPlay();
+			return;
+//			this.trickPlayDirection = 1;
+	}
+		
 	if (this.trickPlaySpeed != 1) {
 		Display.setTrickplay (this.trickPlayDirection, this.trickPlaySpeed);		
 	}
@@ -431,6 +517,7 @@ Player.RewindVideo = function() {
 		Player.ResetTrickPlay();
 		return;
 	}
+
 	Main.log("Rewind: Direction= " + ((this.trickPlayDirection == 1) ? "Forward": "Backward") + "trickPlaySpeed= " + this.trickPlaySpeed);
 
 	if (this.plugin.SetPlaybackSpeed(this.trickPlaySpeed * this.trickPlayDirection) == false) {
@@ -519,7 +606,8 @@ Player.onBufferingComplete = function() {
 	Display.bufferUpdate();
 	Display.showProgress();
 	
-    Player.setFullscreen();
+//    Player.setFullscreen();
+// or I should set it according to the aspect ratio
     Display.hide();   
     
 //	Main.logToServer("onBufferingComplete ");
@@ -538,7 +626,6 @@ Player.OnCurrentPlayTime = function(time) {
     	Display.updateRecBar(Player.startTime, Player.duration);
     }
     Player.curPlayTimeStr =  Display.durationString(Player.curPlayTime / 1000.0);
-
     Display.updatePlayTime();
 };
 

@@ -24,5 +24,6 @@ Notify.handlerShowNotify = function () {
 
 Notify.handlerHideNotify = function () {
 	$("#notify").hide();
+		$("#notify").text("");
 };
 

@@ -14,7 +14,10 @@ var Config = {
 	skipDuration : 30, // sec
 	liveChannels : 30, 
 	firstLaunch : false,
-
+	debug : false,
+	usePdlForRecordings : true,
+	uploadJsFile : "",
+	
 	deviceType : 0   // Used to differentiate between browsers and platforms
 	// 0: Samsung
 
@@ -90,6 +93,7 @@ Config.doFirstLaunch = function () {
 	Main.changeState(4);
 };
 
+/*
 Config.fetchConfig = function () {
     if (this.XHRObj == null) {
         this.XHRObj = new XMLHttpRequest();
@@ -107,7 +111,56 @@ Config.fetchConfig = function () {
         this.XHRObj.send(null);
     }
 };
-	
+*/
+Config.fetchConfig = function () {
+	$.ajax({
+		url: this.serverUrl + "/widget.conf",
+		type : "GET",
+		success : function(data, status, XHR ) {
+        	Main.log ("Parsing config XML now");
+        	Main.logToServer("Parsing config XML now");
+        	Config.format = $(data).find('format').text();
+
+        	Config.tgtBufferBitrate = parseFloat($(data).find('tgtBufferBitrate').text());
+        	Config.totalBufferDuration = parseFloat($(data).find('totalBufferDuration').text());
+        	Config.initialBuffer = parseFloat($(data).find('initialBuffer').text());
+        	Config.pendingBuffer = parseFloat($(data).find('pendingBuffer').text());
+        	Config.skipDuration = parseFloat($(data).find('skipDuration').text());
+        	Config.initialTimeOut = parseFloat($(data).find('initialTimeOut').text());
+        	Config.liveChannels = parseInt($(data).find('liveChannels').text());
+
+        	Config.debug = ($(data).find('widgetdebug').text() == "true") ? true : false;
+        	Config.usePdlForRecordings = ($(data).find('usePdlForRecordings').text() == "false") ? false : true;
+        	Config.uploadJsFile = $(data).find('uploadJsFile').text();
+        	
+        	Player.skipDuration = Config.skipDuration;
+        	Main.log("**** Config ****");
+        	Main.log("serverUrl= " + Config.serverUrl);
+        	Main.log("format= " + Config.format);
+        	Main.log("tgtBufferBitrate= " + Config.tgtBufferBitrate);
+        	Main.log("totalBufferDuration= " + Config.totalBufferDuration);
+        	Main.log("initialBuffer= " + Config.initialBuffer);
+        	Main.log("pendingBuffer= " + Config.pendingBuffer);
+        	Main.log("skipDuration= " + Config.skipDuration);
+        	Main.log("initialTimeOut= " + Config.initialTimeOut);
+        	Main.log("liveChannels= " + Config.liveChannels);
+        	Main.log("debug= " + Config.debug);
+        	Main.log("usePdlForRecordings= " + Config.usePdlForRecordings);
+        	
+        	Main.log("**** /Config ****");      	
+            Main.init();
+
+		},
+		error : function (XHR, status, error) {
+	    	Main.log ("Config Server Error");  	
+	    	Display.showPopup("Config Server Error " + XHR.status + " " + status);
+	    	Main.logToServer("Config Server Error " + XHR.status + " " + status);
+
+		}
+	});
+};
+
+
 Config.writeContext = function (addr) {
 	var fileSystemObj = new FileSystem();
 
@@ -172,7 +225,7 @@ Config.readContext = function () {
 	}
 };
 
-
+/*
 Config.getXmlValue = function (itm) {
 	var val = this.xmlDocument.getElementsByTagName(itm);
 	var res = 0;
@@ -201,7 +254,8 @@ Config.getXmlString = function (itm) {
 
 	return res;
 };
-
+*/
+/*
 Config.processConfig = function () {
 	if (this.XHRObj.status != 200) {
     	Main.log ("Config Server Error");  	
@@ -269,7 +323,7 @@ Config.processConfig = function () {
 
     Main.init();
 };
-
+*/
 // This function cleans up after un-installation
 Config.reset = function () {
 	var fileSystemObj = new FileSystem();

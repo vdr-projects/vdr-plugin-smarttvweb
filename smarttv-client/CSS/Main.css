@@ -130,6 +130,9 @@ body {
     padding-right:20px;
     background-color: rgba(0,0,0,0.5);
 	z-index:20;
+	overflow:hidden;
+	text-overflow: ellipsis;
+	white-space : nowrap;
 
 }
 
