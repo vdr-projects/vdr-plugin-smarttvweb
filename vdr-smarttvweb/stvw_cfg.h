@@ -1,7 +1,7 @@
 /*
  * stvw_cfg.h: VDR on Smart TV plugin
  *
- * Copyright (C) 2012 T. Lohmar
+ * Copyright (C) 2012, 2013 T. Lohmar
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -33,16 +33,12 @@
 using namespace std;
 
 
-/*
-class cResumes {
- public:
- cResumes(string t) : mDevice(t) {};
-
-  vector<cResumeEntry> mResumes;
-
-  string mDevice; 
+enum eGroupSep {
+  IGNORE,
+  EMPTYIGNORE,
+  EMPTYFOLDERDOWN
 };
-*/
+
 class cSmartTvConfig {
  private:
   string mConfigDir;
@@ -56,13 +52,15 @@ class cSmartTvConfig {
   unsigned int mHasBitrate;
   int mLiveChannels;
 
+  eGroupSep mGroupSep;
+  string mServerAddress;
+
  public:
   cSmartTvConfig(string dir);
   ~cSmartTvConfig();
 
   void readConfig();
-
-  //  cResumes* readConfig(string);
+  void printConfig();
 
   string getLogFile() { return mLogFile; };
   string getMediaFolder() { return mMediaFolder; };
@@ -70,6 +68,8 @@ class cSmartTvConfig {
   int getHasMinBufferTime() { return mHasMinBufferTime; };
   unsigned int getHasBitrate() {return mHasBitrate; };
   int getLiveChannels() {return mLiveChannels; };
+  eGroupSep getGroupSep() { return mGroupSep; };
+  string getServerAddress() { return mServerAddress; };
 };
 
 #endif

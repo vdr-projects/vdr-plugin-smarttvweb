@@ -143,13 +143,6 @@ void SmartTvServer::loop() {
   FD_SET(mServerFd, &mReadState);
   maxfd = mServerFd;
 
-  struct ifreq ifr;
-
-  ifr.ifr_addr.sa_family = AF_INET;
-  strncpy(ifr.ifr_name, "eth0", IFNAMSIZ-1);
-  ioctl(mServerFd, SIOCGIFADDR, &ifr);
-  string own_ip = inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr);
-
   *(mLog.log()) << "mServerFd= " << mServerFd << endl;
 
   int handeled_fds = 0;
@@ -231,9 +224,10 @@ void SmartTvServer::loop() {
 	if (clientList.size() < (rfd+1)) {
 	  clientList.resize(rfd+1, NULL); // Check.
 	}
-	clientList[rfd] = new cHttpResource(rfd, req_id, own_ip, serverPort, this);
+	clientList[rfd] = new cHttpResource(rfd, req_id, serverPort, this);
+	//	clientList[rfd] = new cHttpResource(rfd, req_id, mOwnIp, serverPort, this);
 	mActiveSessions ++;
-	
+	*(mLog.log()) << " + mActiveSessions= " << mActiveSessions << endl;
       }
       else{
 	*(mLog.log()) << "Error accepting " <<  errno << endl;
@@ -241,8 +235,6 @@ void SmartTvServer::loop() {
     }
 
     // Check for data on already accepted connections
-    //    for (rfd = mServerFd + 1; rfd <= maxfd; ++rfd) {
-    //    for (rfd = 0; rfd <= maxfd; ++rfd) {
     for (rfd = 0; rfd < clientList.size(); rfd++) {
       if (clientList[rfd] == NULL)
 	continue;
@@ -264,6 +256,7 @@ void SmartTvServer::loop() {
 	  delete clientList[rfd];
 	  clientList[rfd] = NULL;
 	  mActiveSessions--;
+	  *(mLog.log()) << " - Check Read: mActiveSessions= " << mActiveSessions << endl;
           FD_CLR(rfd, &mReadState);      /* dead client */
 	  FD_CLR(rfd, &mWriteState);
 	}
@@ -271,8 +264,6 @@ void SmartTvServer::loop() {
     }
 
     // Check for write
-    //    for (rfd = mServerFd + 1; rfd <= maxfd; ++rfd) {
-    //    for (rfd = 0; rfd <= maxfd; ++rfd) {
     for (rfd = 0; rfd < clientList.size(); rfd++) {
       if (clientList[rfd] == NULL)
 	continue;
@@ -293,6 +284,7 @@ void SmartTvServer::loop() {
 	  delete clientList[rfd];
 	  clientList[rfd] = NULL;
 	  mActiveSessions--;
+	  *(mLog.log()) << " - Check Write: mActiveSessions= " << mActiveSessions << endl;
           FD_CLR(rfd, &mReadState);     
 	  FD_CLR(rfd, &mWriteState);
 	}
@@ -344,7 +336,6 @@ void SmartTvServer::initServer(string dir) {
 #ifndef STANDALONE
   mConfig = new cSmartTvConfig(dir); 
   mLog.init(mConfig->getLogFile());
-  //  mLog.init("/multimedia/video/smartvvweblog.txt");
   esyslog("SmartTvWeb: Logfile created");
   
   *(mLog.log()) << mConfig->getLogFile() << endl;
@@ -352,11 +343,12 @@ void SmartTvServer::initServer(string dir) {
 #else
   mConfig = new cSmartTvConfig("."); 
   mLog.init(mConfig->getLogFile());
-  //  mLog.init("/tmp/smartvvweblog-standalone.txt");
   cout << "SmartTvWeb: Logfile created" << endl;
   cout << "SmartTvWeb: Listening on port= " << PORT << endl;
 
 #endif
+  
+  //  mConfig->printConfig();
 
   mSegmentDuration= mConfig->getSegmentDuration();
   mHasMinBufferTime= mConfig->getHasMinBufferTime();
@@ -379,7 +371,13 @@ void SmartTvServer::initServer(string dir) {
 
   memset((char *) &sock, 0, sizeof(sock));
   sock.sin_family = AF_INET;
-  sock.sin_addr.s_addr = htonl(INADDR_ANY);
+
+  if (mConfig->getServerAddress() == "")
+    sock.sin_addr.s_addr = htonl(INADDR_ANY);
+  else {
+    *(mLog.log()) << "Binding Server to " << mConfig->getServerAddress() << endl;
+    sock.sin_addr.s_addr = inet_addr(mConfig->getServerAddress().c_str());
+  }
   sock.sin_port = htons(serverPort);
 
   ret = bind(mServerFd, (struct sockaddr *) &sock, sizeof(sock));
@@ -387,6 +385,16 @@ void SmartTvServer::initServer(string dir) {
     *(mLog.log()) << "Error: Cannot bind serving socket, exit" << endl;
     exit(1); 
   }
+  
+  /*
+  struct ifreq ifr;
+
+  ifr.ifr_addr.sa_family = AF_INET;
+  strncpy(ifr.ifr_name, "eth0", IFNAMSIZ-1);
+  ioctl(mServerFd, SIOCGIFADDR, &ifr);
+  string own_ip = inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr);
+  *(mLog.log()) << " own if ip= " << own_ip << endl; 
+*/
 
   ret = listen(mServerFd, 5);
   if (ret <0) {
