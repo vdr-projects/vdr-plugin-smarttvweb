@@ -1,7 +1,7 @@
 /*
  * stvw_cfg.h: VDR on Smart TV plugin
  *
- * Copyright (C) 2012 T. Lohmar
+ * Copyright (C) 2012, 2013 T. Lohmar
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -33,7 +33,7 @@
 
 cSmartTvConfig::cSmartTvConfig(string d): mConfigDir(d), mLog(NULL), mCfgFile(NULL),
   mLogFile(), mMediaFolder(), mSegmentDuration(), mHasMinBufferTime(), mHasBitrate(), 
-  mLiveChannels() {
+  mLiveChannels(), mGroupSep(IGNORE), mServerAddress("") {
 
 #ifndef STANDALONE
   mLogFile= "";
@@ -47,13 +47,29 @@ cSmartTvConfig::cSmartTvConfig(string d): mConfigDir(d), mLog(NULL), mCfgFile(NU
   mHasMinBufferTime = 40;
   mHasBitrate = 6000000;
   mLiveChannels = 30;
-  mLog = Log::getInstance();
 
   readConfig();
 }
 
 cSmartTvConfig::~cSmartTvConfig() {
 }
+
+void cSmartTvConfig::printConfig() {
+  mLog = Log::getInstance();
+
+
+  *(mLog->log()) << "printConfig: " << endl; 
+  *(mLog->log()) << " ConfigDir: " << mConfigDir << endl;
+  *(mLog->log()) << " LogFile: " << mLogFile << endl;
+  *(mLog->log()) << " MediaFolder:" << mMediaFolder << endl;
+  *(mLog->log()) << " SegmentDuration: " << mSegmentDuration << endl;
+  *(mLog->log()) << " HasMinBufferTime: " << mHasMinBufferTime << endl;
+  *(mLog->log()) << " HasBitrate: " << mHasBitrate << endl;
+  *(mLog->log()) << " LiveChannels: " << mLiveChannels << endl;
+  *(mLog->log()) << " GroupSeparators: " << ((mGroupSep==IGNORE)? "Ignore" : ((mGroupSep==EMPTYIGNORE)? "EmptyIgnore": "EmptyFolderDown")) << endl;
+  *(mLog->log()) << " ServerAddress: " << mServerAddress << endl;
+}
+
 
 void cSmartTvConfig::readConfig() {
   string line;
@@ -108,6 +124,22 @@ void cSmartTvConfig::readConfig() {
     }
     if (strcmp(attr, "LiveChannels") == 0) {
       mLiveChannels = atoi(value);
+      //      cout << " Found mLiveChannels= " <<mLiveChannels << endl;
+      continue;
+    }
+
+    if (strcmp(attr, "GroupSeparators") == 0) {
+      if (strcmp (value, "EmptyIgnore") == 0) {
+	mGroupSep = EMPTYIGNORE;
+      }
+      else if ( strcmp(value, "EmptyFolderDown") == 0) {
+	mGroupSep = EMPTYFOLDERDOWN;
+      }
+      continue;
+    }
+
+    if (strcmp(attr, "ServerAddress") == 0) {
+      mServerAddress = value;
       //      cout << " Found mLiveChannels= " <<mLiveChannels << endl;
       continue;
     }

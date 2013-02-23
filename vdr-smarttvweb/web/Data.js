@@ -1,7 +1,17 @@
+//Diff: 
+// getNumString
+// createJQMDomTree
+
 var Data =
 {
 	assets : new Item,
 	folderList : [],
+};
+
+Array.prototype.remove = function(from, to) {
+  var rest = this.slice((to || from) + 1 || this.length);
+  this.length = from < 0 ? this.length + from : from;
+  return this.push.apply(this, rest);
 };
 
 Data.reset = function() {
@@ -10,7 +20,8 @@ Data.reset = function() {
 	
 	this.folderList = [];		
 
-	this.folderList.push({item : this.assets, id: 0});
+//	this.folderList.push({item : this.assets, id: 0});
+//	Main.log("Data.reset: folderList.push. this.folderList.length= " + this.folderList.length);
 };
 
 Data.completed= function(sort) {
@@ -18,24 +29,29 @@ Data.completed= function(sort) {
 		this.assets.sortPayload();
 	
 	this.folderList.push({item : this.assets, id: 0});
-	console.log ("Data.completed()= " +this.folderList.length);
+//	Main.log("Data.completed: folderList.push. this.folderList.length= " + this.folderList.length);
+//	Main.log ("Data.completed()= " +this.folderList.length);
 
 };
 
-Data.selectFolder = function (idx) {
-	this.folderList.push({item : this.getCurrentItem().childs[idx], id: idx});
-};
-
-Data.isRootFolder = function() {
-	if (this.folderList.length == 1)
-		return true;
-	else
-		return false;
+Data.selectFolder = function (idx, first_idx) {
+	this.folderList.push({item : this.getCurrentItem().childs[idx], id: idx, first:first_idx});
+//	Main.log("Data.selectFolder: folderList.push. this.folderList.length= " + this.folderList.length);
 };
 
 Data.folderUp = function () {
 	itm = this.folderList.pop();
-	return itm.id;
+//	Main.log("Data.folderUp: folderList.pop. this.folderList.length= " + this.folderList.length);
+	return itm;
+//	return itm.id;
+};
+
+Data.isRootFolder = function() {
+//	Main.log("Data.isRootFolder: this.folderList.length= " + this.folderList.length);
+	if (this.folderList.length == 1)
+		return true;
+	else
+		return false;
 };
 
 Data.addItem = function(t_list, pyld) {
@@ -48,21 +64,24 @@ Data.dumpFolderStruct = function(){
     Main.log("---------- dumpFolderStruct Done -------");    
 };
 
-Data.createDomTree = function () {
-	
-    return this.assets.createDomTree(0);
-};
-
 Data.createJQMDomTree = function () {
     return this.assets.createJQMDomTree(0);
+};
+
+Data.findEpgUpdateTime = function() {
+	return this.assets.findEpgUpdateTime(Display.GetEpochTime() + 10000, "", 0);
+	// min, guid, level
+};
+
+Data.updateEpg = function (guid, entry) {
+	this.assets.updateEpgEntry(guid, entry, 0);
 };
 
 Data.getCurrentItem = function () {
 	return this.folderList[this.folderList.length-1].item;
 };
 
-Data.getVideoCount = function()
-{
+Data.getVideoCount = function() {
 	return this.folderList[this.folderList.length-1].item.childs.length;
 };
 
@@ -84,7 +103,9 @@ Data.getNumString =function(num, fmt) {
         return res;
 };
 
-
+Data.deleteElm = function (pos) {
+	Data.getCurrentItem().childs.remove(pos);
+};
 //-----------------------------------------
 function Item() {
     this.title = "root";
@@ -150,6 +171,59 @@ Item.prototype.addChild = function (key, pyld, level) {
     }
 };
 
+Item.prototype.findEpgUpdateTime = function (min, guid, level) {
+    var prefix= "";
+    for (var i = 0; i < level; i++)
+    	prefix += "-";
+
+    for (var i = 0; i < this.childs.length; i++) {
+    	if (this.childs[i].isFolder == true) {
+    		var res = this.childs[i].findEpgUpdateTime(min, guid, level+1);
+    		min = res.min;
+    		guid = res.guid;
+    	}
+    	else {
+    		var digi =new Date(this.childs[i].payload['start']  * 1000);
+    		var str = digi.getHours() + ":" + digi.getMinutes();
+   		
+//			Main.log(prefix + "min= " + min+ " start= " + this.childs[i].payload['start'] + " (" + str+ ") title= " + this.childs[i].title);
+    		
+    		if ((this.childs[i].payload['start'] != 0) && ((this.childs[i].payload['start'] + this.childs[i].payload['dur']) < min)) {
+    			min = this.childs[i].payload['start'] + this.childs[i].payload['dur'];
+    			guid = this.childs[i].payload['guid'] ;
+//    			Main.log(prefix + "New Min= " + min + " new id= " + guid + " title= " + this.childs[i].title);
+//    			Main.logToServer(prefix + "New Min= " + min + " new id= " + guid + " title= " + this.childs[i].title);
+    		}
+    	}
+    }  
+
+    return { "min": min, "guid" : guid};
+};
+
+Item.prototype.updateEpgEntry = function (guid, entry, level) {
+    var prefix= "";
+    for (var i = 0; i < level; i++)
+    	prefix += "-";
+    for (var i = 0; i < this.childs.length; i++) {
+    	if (this.childs[i].isFolder == true) {
+    		var res = this.childs[i].updateEpgEntry(guid, entry, level+1);
+			if (res == true)
+				return true;
+    	}
+		else {
+			if (this.childs[i].payload['guid'] == guid) {
+				Main.log("updateEpgEntry: Found " + this.childs[i].title);
+				this.childs[i].payload.prog = entry.prog;
+				this.childs[i].payload.desc = entry.desc;
+				this.childs[i].payload.start = entry.start;
+				this.childs[i].payload.dur = entry.dur;
+				return true;
+			}
+		}
+	}
+	return false;
+};
+
 Item.prototype.print = function(level) {
     var prefix= "";
     for (var i = 0; i < level; i++)
@@ -162,31 +236,6 @@ Item.prototype.print = function(level) {
         	this.childs[i].print(level +1);
     	}
     }
-};
-
-Item.prototype.createDomTree = function(level) {
-    var prefix= "";
-    for (var i = 0; i < level; i++)
-    	prefix += "-";
-//	var mydiv = $('<div class="folder">' +prefix+this.title+ '</div>');
-	var mydiv = $('<ul />');
-
-    for (var i = 0; i < this.childs.length; i++) {
-    	if (this.childs[i].isFolder == true) {
-//            mydiv.appendChild(this.childs[i].createDomTree());
-			var myli = $('<li class="folder">' +prefix +this.childs[i].title + '</li>');					
-            myli.append(this.childs[i].createDomTree(level+1));
-			mydiv.append(myli);
-    	}
-	else {
-//	var mya = $('<a class="link">' +prefix +this.childs[i].title + '</a>');
-		var mya = $('<a>', { text: prefix +this.childs[i].title, href: this.childs[i].payload['link']}  );
-		var myli = $('<li class="item"/>');
-		myli.append(mya);
-		mydiv.append(myli);
-		}
-    }  
-    return mydiv;
 };
 
 Item.prototype.createJQMDomTree = function(level) {

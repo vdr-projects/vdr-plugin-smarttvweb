@@ -74,7 +74,7 @@ class cResumeEntry;
 class cHttpResource {
 
  public:
-  cHttpResource(int, int, string, int, SmartTvServer*);
+  cHttpResource(int, int, int, SmartTvServer*);
   virtual ~cHttpResource();
 
   int handleRead();
@@ -90,7 +90,6 @@ class cHttpResource {
   SmartTvServer* mFactory;
   Log* mLog;
 
-  string mServerAddr;
   int mServerPort;
   int mFd;
   int mReqId;
@@ -147,7 +146,6 @@ class cHttpResource {
   int sendChannelsXml (struct stat *statbuf);
   int sendResumeXml ();
   int sendVdrStatusXml (struct stat *statbuf);
-  //  int sendResumeXml (struct stat *statbuf);
   int sendEpgXml (struct stat *statbuf);
   int sendMediaXml (struct stat *statbuf);
 
@@ -170,6 +168,7 @@ class cHttpResource {
   // Helper Functions
   const char *getMimeType(const char *name);
   string getConnStateName();
+  string getOwnIp(int fd);
   void checkRecording();
   bool isTimeRequest(struct stat *statbuf);
   int parseRangeHeaderValue(string);
@@ -182,6 +181,6 @@ class cHttpResource {
 
   int getQueryAttributeValue(vector<sQueryAVP> *avps, string id, string &val);
   int openFile(const char *name);
-  int writeXmlItem(string title, string link, string programme, string desc, string guid, time_t start, int dur, double fps, int is_pes, int is_new);
+  int writeXmlItem(string title, string link, string programme, string desc, string guid, int no, time_t start, int dur, double fps, int is_pes, int is_new);
 };
 #endif

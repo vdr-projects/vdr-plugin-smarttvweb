@@ -116,14 +116,14 @@ struct tIndexTs {
   };
 
 
-
+/*
 union tIndexRead {
   struct tIndexTs in;
   char buf[8];
 };
+*/
 
-
-cHttpResource::cHttpResource(int f, int id,string addr, int port, SmartTvServer* factory): mFactory(factory), mLog(), mServerAddr(addr), 
+cHttpResource::cHttpResource(int f, int id, int port, SmartTvServer* factory): mFactory(factory), mLog(),  
   mServerPort(port), mFd(f), mReqId(id), mConnTime(0), mHandleReadCount(0),  
   mConnected(true), mConnState(WAITING), mContentType(NYD), mReadBuffer(),
   mMethod(), mResponseMessagePos(0), mBlkData(NULL), mBlkPos(0), mBlkLen(0), 
@@ -138,19 +138,19 @@ cHttpResource::cHttpResource(int f, int id,string addr, int port, SmartTvServer*
   setNonBlocking();
   mBlkData = new char[MAXLEN];
 
-#ifndef DEBUG
+  //#ifndef DEBUG
   *(mLog->log())<< DEBUGPREFIX 
 		<< " cHttpResource created" << endl;
-#endif
+  //#endif
 }
 
 
 cHttpResource::~cHttpResource() {
-#ifndef DEBUG
+  //#ifndef DEBUG
   *(mLog->log())<< DEBUGPREFIX 
 		<< " Destructor of cHttpResource called"        
 		<< endl;
-#endif
+  //#endif
   delete[] mBlkData;
   if (mFile != NULL) {
     *(mLog->log())<< DEBUGPREFIX
@@ -769,6 +769,9 @@ int cHttpResource::handlePost() {
   if (mPath.compare("/log") == 0) {
     *(mLog->log())<< mPayload
 		  << endl;
+
+    sendHeaders(200, "OK", NULL, NULL, -1, -1);
+    return OKAY;
   }
 
   if (mPath.compare("/getResume.xml") == 0) {
@@ -932,7 +935,7 @@ int cHttpResource::sendDir(struct stat *statbuf) {
 }
 
 
-int cHttpResource::writeXmlItem(string name, string link, string programme, string desc, string guid, time_t start, int dur, double fps, int is_pes, int is_new) {
+int cHttpResource::writeXmlItem(string name, string link, string programme, string desc, string guid, int no, time_t start, int dur, double fps, int is_pes, int is_new) {
   string hdr = "";
   char f[400];
 
@@ -943,6 +946,11 @@ int cHttpResource::writeXmlItem(string name, string link, string programme, stri
   hdr += "<enclosure url=\"" +link + "\" type=\"video/mpeg\" />\n";
   
   hdr += "<guid>" + guid + "</guid>\n";
+
+  snprintf(f, sizeof(f), "%d", no);
+  hdr += "<number>";
+  hdr += f;
+  hdr += "</number>\n";
 
   hdr += "<programme>" + programme +"</programme>\n";
   hdr += "<description>" + desc + "</description>\n";
@@ -1446,6 +1454,9 @@ int cHttpResource::sendMediaXml (struct stat *statbuf) {
   *(mLog->log()) << DEBUGPREFIX << " sendMedia "  << endl;  
 #endif
 
+  string own_ip = getOwnIp(mFd);
+  *(mLog->log()) << " OwnIP= " << own_ip << endl;
+
   vector<sFileEntry> entries;
 
   if (parseFiles(&entries, "", media_folder, "", statbuf) == ERROR) {
@@ -1464,10 +1475,11 @@ int cHttpResource::sendMediaXml (struct stat *statbuf) {
 
   for (uint i=0; i < entries.size(); i++) {
     
-    snprintf(pathbuf, sizeof(pathbuf), "http://%s:%d%s", mServerAddr.c_str(), mServerPort, 
+    //    snprintf(pathbuf, sizeof(pathbuf), "http://%s:%d%s", mServerAddr.c_str(), mServerPort, 
+    snprintf(pathbuf, sizeof(pathbuf), "http://%s:%d%s", own_ip.c_str(), mServerPort, 
     	     cUrlEncode::doUrlSaveEncode(entries[i].sPath).c_str());
     if (writeXmlItem(cUrlEncode::doXmlSaveEncode(entries[i].sName), pathbuf, "NA", "NA", "-", 
-		     entries[i].sStart, -1, -1, -1, -1) == ERROR) 
+		     -1, entries[i].sStart, -1, -1, -1, -1) == ERROR) 
       return ERROR;
 
   }
@@ -1702,6 +1714,8 @@ int cHttpResource::sendChannelsXml (struct stat *statbuf) {
 		<< " generating /channels.xml" 
 		<< DEBUGHDR << endl;
 #endif
+  string own_ip = getOwnIp(mFd);
+  *(mLog->log()) << " OwnIP= " << own_ip << endl;
 
   vector<sQueryAVP> avps;
   parseQueryLine(&avps);
@@ -1711,7 +1725,7 @@ int cHttpResource::sendChannelsXml (struct stat *statbuf) {
   string no_channels_str = "";
   int no_channels = -1;
   string group_sep = "";
-
+  
   if (getQueryAttributeValue(&avps, "mode", mode) == OKAY){
     if (mode == "nodesc") {
       add_desc = false;
@@ -1748,27 +1762,21 @@ int cHttpResource::sendChannelsXml (struct stat *statbuf) {
 
   for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel)) {
     if (channel->GroupSep()) {
-      group_sep = cUrlEncode::doXmlSaveEncode(channel->Name());
-      /*      *(mLog->log())<< DEBUGPREFIX
-	<< " group= " << group_sep
-		    << " group_sep[0]= " << group_sep[0] << endl;
-      if (group_sep[0] == '@') {
-	size_t pos = group_sep.find(' ', 1);
-	if (pos != string::npos) 
-	  group_sep = group_sep.substr( pos +1);	
-	else
-	  group_sep = "";
-	*(mLog->log()) << DEBUGPREFIX 
-		       << " group_sep= " << group_sep << endl;
+      if (mFactory->getConfig()->getGroupSep() != IGNORE) {
+	// if emtpyFolderDown, always.
+	// otherwise, only when not empty
+	if (!((strcmp(channel->Name(), "") == 0) && (mFactory->getConfig()->getGroupSep() == EMPTYIGNORE)))
+	  group_sep = cUrlEncode::doXmlSaveEncode(channel->Name());
+
       }
-*/
       continue;
     }
     if (--count == 0) {
       break;
     }
 
-    snprintf(f, sizeof(f), "http://%s:3000/%s.ts", mServerAddr.c_str(), *(channel->GetChannelID()).ToString());
+    //    snprintf(f, sizeof(f), "http://%s:3000/%s.ts", mServerAddr.c_str(), *(channel->GetChannelID()).ToString());
+    snprintf(f, sizeof(f), "http://%s:3000/%s.ts", own_ip.c_str(), *(channel->GetChannelID()).ToString());
     string link = f;
 
     const cSchedule *schedule = schedules->GetSchedule(channel->GetChannelID());
@@ -1805,7 +1813,7 @@ int cHttpResource::sendChannelsXml (struct stat *statbuf) {
     string c_name = (group_sep != "") ? (group_sep + "~" + cUrlEncode::doXmlSaveEncode(channel->Name())) 
       : cUrlEncode::doXmlSaveEncode(channel->Name()); 
     //    if (writeXmlItem(channel->Name(), link, title, desc, *(channel->GetChannelID()).ToString(), start_time, duration) == ERROR) 
-    if (writeXmlItem(c_name, link, title, desc, *(channel->GetChannelID()).ToString(), start_time, duration, -1, -1, -1) == ERROR) 
+    if (writeXmlItem(c_name, link, title, desc, *(channel->GetChannelID()).ToString(), channel->Number(), start_time, duration, -1, -1, -1) == ERROR) 
       return ERROR;
 
   }
@@ -1950,7 +1958,7 @@ int cHttpResource::deleteRecording() {
 
   if (getQueryAttributeValue(&avps, "id", id) == ERROR){
     *(mLog->log())<< DEBUGPREFIX
-		  << " ERROR: id not found" 
+		  << " ERROR: id not found in query." 
 		  << DEBUGHDR << endl;
     sendError(400, "Bad Request", NULL, "no id in query line");
     return OKAY;
@@ -1959,6 +1967,9 @@ int cHttpResource::deleteRecording() {
 
   cRecording* rec = Recordings.GetByName(mPath.c_str());
   if (rec == NULL) {
+    *(mLog->log())<< DEBUGPREFIX
+		  << " ERROR: Recording not found. Deletion failed: mPath= " << mPath
+		  << endl;
     sendError(404, "Not Found.", NULL, "Recording not found. Deletion failed!");
     return OKAY;
   }
@@ -1967,10 +1978,16 @@ int cHttpResource::deleteRecording() {
     //    Recordings.DelByName(mPath.c_str());
   }
   else {
+    *(mLog->log())<< DEBUGPREFIX
+		  << " ERROR: rec->Delete() returns false. mPath= " << mPath
+		  << endl;
     sendError(500, "Internal Server Error", NULL, "deletion failed!");
     return OKAY;
   }
   
+  *(mLog->log())<< DEBUGPREFIX
+		  << " Deleted."
+		  << endl;
   sendHeaders(200, "OK", NULL, NULL, -1, -1);
   return OKAY;
 }
@@ -1985,6 +2002,9 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
   mContentType = MEMBLOCK;
 
   mConnState = SERVING;
+
+  string own_ip = getOwnIp(mFd);
+  *(mLog->log()) << " OwnIP= " << own_ip << endl;
 
   vector<sQueryAVP> avps;
   parseQueryLine(&avps);
@@ -2098,12 +2118,14 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
 		   << endl;
 */      
     if (ti->HasFlags(tfRecording) ) {
+      /*
       if (ti->Event() == NULL) {
 	*(mLog->log()) << DEBUGPREFIX 
 		       << " WARNING: Active recording for " << ti->File()
 		       << " is skipped (No Event()" << endl;
 	continue;
       }
+      */
       /*    *(mLog->log()) << DEBUGPREFIX 
 		     << " Active Timer: " << ti->File() 
 		     << " Start= " << ti->Event()->StartTime() 
@@ -2132,10 +2154,12 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
     hdr = "";
 
     if (recording->IsPesRecording() or ((recording->FramesPerSecond() > 30.0) and !has_4_hd )) 
-      snprintf(f, sizeof(f), "http://%s:%d%s", mServerAddr.c_str(), mServerPort, 
+      //      snprintf(f, sizeof(f), "http://%s:%d%s", mServerAddr.c_str(), mServerPort, 
+      snprintf(f, sizeof(f), "http://%s:%d%s", own_ip.c_str(), mServerPort, 
 	       cUrlEncode::doUrlSaveEncode(recording->FileName()).c_str());
     else
-      snprintf(f, sizeof(f), "http://%s:%d%s%s", mServerAddr.c_str(), mServerPort, 
+      //      snprintf(f, sizeof(f), "http://%s:%d%s%s", mServerAddr.c_str(), mServerPort, 
+      snprintf(f, sizeof(f), "http://%s:%d%s%s", own_ip.c_str(), mServerPort, 
 	       cUrlEncode::doUrlSaveEncode(recording->FileName()).c_str(), link_ext.c_str());
 
     string link = f;
@@ -2164,7 +2188,8 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
     }
 
     if (writeXmlItem(cUrlEncode::doXmlSaveEncode(recording->Name()), link, "NA", desc, 
-		     cUrlEncode::doXmlSaveEncode(recording->FileName()).c_str(), 
+		     cUrlEncode::doXmlSaveEncode(recording->FileName()).c_str(),
+		     -1, 
 		     recording->Start(), rec_dur, recording->FramesPerSecond(), 
 		     (recording->IsPesRecording() ? 0: 1), (recording->IsNew() ? 0: 1)) == ERROR) 
       // Better Internal Server Error
@@ -2705,6 +2730,19 @@ string cHttpResource::getConnStateName() {
   return state_string;
 }
 
+
+string cHttpResource::getOwnIp(int fd) {
+  struct sockaddr_in sock;
+  socklen_t len_inet = sizeof(sock);
+  int ret = getsockname(fd, (struct sockaddr *)&sock, &len_inet);  
+  if ( ret == -1 ) {  
+    *(mLog->log()) << "Error: Cannot obtain own ip address" << endl;
+    return string("0.0.0.0");
+    //    exit(1); /* Failed */  
+  }  
+  return string (inet_ntoa(sock.sin_addr));
+}
+
 int cHttpResource::parseHttpRequestLine(string line) {
   mMethod = line.substr(0, line.find_first_of(" "));
   mRequest = line.substr(line.find_first_of(" ") +1, (line.find_last_of(" ") - line.find_first_of(" ") -1));
@@ -2753,10 +2791,10 @@ int cHttpResource::parseHttpHeaderLine (string line) {
   }
   if (hdr_name.compare("Content-Length") == 0) {
     mReqContentLength = atoll(hdr_val.c_str());
-#ifndef DEBUG
+    //#ifndef DEBUG
     *(mLog->log())<< " Content-Length: " << mReqContentLength 
 		  << endl; 
-#endif
+    //#endif
   }
   return 0;
 }
