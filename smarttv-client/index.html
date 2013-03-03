@@ -32,7 +32,8 @@
         <script language="javascript" type="text/javascript" src="Javascript/Spinner.js"></script>
         <script language="javascript" type="text/javascript" src="Javascript/Buttons.js"></script>
         <script language="javascript" type="text/javascript" src="Javascript/Notify.js"></script>
-        
+        <script language="javascript" type="text/javascript" src="Javascript/DirectAccess.js"></script>
+                
         <!-- Style sheets -->
         <link rel="stylesheet" href="CSS/Main.css" type="text/css">
 
@@ -160,6 +161,12 @@
 		        <a href='javascript:void(0);' id='yn-buttons-anchor' ></a>
 				<!-- onkeydown='Buttons.onPrInput();'-->
 		</div>
-
-		</body>
+		<div id="directChanAccess">
+		<table style="height: 100%; width: 80%">
+		<tr><td>
+		 	<input type="text" id="directAccessAnchor" onkeydown='DirectAccess.onInput();' maxlength="4" size="4">
+		</td></tr>
+		</table>
+		</div>
+	</body>
 </html>

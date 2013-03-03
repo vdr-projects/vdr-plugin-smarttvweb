@@ -43,6 +43,7 @@ Server.fetchVideoList = function(url) {
 				var fps = parseFloat($(this).find('fps').text());
 				var ispes = $(this).find('ispes').text();
 				var isnew = $(this).find('isnew').text();
+				var num = parseInt($(this).find('number').text());
 //				Main.log("Server.fetchVideoList: title= " + title + " start= " + startVal + " dur= " + durVal + " fps= " + fps);
 				
 				if (Main.state == Main.eLIVE) {
@@ -51,7 +52,7 @@ Server.fetchVideoList = function(url) {
 
                 var title_list = title.split("~");
                 Data.addItem( title_list, {link : link, prog: programme, desc: description, guid : guid, start: startVal, 
-                			dur: durVal, ispes : ispes, isnew : isnew, fps : fps});              	
+                			dur: durVal, ispes : ispes, isnew : isnew, fps : fps, num : num});              	
 							
 				}); // each
 

@@ -2,6 +2,8 @@ var Data =
 {
 	assets : new Item,
 	folderList : [],
+	createAccessMap : false,
+	directAccessMap : {}
 };
 
 Array.prototype.remove = function(from, to) {
@@ -13,8 +15,8 @@ Array.prototype.remove = function(from, to) {
 Data.reset = function() {
 	this.assets = null;
 	this.assets = new Item;
-	
 	this.folderList = [];		
+	this.createAccessMap = false;
 
 //	this.folderList.push({item : this.assets, id: 0});
 	Main.log("Data.reset: folderList.push. this.folderList.length= " + this.folderList.length);
@@ -25,9 +27,9 @@ Data.completed= function(sort) {
 		this.assets.sortPayload();
 	
 	this.folderList.push({item : this.assets, id: 0});
-	Main.log("Data.completed: folderList.push. this.folderList.length= " + this.folderList.length);
-	Main.log ("Data.completed()= " +this.folderList.length);
-
+    Main.log("---------- completed ------------");    
+	Main.log("Data.completed: Data.folderList.length= " + this.folderList.length);
+	Main.log("Data.completed(): createAccessMap= " + ((this.createAccessMap == true) ? "true": "false"));
 };
 
 Data.selectFolder = function (idx, first_idx) {
@@ -51,6 +53,9 @@ Data.isRootFolder = function() {
 };
 
 Data.addItem = function(t_list, pyld) {
+	if (this.createAccessMap == true) {
+		this.directAccessMap[pyld.num] = [];
+	}
     this.assets.addChild(t_list, pyld, 0);
 };
 
@@ -58,6 +63,22 @@ Data.dumpFolderStruct = function(){
     Main.log("---------- dumpFolderStruct ------------");    
     this.assets.print(0);
     Main.log("---------- dumpFolderStruct Done -------");    
+};
+
+Data.dumpDirectAccessMap = function(){
+    Main.log("---------- dumpDirectAccessMap ------------");    
+	for(var prop in this.directAccessMap) {
+		var s = "";
+		for (var i = 0; i < this.directAccessMap[prop].length; i++)
+			s = s + "i= " + i + " = " + this.directAccessMap[prop][i] + " ";
+		Main.log(prop + ": " + s);
+	} 
+/*	var i = 1;
+	for (i = 1; i < 20; i++)
+		Main.log(i + ": " + this.directAccessMap[""+i]);
+*/	
+	Main.log("---------- dumpDirectAccessMap Done -------");    
+
 };
 
 Data.findEpgUpdateTime = function() {
@@ -114,16 +135,18 @@ Item.prototype.getItem = function (title) {
 
 Item.prototype.addChild = function (key, pyld, level) {
 	if (key.length == 1) {
+		if (Data.createAccessMap == true) {
+			Data.directAccessMap[pyld.num].push(this.childs.length);
+		//	this.titles.push({title: pyld.startstr + " - " + key , pyld : pyld});
+		}
 		var folder = new Item;
-//		folder.title = pyld.startstr + " - " + key;
 		folder.title = key[0];
 		folder.payload = pyld;
 		folder.isFolder = false;
 		this.childs.push(folder);
-//	this.titles.push({title: pyld.startstr + " - " + key , pyld : pyld});
-    }
+	}
     else {
-    	if (level > 10) {
+    	if (level > 20) {
     		Main.log(" too many levels");
     		return;
     	}
@@ -131,13 +154,19 @@ Item.prototype.addChild = function (key, pyld, level) {
     	var found = false;
     	for (var i = 0; i < this.childs.length; i++) {
     		if (this.childs[i].title == t) {
+				if (Data.createAccessMap == true) {
+					Data.directAccessMap[pyld.num].push(i); // should start from 1
+				}
     			this.childs[i].addChild(key, pyld, level +1);
     			found = true;
-    			break;
+				break;
     		}
     	}
     	if (found == false) {
     		var folder = new Item;
+			if (Data.createAccessMap == true) {
+				Data.directAccessMap[pyld.num].push(this.childs.length); // should start from 1
+			}
     		folder.title = t;
     		folder.addChild(key, pyld, level+1);
     		this.childs.push(folder);
