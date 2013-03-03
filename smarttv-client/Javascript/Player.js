@@ -51,6 +51,7 @@ var Player =
 	
 	eASP16to9 :0,
 	eASP4to3 :1,
+	eASPcrop16to9 :2,
 	
 	bufferStartTime : 0,
 	requestStartTime :0
@@ -84,7 +85,31 @@ Player.resetAtStop = function () {
 	};
 
 Player.toggleAspectRatio = function () {
-	if (this.aspectRatio == this.eASP16to9) {
+/*	var height = Player.plugin.GetVideoHeight();
+	var width = Player.plugin.GetVideoWidth();
+	Main.logToServer ("Resolution= " + width + " x " + height );
+	Main.log ("Resolution= " + width + " x " + height );
+*/
+	switch (this.aspectRatio) {
+	case this.eASP16to9:
+		//it is 16 to 9, so do 4 to 3
+		this.aspectRatio = this.eASP4to3;
+		Notify.showNotify("4 : 3", true);
+		break;
+	case this.eASP4to3:
+		// it is 4 to 3. do cropped do 16 to 9
+		this.aspectRatio = this.eASPcrop16to9;
+		Notify.showNotify("Crop 16 : 9", true);
+		break;
+	case this.eASPcrop16to9:
+		// it is cropped 16 to 9
+		this.aspectRatio = this.eASP16to9;
+		Notify.showNotify("16 : 9", true);
+		Main.logToServer("Player.toggleAspectRatio: 16 by 9 Now");
+		break;
+	}
+	Player.setFullscreen();
+/*	if (this.aspectRatio == this.eASP16to9) {
 		// Do 4 to 3
 		this.plugin.SetDisplayArea(120, 0, 720, 540);
 		// 4/3 = x/540
@@ -97,6 +122,57 @@ Player.toggleAspectRatio = function () {
 		this.aspectRatio = this.eASP16to9;
 		Main.logToServer("Player.toggleAspectRatio: 16 by 9 Now");
 	}
+	*/
+};
+
+
+Player.setWindow = function() {
+//  this.plugin.SetDisplayArea(458, 58, 472, 270);
+};
+
+Player.setFullscreen = function() {
+//  this.plugin.SetDisplayArea(0, 0, 960, 540);
+
+	var h = Player.plugin.GetVideoHeight();
+	var w = Player.plugin.GetVideoWidth();
+	Main.logToServer ("Resolution= " + w + " x " + h );
+	Main.log ("Resolution= " + w + " x " + h );
+
+	switch (this.aspectRatio) {
+	case this.eASP16to9:
+		this.plugin.SetDisplayArea(0, 0, 960, 540);
+		this.plugin.SetCropArea(0, 0, w, h);
+		Main.logToServer("Player.toggleAspectRatio: 16 by 9 Now");
+		break;
+	case this.eASP4to3:
+		// it is 4 to 3. do cropped do 16 to 9
+		this.plugin.SetDisplayArea(120, 0, 720, 540);
+		this.plugin.SetCropArea(0, 0, w, h);
+		// 4/3 = x/540
+		Main.logToServer("Player.toggleAspectRatio: 4 by 3 Now");
+		break;
+	case this.eASPcrop16to9:
+		// it is cropped 16 to 9
+		var z = Math.ceil(w*w*27 /(h*64));
+		Main.logToServer("Player.toggleAspectRatio: Crop 16 by 9 Now: z= " + z);
+		this.plugin.SetDisplayArea(0, 0, 960, 540);
+		this.plugin.SetCropArea(0, Math.round((h-z)/2), w, z);
+		break;
+	}
+/*	if (this.aspectRatio == this.eASP16to9) {
+		// Do 4 to 3
+		this.plugin.SetDisplayArea(120, 0, 720, 540);
+		// 4/3 = x/540
+		this.aspectRatio = this.eASP4to3;
+		Main.logToServer("Player.toggleAspectRatio: 4 by 3 Now");
+	}
+	else {
+		// do 16 to 9
+		Player.setFullscreen();
+		this.aspectRatio = this.eASP16to9;
+		Main.logToServer("Player.toggleAspectRatio: 16 by 9 Now");
+	}
+	*/
 };
 
 Player.init = function() {
@@ -156,13 +232,6 @@ Player.deinit = function()
       }
 };
 
-Player.setWindow = function() {
-//    this.plugin.SetDisplayArea(458, 58, 472, 270);
-};
-
-Player.setFullscreen = function() {
-    this.plugin.SetDisplayArea(0, 0, 960, 540);
-};
 
 Player.setBuffer = function (){
 	var res = true;
@@ -222,6 +291,7 @@ Player.playVideo = function(resume_pos) {
         Main.log("No videos to play");
     }
     else {
+    	Player.setFullscreen();
     	Player.bufferState = 0;
     	Display.bufferUpdate();
 
@@ -237,7 +307,7 @@ Player.playVideo = function(resume_pos) {
     	Display.showProgress();
         this.state = this.PLAYING;
         
-        Player.setBuffer();
+//        Player.setBuffer();
         Player.ResetTrickPlay();
         Player.skipDuration = Config.skipDuration; // reset
 
@@ -245,10 +315,15 @@ Player.playVideo = function(resume_pos) {
 
         this.requestStartTime = new Date().getTime();
         if (Player.isRecording == false) {
-            if (resume_pos == -1)
-            	this.plugin.Play( this.url );
+            if (resume_pos == -1) {
+//            	this.plugin.Play( this.url );
+            	this.plugin.InitPlayer(this.url);
+                Player.setBuffer();
+            	this.plugin.StartPlayback();
+            }
             else {
             	Main.logToServer ("Player.playVideo: resume_pos= " +resume_pos);
+                Player.setBuffer();
 				this.plugin.ResumePlay(this.url, resume_pos);        
             }
         }
@@ -256,7 +331,10 @@ Player.playVideo = function(resume_pos) {
         	if (resume_pos == -1) 
         		resume_pos = 0;
 			Player.setCurrentPlayTimeOffset(resume_pos * 1000.0);
-			this.plugin.Play( this.url+ "?time=" + resume_pos );
+//			this.plugin.Play( this.url+ "?time=" + resume_pos );
+        	this.plugin.InitPlayer(this.url+ "?time=" + resume_pos );
+            Player.setBuffer();
+        	this.plugin.StartPlayback();
 			Main.logToServer("Player.play with ?time=" + resume_pos);        
         }
 
@@ -352,7 +430,11 @@ Player.jumpToVideo = function(percent) {
 		var old = Player.curPlayTime;
 
 		Player.setCurrentPlayTimeOffset(tgt * 1000.0);
-		res = this.plugin.Play( this.url+ "?time=" + tgt );
+		
+//		res = this.plugin.Play( this.url+ "?time=" + tgt );
+    	this.plugin.InitPlayer(this.url+ "?time=" + tgt );
+    	res = this.plugin.StartPlayback();
+
 		Main.logToServer("Player.play with ?time=" + tgt);
 		if (res == false)
 			Player.setCurrentPlayTimeOffset(old);
@@ -383,7 +465,10 @@ Player.skipForwardVideo = function() {
 		var old = Player.curPlayTime;
 		var tgt = (Player.curPlayTime/1000.0) + Player.skipDuration;
 		Player.setCurrentPlayTimeOffset(tgt * 1000.0);
-		res = this.plugin.Play( this.url+ "?time=" + tgt );		
+//		res = this.plugin.Play( this.url+ "?time=" + tgt );		
+    	this.plugin.InitPlayer(this.url+ "?time=" + tgt );
+    	res = this.plugin.StartPlayback();
+		
 		Main.logToServer("Player.skipForwardVideo with ?time=" + tgt);
 		if (res == false)
 			Player.setCurrentPlayTimeOffset(old);			
@@ -406,7 +491,10 @@ Player.skipBackwardVideo = function() {
 		if (tgt < 0)
 			tgt = 0;
 		Player.setCurrentPlayTimeOffset(tgt * 1000.0);
-		res = this.plugin.Play( this.url+ "?time=" + tgt );		
+//		res = this.plugin.Play( this.url+ "?time=" + tgt );	
+    	this.plugin.InitPlayer(this.url+ "?time=" + tgt );
+    	res = this.plugin.StartPlayback();
+
 		Main.logToServer("Player.skipBackwardVideo with ?time=" + tgt);
 		if (res == false)
 			Player.setCurrentPlayTimeOffset(old);
@@ -588,7 +676,7 @@ Player.onBufferingStart = function() {
 Player.onBufferingProgress = function(percent)
 {
 	// should trigger from here the overlay
-    Display.status("Buffering:" + percent + "%");
+//    Display.status("Buffering:" + percent + "%");
 
     Player.bufferState = percent;
 	Display.bufferUpdate();
@@ -632,6 +720,7 @@ Player.OnCurrentPlayTime = function(time) {
 
 Player.OnStreamInfoReady = function() {
     Main.log("*** OnStreamInfoReady ***");
+    Player.setFullscreen();
 //	Main.logToServer("GetCurrentBitrates= " + Player.plugin.GetCurrentBitrates());
 	if ((Player.isLive == false) && (Player.isRecording == false)) {
 		Player.totalTime = Player.plugin.GetDuration();
