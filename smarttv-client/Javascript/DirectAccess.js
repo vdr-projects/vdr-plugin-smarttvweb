@@ -97,7 +97,8 @@ DirectAccess.hide = function () {
 		window.clearTimeout(DirectAccess.timeoutObj);
 		DirectAccess.timeoutObj = null;
 	};
-	$("#directAccessAnchor").val("");
+//	$("#directAccessAnchor").val("");
+	$("#directAccessText").text("");
 
 	$("#directChanAccess").hide();
 	$("#directAccessAnchor").blur();
@@ -129,8 +130,10 @@ DirectAccess.cancel = function () {
 };
 
 DirectAccess.handleEnter = function () {	
-	Main.log("DirectAccess.handleEnter val= " +$("#directAccessAnchor").val() );
-	DirectAccess.selectNewChannel($("#directAccessAnchor").val());
+//	Main.log("DirectAccess.handleEnter val= " +$("#directAccessAnchor").val() );
+//	DirectAccess.selectNewChannel($("#directAccessAnchor").val());
+	Main.log("DirectAccess.handleEnter val= " +$("#directAccessText").text() );
+	DirectAccess.selectNewChannel($("#directAccessText").text());
 	DirectAccess.hide();
 
 	// find entry according to number
@@ -140,12 +143,13 @@ DirectAccess.createStyleSheet = function () {
 	var sheet = $("<style>");
 	sheet.attr({type : 'text/css',
 		innerHTML : '\
-		#directChanAccess { left: 70%; top: 10px; width:10%; height: 10%; position: absolute; \
+		#directChanAccess { left: 87%; top: 10px; width:8%; height: 10%; position: absolute; \
 					text-align:center; \
 		            background:rgba(0,0,139, 0.8);\
 					border-width:1px;border-style:solid;border-width:1px;border-radius:15px;\
 			       -webkit-box-shadow:3px 3px 7px 4px rgba(0,0,0, 0.5);z-index:15;}\
 		#directAccessAnchor {background-color:transparent;text-align: right;font-size:20px}\
+		#directAccessText {background-color:transparent;text-align: right;font-size:20px}\
 		'});
 
 	$('body').append(sheet);
@@ -154,54 +158,62 @@ DirectAccess.createStyleSheet = function () {
 DirectAccess.onInput = function () {
     var keyCode = event.keyCode;
 	var input ="";
-	if (input.length == 4)
-		input= $("#directAccessAnchor").val().slice(1);
-	else
-		input= $("#directAccessAnchor").val();
+//	if (input.length == 4) {
+//	Main.log("DirectAccess.onInput: len= " + $("#directAccessText").text().length );
+
+	if ($("#directAccessText").text().length == 4) {
+//		input= $("#directAccessAnchor").val().slice(1);
+		input= $("#directAccessText").text().slice(1);
+	}
+	else {
+//		input= $("#directAccessAnchor").val();
+		input= $("#directAccessText").text();
+	}
 //		$("#directAccessAnchor").val(input.slice(1));
-	Main.log("DirectAccess.onInput: " + keyCode + " Val= " + $("#directAccessAnchor").val());
+//	Main.log("DirectAccess.onInput: " + keyCode + " Val= " + $("#directAccessAnchor").val());
+//	Main.log("DirectAccess.onInput: " + keyCode + " Val= " + $("#directAccessText").text() + " input.length= " + input.length);
 	DirectAccess.extendTimer();
     switch(keyCode) {
         case tvKey.KEY_0:
-			$("#directAccessAnchor").val(input + "0");
-			widgetAPI.blockNavigation(event);
-
+//			$("#directAccessAnchor").val(input + "0");
+			$("#directAccessText").text(input + "0");
 			break;
         case tvKey.KEY_1:
-			$("#directAccessAnchor").val(input + "1");
-			widgetAPI.blockNavigation(event);
+//			$("#directAccessAnchor").val(input + "1");
+			$("#directAccessText").text(input + "1");
 			break;
         case tvKey.KEY_2:
-			$("#directAccessAnchor").val(input + "2");
-			widgetAPI.blockNavigation(event);
+//			$("#directAccessAnchor").val(input + "2");
+			$("#directAccessText").text(input + "2");
 			break;
         case tvKey.KEY_3:
-			$("#directAccessAnchor").val(input + "3");
-			widgetAPI.blockNavigation(event);
+//			$("#directAccessAnchor").val(input + "3");
+			$("#directAccessText").text(input + "3");
 			break;
         case tvKey.KEY_4:
-			$("#directAccessAnchor").val(input + "4");
+//			$("#directAccessAnchor").val(input + "4");
+			$("#directAccessText").text(input + "4");
 			widgetAPI.blockNavigation(event);
 			break;
         case tvKey.KEY_5:
-			$("#directAccessAnchor").val(input + "5");
-			widgetAPI.blockNavigation(event);
+//			$("#directAccessAnchor").val(input + "5");
+			$("#directAccessText").text(input + "5");
 			break;
         case tvKey.KEY_6:
-			$("#directAccessAnchor").val(input + "6");
-			widgetAPI.blockNavigation(event);
+//			$("#directAccessAnchor").val(input + "6");
+			$("#directAccessText").text(input + "6");
 			break;
         case tvKey.KEY_7:
-			$("#directAccessAnchor").val(input + "7");
-			widgetAPI.blockNavigation(event);
+//			$("#directAccessAnchor").val(input + "7");
+			$("#directAccessText").text(input + "7");
 			break;
         case tvKey.KEY_8:
-			$("#directAccessAnchor").val(input + "8");
-			widgetAPI.blockNavigation(event);
+//			$("#directAccessAnchor").val(input + "8");
+			$("#directAccessText").text(input + "8");
 			break;
         case tvKey.KEY_9:
-			$("#directAccessAnchor").val(input + "9");
-			widgetAPI.blockNavigation(event);
+//			$("#directAccessAnchor").val(input + "9");
+			$("#directAccessText").text(input + "9");
 			break;
         case tvKey.KEY_ENTER:
 			//Search channel
@@ -213,8 +225,8 @@ DirectAccess.onInput = function () {
 			DirectAccess.hide();
 			if (this.returnCallback  != null)
 				this.returnCallback(); 	    	
-			widgetAPI.blockNavigation(event);
 			break;
 	};
+	Main.log("DirectAccess.onInput: input= " + $("#directAccessText").text());
 	widgetAPI.blockNavigation(event);
 };
