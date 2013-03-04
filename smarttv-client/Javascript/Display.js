@@ -261,6 +261,10 @@ Display.tuneLeftSide = function() {
 	res.w3 = "5%";
 	switch (Main.state) {
 		case Main.eLIVE:
+			res.w1 = "10%";
+			res.w2 = "80%";
+			res.w3 = "5%";
+		break;
 		case Main.eMED:
 			res.w1 = "5%";
 			res.w2 = "85%";
