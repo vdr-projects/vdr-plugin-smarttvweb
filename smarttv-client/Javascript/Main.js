@@ -29,13 +29,6 @@ catch (e) {
  */
 
 
-/*
- * TODO:
- * Audio Track Select
- * Screensaver (using setOnScreenSaver() from common modules)
- */ 
-
-
  
 var Main = {
 	state : 0,  // selectScreen
@@ -104,8 +97,6 @@ Main.onLoad = function() {
     this.menuKeyHndl = new cMenuKeyHndl(this.defKeyHndl);
     this.selectMenuKeyHndl = new cSelectMenuKeyHndl(this.defKeyHndl);
 
-    Main.log (" created KeyHandlers");
-    
 	Config.init();
 };
 
@@ -146,10 +137,13 @@ Main.init = function () {
         	Display.setVideoList(Main.selectedVideo, Main.selectedVideo); 
         	Spinner.hide();
             Display.show();
-//            if (Player.isLive == true) {
+
+            if (Data.createAccessMap == true) {
+            	Data.dumpDirectAccessMap();
+            }
             if (Main.state == Main.eLIVE) {
-               	Epg.startEpgUpdating();
-               }
+               	Epg.startEpgUpdating();               	
+            }
         };
 
         // Enable key event processing
@@ -161,9 +155,10 @@ Main.init = function () {
     }
 
 	ClockHandler.start("#selectNow");
-
 	Server.updateVdrStatus();
 
+	DirectAccess.init();
+//	DirectAccess.show();
 	//	Display.initOlForRecordings();
     /*
      * Fetch JS file
@@ -292,6 +287,7 @@ Main.liveSelected = function() {
     Player.isLive = true;
     Server.setSort(false);
     Server.errorCallback = Main.serverError;
+	Data.createAccessMap = true;
     Spinner.show();
     Server.fetchVideoList(Config.serverUrl + "/channels.xml?channels="+Config.liveChannels); /* Request video information from server */    
 };
@@ -309,7 +305,6 @@ Main.recordingsSelected = function() {
     	Server.errorCallback = Main.serverError;
     };
 */
-//    Player.isLive = false;   // TODO: obsolete
     Server.setSort(true);
 /*    if (Config.format == "") {
         Server.fetchVideoList(Config.serverUrl + "/recordings.xml?model=samsung"); 
@@ -433,8 +428,6 @@ Main.playItem = function (url) {
     	Display.showProgress();
     	
 		Player.isLive = true;
-//		Player.bufferState = 0; //TODO: Obsolete
-//		Player.isRecording = false; //TODO: Obsolete
  
 		Display.updateOlForLive (start_time, duration, now);
 		Main.log ("Live now= " +  now + " StartTime= " + Data.getCurrentItem().childs[Main.selectedVideo].payload.start + " offset= " +Player.cptOffset );
@@ -446,16 +439,11 @@ Main.playItem = function (url) {
 		Player.playVideo(-1);
 	break;
 	case Main.eREC: 
-//		Display.resetStartStop(); //TODO Obsolete
 
-//		Main.getResume(Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
 		var url_ext = "";
 		Player.mFormat = Player.ePDL;
 //		Server.getResume(Player.guid);
 		
-//		Player.setCurrentPlayTimeOffset(0); //TODO: reset at stop
-//		Player.isLive = false; //TODO: reset at stop
-//		Player.isRecording = false; //TODO: reset at stop
     	Main.log(" playItem: now= " + now + " start_time= " + start_time + " dur= " + duration + " (Start + Dur - now)= " + ((start_time + duration) -now));
 
     	Player.totalTime = Data.getCurrentItem().childs[Main.selectedVideo].payload.dur * 1000;
@@ -528,14 +516,9 @@ Main.playItem = function (url) {
     	Display.showProgress();
 		Player.mFormat = Player.ePDL;
     	
-//		Player.setCurrentPlayTimeOffset(0); //TODO: reset at stop
-//		Player.isLive = false; //TODO: reset at stop
-//		Player.isRecording = false;//TODO: reset at stop
     	Main.log(" playItem: now= " + now + " start_time= " + start_time + " dur= " + duration + " (Start + Dur - now)= " + ((start_time + duration) -now));
 
-  //  	document.getElementById("olRecProgressBar").display="none"; //TODO: reset at stop
 		Display.setOlTitle(Data.getCurrentItem().childs[Main.selectedVideo].title);
-//		Display.resetStartStop(); //TODO: reset at stop
 
 		Player.setVideoURL( Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
 		Player.playVideo(-1);
@@ -556,7 +539,9 @@ Main.selectPageUp = function() {
 		 return;
 	};
 */	
-	Main.previousVideo(Display.LASTIDX + 1);
+//	Main.previousVideo(Display.LASTIDX + 1);
+	Main.previousVideo(Display.getNumberOfVideoListItems());
+	
 /*	this.selectedVideo = (this.selectedVideo - (Display.LASTIDX + 1));
     if (this.selectedVideo < 0) {
     	this.selectedVideo = 0;
@@ -571,7 +556,8 @@ Main.selectPageUp = function() {
 };
 
 Main.selectPageDown = function() {
-	Main.nextVideo (Display.LASTIDX + 1);
+//	Main.nextVideo (Display.LASTIDX + 1);
+	Main.nextVideo (Display.getNumberOfVideoListItems());
 
 /*	this.selectedVideo = (this.selectedVideo + Display.LASTIDX + 1);    
     if (this.selectedVideo >= Data.getVideoCount()) {
@@ -587,6 +573,10 @@ Main.selectPageDown = function() {
 Main.nextVideo = function(no) {
 	// Just move the selectedVideo pointer and ensure wrap around
 
+	// Should I do anything, when no < Data.getVideoCount()?
+	if (no > Data.getVideoCount())
+		return;
+	Main.log("Main.nextVideo: selVid(in)=  " + this.selectedVideo + " no= " + no + " vids= " + Data.getVideoCount() + " (no% Data.getVideoCount())= " +(no% Data.getVideoCount()));
     this.selectedVideo = (this.selectedVideo + (no% Data.getVideoCount())) % Data.getVideoCount();	
 	Main.log("Main.nextVideo= " + this.selectedVideo + " no= " + no);
 };
@@ -596,6 +586,8 @@ Main.previousVideo = function(no) {
 
 	// Issue: I deduct a number, which is larger than  videoCount
 	// only jumps, which are mod videoCount?
+	if (no > Data.getVideoCount())
+		return;
 	this.selectedVideo = (this.selectedVideo - (no% Data.getVideoCount()));
     if (this.selectedVideo < 0) {
 		Main.log("Main.previousVideo: below Zero (" +this.selectedVideo+"), adding " + Data.getVideoCount());
@@ -635,7 +627,6 @@ function cPlayStateKeyHndl(def_hndl) {
 
 
 cPlayStateKeyHndl.prototype.handleKeyDown = function (event) {
-//    var keyCode = event.keyCode;
     var keyCode = event.keyCode;
 
     if(Player.getState() == Player.STOPPED) {
@@ -724,7 +715,8 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (event) {
 				Notify.showNotify("Recording!!!", true);
 			}
 			else */
-            if (Player.mFormat != Player.ePDL )
+//            if (Player.mFormat != Player.ePDL )
+            if (Player.mFormat == Player.eHLS )
 				Notify.showNotify("Not supported", true);
 			else
 				Player.fastForwardVideo();
@@ -737,7 +729,8 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (event) {
 				Notify.showNotify("Recording!!!", true);
 			}
 			else */
-            if (Player.mFormat != Player.ePDL )
+//            if (Player.mFormat != Player.ePDL )
+            if (Player.mFormat == Player.eHLS )
 				Notify.showNotify("Not supported", true);
 			else
 				Player.RewindVideo();
@@ -779,6 +772,7 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (event) {
         	Player.adjustSkipDuration(2);
             Display.showProgress();
         	break;
+		case tvKey.KEY_INFO:
 		case tvKey.KEY_ASPECT:
 			Player.toggleAspectRatio();
 			break;
@@ -831,7 +825,23 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function (event) {
  Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
  
  switch(keyCode) {
-// 	case tvKey.KEY_1:
+	case tvKey.KEY_INFO:
+	case tvKey.KEY_ASPECT:
+		Player.toggleAspectRatio();
+		break;
+
+ 	case tvKey.KEY_0:
+ 	case tvKey.KEY_1:
+ 	case tvKey.KEY_2:
+ 	case tvKey.KEY_3:
+ 	case tvKey.KEY_4:
+ 	case tvKey.KEY_5:
+ 	case tvKey.KEY_6:
+ 	case tvKey.KEY_7:
+ 	case tvKey.KEY_8:
+ 	case tvKey.KEY_9:
+		DirectAccess.show();
+		break;
  	case tvKey.KEY_UP:
  	case tvKey.KEY_CH_UP:
  		Main.log("Prog Up");
@@ -881,9 +891,7 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function (event) {
  			Data.selectFolder(Main.selectedVideo, Main.selectedVideo);
  			Main.selectedVideo= Data.getVideoCount()-1;
  		}
- 		
-// 		Main.previousVideo(1);
-	 
+ 			 
  		Main.playItem(); 
  		break;
 
@@ -900,7 +908,8 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function (event) {
      case tvKey.KEY_STOP:
      	Main.log("STOP");
      	Player.stopVideo();
-     	Display.setVideoList(Main.selectedVideo, Main.selectedVideo- ( Main.selectedVideo % (Display.LASTIDX +1)));
+//     	Display.setVideoList(Main.selectedVideo, Main.selectedVideo- ( Main.selectedVideo % (Display.LASTIDX +1)));
+     	Display.setVideoList(Main.selectedVideo, Main.selectedVideo- ( Main.selectedVideo % Display.getNumberOfVideoListItems()));
      	Display.show();
 		widgetAPI.blockNavigation(event);
 
@@ -908,6 +917,7 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function (event) {
      case tvKey.KEY_PAUSE:
          Main.log("PAUSE");
          break;
+     case tvKey.KEY_INFO:       
      case tvKey.KEY_ASPECT:
     	 Player.toggleAspectRatio();
     	 break;
@@ -950,6 +960,21 @@ cMenuKeyHndl.prototype.handleKeyDown = function (event) {
  var keyCode = event.keyCode;
  
  switch(keyCode) {
+ 	case tvKey.KEY_0:
+ 	case tvKey.KEY_1:
+ 	case tvKey.KEY_2:
+ 	case tvKey.KEY_3:
+ 	case tvKey.KEY_4:
+ 	case tvKey.KEY_5:
+ 	case tvKey.KEY_6:
+ 	case tvKey.KEY_7:
+ 	case tvKey.KEY_8:
+ 	case tvKey.KEY_9:
+		if (Main.state == Main.eLIVE) {
+			Main.log("cMenu DirectAccess: keyCode= " + keyCode);
+			DirectAccess.show();
+			}
+		break;
  
      	
      case tvKey.KEY_RIGHT:
@@ -980,7 +1005,9 @@ cMenuKeyHndl.prototype.handleKeyDown = function (event) {
      		Main.log ("selectFolder= " +Main.selectedVideo);
      		Data.selectFolder(Main.selectedVideo, (Main.selectedVideo - Display.currentWindow));
      		Main.selectedVideo= 0;
+			Display.addHeadline(Data.getCurrentItem().title);
      		Display.setVideoList(Main.selectedVideo, Main.selectedVideo); // thlo
+
      	} 
      	else{
 /*     		Display.hide();
@@ -1002,6 +1029,12 @@ cMenuKeyHndl.prototype.handleKeyDown = function (event) {
     		 var itm = Data.folderUp();
 			 Main.selectedVideo = itm.id;
     		 Main.log("folderUp selectedVideo= " + Main.selectedVideo);
+			if (Data.isRootFolder() == true) {
+				Display.removeHeadline();
+			} 
+			else {
+				Display.addHeadline(Data.getCurrentItem().title);
+			}
     		 Display.setVideoList(Main.selectedVideo, itm.first); // thlo
     	 }
     	 widgetAPI.blockNavigation(event);
@@ -1400,7 +1433,7 @@ Main.tvKeys = {
 		KEY_5 :9,
 		KEY_6 :10,
 		KEY_7 :12,
-		KEY_8 :13,
+//		KEY_8 :13,
 		KEY_9 :14,
 		KEY_0 :17,
 
@@ -1429,3 +1462,4 @@ Main.tvKeys = {
 	
 };
 
+  

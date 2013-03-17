@@ -6,15 +6,13 @@ var Display =
     bufferingElm : null,
     FIRSTIDX : 0,
     LASTIDX : 15,
-    itemHeight : 0,
-    currentWindow : 0,
+    currentWindow : 0,   // always from 0 ...
 
     olTitle : "",
     olStartStop: "",
     SELECTOR : 0,
     LIST : 1,
     
-//    folderPath : new Array(),
     volOlHandler : null,
     progOlHandler : null,
     popupOlHandler : null,
@@ -38,7 +36,6 @@ Display.init = function()
     
     this.bufferingElm = document.getElementById("bufferingBar");
     
-//    Main.log("Display.init now=" + this.pluginTime.GetEpochTime());
 
     this.progOlHandler = new OverlayHandler("ProgHndl");
     this.volOlHandler = new OverlayHandler("VolHndl");
@@ -47,12 +44,11 @@ Display.init = function()
     this.volOlHandler.init(Display.handlerShowVolume, Display.handlerHideVolume);
     this.popupOlHandler.init(Display.handlerShowPopup, Display.handlerHidePopup);
     
-    if (!this.statusDiv)
-    {
+    if (!this.statusDiv) {
         success = false;
     }
 
-    for (var i = 0; i <= this.LASTIDX; i++) {
+    for (var i = this.FIRSTIDX; i <= this.LASTIDX; i++) {
     	var elm = $("#video"+i);
     	$(elm).css({"width" : "100%", "text-align": "left", "padding-top": "4px", "padding-bottom": "5px" });
     	$(elm).append($("<div>").css({ "display": "inline-block", "width":"20%", 
@@ -63,19 +59,6 @@ Display.init = function()
 			 "height": "14px"})); 
     }  
 	
-
-/*    for (var i = 0; i <= this.LASTIDX; i++) {
-    	var elm = $("#video"+i);
-    	$(elm).css({"width" : "100%", "text-align": "left" });
-    	$(elm).append($("<div>").css({ "display": "inline-block", "padding-top": "4px", "padding-bottom": "6px", "width":"20%", 
-			"overflow": "hidden", "text-overflow":"ellipsis"})); 
-    	$(elm).append($("<div>").css({ "display": "inline-block", "padding-top": "4px", "padding-bottom": "6px", "width":"70%", 
-			"overflow": "hidden", "text-overflow":"ellipsis"})); 
-    	$(elm).append($("<div>").css({ "display": "inline-block", "padding-top": "4px", "padding-bottom": "6px", "width":"5%"
-			})); 
-    }  
-*/
-   
     var done = false;
     var i = 0;
 
@@ -84,7 +67,6 @@ Display.init = function()
     	var elm = document.getElementById("selectItem"+i);
     	if (elm == null) {
     		done = true;
-    		Main.log( " only found to selectItem"+ (i-1));
     		break;
     	}
     	elm.style.paddingBottom = "3px";
@@ -99,7 +81,6 @@ Display.init = function()
 
 
 Display.putInnerHTML = function (elm, val) {
-//	alert(Config.deviceType + " " +elm + " " + val);
 	switch (Config.deviceType) {
 	case 0:
 		// Samsung specific handling of innerHtml
@@ -186,7 +167,6 @@ Display.selectItem = function (item) {
 	item.style.borderRadius= "3px";
 	item.style["-webkit-box-shadow"] = "2px 2px 1px 2px rgba(0,0,0, 0.5)";
 	//	item.style.backgroundColor = "white";
-
 };
 
 Display.unselectItem = function (item) {
@@ -222,7 +202,6 @@ Display.resetSelectItems = function (itm) {
 		var elm = document.getElementById("selectItem"+i);
 		if (elm == null) {
 			done = true;
-			Main.log( " only found to selectItem"+ (i-1));
 			break;
 	    }
 		Display.unselectItem(elm);	
@@ -234,8 +213,36 @@ Display.resetSelectItems = function (itm) {
  * Video Select Screen Functions
  * 
  */
+ 
+Display.addHeadline = function (name) {
+// Add the headline to first element
+//	Main.log("Display.addHeadline " + name);
+	Display.setVideoItem(document.getElementById("video0"), {c1: "", c2: name, c3: ""});
+	Display.FIRSTIDX= 1;
+	
+	var item = document.getElementById("video0");
+	item.style.color = "black";
+//	item.style.background = "linear-gradient(0deg, #1e5799 0%,#2989d8 41%,#7db9e8 100%)";
+	item.style.background = "-webkit-linear-gradient(top, #1e5799 0%,#2989d8 41%,#7db9e8 100%)";
+	item.style.borderRadius= "3px";
+	item.style["-webkit-box-shadow"] = "2px 2px 1px 2px rgba(0,0,0, 0.5)";
+
+};
+ 
+Display.removeHeadline = function () {
+//	Main.log("Display.removeHeadline ");
+	Display.FIRSTIDX= 0;
+	
+	var item = document.getElementById("video0");
+	item.style.color = "white";
+	item.style.backgroundColor = "transparent";
+	item.style.background = "transparent";
+	item.style.borderRadius= "0px";
+	item.style["-webkit-box-shadow"] = "";
+
+};
+ 
 Display.hide = function() {
-//    document.getElementById("main").style.display="none";
     $("#main").hide();
 };
 
@@ -244,10 +251,7 @@ Display.show = function() {
 	this.volOlHandler.cancel();
 	this.progOlHandler.cancel();
 	this.popupOlHandler.cancel();
-//    document.getElementById("main").style.display="block";
     $("#main").show();
-
-    this.itemHeight = Math.round(parseInt($("#videoList").height()) / (this.LASTIDX +1) );    
 };
 
 Display.tuneLeftSide = function() {
@@ -257,6 +261,10 @@ Display.tuneLeftSide = function() {
 	res.w3 = "5%";
 	switch (Main.state) {
 		case Main.eLIVE:
+			res.w1 = "10%";
+			res.w2 = "80%";
+			res.w3 = "5%";
+		break;
 		case Main.eMED:
 			res.w1 = "5%";
 			res.w2 = "85%";
@@ -271,38 +279,39 @@ Display.tuneLeftSide = function() {
 			Main.logToServer("ERROR in Display.tuneLeftSide. Should not be here");
 		break;
 	}
-//	Main.log("Display.tuneLeftSide: w1= " + res.w1 +" w2= " + res.w2 + " w3= " + res.w3  );
 	return res;
+};
+
+Display.getNumberOfVideoListItems = function () {
+	return (Display.LASTIDX + 1 - Display.FIRSTIDX);
 };
 
 
 Display.setVideoList = function(selected, first) {
     var listHTML = "";
     var res = {};
-//    var first_item = selected;
 
     var first_item = first; //thlo	
-//	var first_item = selected - ( selected % (Display.LASTIDX +1))
+
+//	Main.log("Display.setVideoList  selected= " +  selected + " first= " + first + " curWin= " + this.currentWindow + " NoOfItems= " + Display.getNumberOfVideoListItems());
 
 	tab_style = Display.tuneLeftSide();
     var i=0;
-	var max_idx = (Data.getVideoCount() < (this.LASTIDX +1)) ? Data.getVideoCount() :(this.LASTIDX+1) ;
-    Main.log("Display.setVideoList title= " +Data.getCurrentItem().childs[selected].title + " selected= " + selected + " first_item= " + first_item);
+	var max_idx = (Data.getVideoCount() < Display.getNumberOfVideoListItems()) ? Data.getVideoCount() :(Display.getNumberOfVideoListItems()) ;
+//	Main.log("Display.setVideoList  max_idx= " +  max_idx + " NoOfItems= " + Display.getNumberOfVideoListItems());
+//    Main.log("Display.setVideoList title= " +Data.getCurrentItem().childs[selected].title + " selected= " + selected + " first_item= " + first_item + " FIRSTIDX= " + this.FIRSTIDX);
     this.handleDescription(selected);
 
 	
-//    for (i = 0; i <= this.LASTIDX; i++) {
     var idx = 0;
     for (i = 0; i < max_idx; i++) {
     	if ((first_item+i) <0) {
 			// wrap around
-//    		res = {c1: "", c2: "", c3: ""};
-//			Main.log ("first_item= " + first_item + " i= " + i + " VideoCount()= " +Data.getVideoCount() );
     		idx = (first_item+i) + Data.getVideoCount();
             res = Display.getDisplayTitle (Data.getCurrentItem().childs[(first_item+i) + Data.getVideoCount()]); 
     	}
     	else if ((first_item+i) >= Data.getVideoCount()) {
-			Main.log ("first_item= " + first_item + " i= " + i + " VideoCount()= " +Data.getVideoCount() );
+//			Main.log ("first_item= " + first_item + " i= " + i + " VideoCount()= " +Data.getVideoCount() );
 			idx = (first_item+i) - Data.getVideoCount();
             res = Display.getDisplayTitle (Data.getCurrentItem().childs[(first_item+i) - Data.getVideoCount()]); 
 		}
@@ -310,27 +319,24 @@ Display.setVideoList = function(selected, first) {
 			idx = first_item+i; 
             res = Display.getDisplayTitle (Data.getCurrentItem().childs[first_item+i]); 
     	}
-        this.videoList[i] = document.getElementById("video"+i);
-		Display.setVideoItem(this.videoList[i], res, (idx == 0)? true : false, tab_style);
-				// TODO: mark element with position == 0
-		
-        this.unselectItem(this.videoList[i]);
+        this.videoList[i + this.FIRSTIDX] = document.getElementById("video"+(i+ this.FIRSTIDX));
+		Display.setVideoItem(this.videoList[(i+ this.FIRSTIDX)], res, (idx == 0)? true : false, tab_style);
+        this.unselectItem(this.videoList[(i+ this.FIRSTIDX)]);
     }
 
-    if (max_idx < (this.LASTIDX +1)) {
-    	for (i = max_idx; i <= this.LASTIDX; i++) {
-            this.videoList[i] = document.getElementById("video"+i);
-    		Display.setVideoItem(this.videoList[i], {c1: "", c2: "", c3: ""}, false, tab_style);
-
+    if (max_idx < Display.getNumberOfVideoListItems()) {
+    	for (i = max_idx; i < Display.getNumberOfVideoListItems(); i++) {
+            this.videoList[(i+ this.FIRSTIDX)] = document.getElementById("video"+(i+ this.FIRSTIDX));
+    		Display.setVideoItem(this.videoList[(i+ this.FIRSTIDX)], {c1: "", c2: "", c3: ""}, false, tab_style);
+			this.unselectItem(this.videoList[i+ this.FIRSTIDX]);
     	}
     }
     
     this.currentWindow = (selected - first_item);
-    this.selectItem(this.videoList[this.currentWindow]);
+    this.selectItem(this.videoList[(this.currentWindow+ this.FIRSTIDX)]);
     
     listHTML = (selected +1) + " / " + Data.getVideoCount();
 	$("#videoCount").text(listHTML);
-//    Display.putInnerHTML(document.getElementById("videoCount"), listHTML);
 };
 
 Display.setVideoItem = function (elm, cnt, top, style) {
@@ -341,7 +347,6 @@ Display.setVideoItem = function (elm, cnt, top, style) {
 
 		
 	if (typeof(style) != "undefined") {
-//		Main.log ("Display.setVideoItem: change style w1= " + style.w1 + " w2= " + style.w2 + " w3= " + style.w3);
 		$(elm).children("div").eq(0).css("width", style.w1 );
 		$(elm).children("div").eq(1).css("width", style.w2 );
 		$(elm).children("div").eq(2).css("width", style.w3 );
@@ -359,6 +364,9 @@ Display.setVideoItem = function (elm, cnt, top, style) {
 Display.resetVideoList = function () {
 	var done = false;
 	var i = 0;
+
+	Display.removeHeadline();
+
 	while (done != true) {
 		var elm = document.getElementById("video"+i);
 		if (elm == null) {
@@ -379,7 +387,6 @@ Display.resetDescription = function () {
 
 //Video Select Screen
 Display.handleDescription =function (selected) {
-//	Main.log("Display.handleDescription ");
 	
 	if (Data.getCurrentItem().childs[selected].isFolder == true) {
         Display.setDescription( "Dir: " +Data.getCurrentItem().childs[selected].title );
@@ -409,7 +416,6 @@ Display.handleDescription =function (selected) {
         	msg += "<b>"+ prog + "</b><br>";
         	msg += "<br>Start: " + d_str + "<br>";
         	msg += "Duration: " + Display.durationString(length) + "h<br>";
-//        	Main.log("itm.payload.start= " + itm.payload.start + " length= " + length + " now= " +now);
         	msg += "Remaining: " + Display.durationString((itm.payload.start + length - now));
 			msg += "<br><br>"+ desc;
 		break;
@@ -439,62 +445,56 @@ Display.handleDescription =function (selected) {
 /*
  * this.currentWindow: Cursor (selected item)
  */
-Display.setVideoListPosition = function(position, move) {    
-//    Main.log ("Display.setVideoListPosition title= " +Data.getCurrentItem().childs[position].title + " move= " +move);
-//	Main.log("Display.setVideoListPosition vidCount= " + Data.getVideoCount() + " LASTIDX= " + this.LASTIDX);
+Display.setVideoListPosition = function(position, move) {   
+//	Main.log("Display.setVideoListPosition position= " + position );
     this.handleDescription(position);
     
 	$("#videoCount").text((position + 1) + " / " + Data.getVideoCount());
-    
-    if(Data.getVideoCount() <= (this.LASTIDX+1)) {
-		// videos fit into the video list. No spill overs.
-		this.currentWindow  = position;
-//		Main.log("Display.setVideoListPosition: currentWindow= " + this.currentWindow)
-		for (var i = 0; i < Data.getVideoCount(); i++)
-        {
-            if(i == position)
-            	this.selectItem(this.videoList[i]);
-            else
-            	this.unselectItem(this.videoList[i]);
 
+    if(Data.getVideoCount() <= Display.getNumberOfVideoListItems()) {
+		// videos fit into the video list. No spill overs, so no scrolling.
+		this.currentWindow  = position;
+		for (var i = 0; i < Data.getVideoCount(); i++) {
+            if(i == this.currentWindow)
+            	this.selectItem(this.videoList[(i+ this.FIRSTIDX)]);
+            else
+            	this.unselectItem(this.videoList[(i+ this.FIRSTIDX)]);
         }
+		
     }
-    else if((this.currentWindow!=this.LASTIDX && move==Main.DOWN) || (this.currentWindow!=this.FIRSTIDX && move==Main.UP))
-    {
-    	// Just move cursor
+    else if((this.currentWindow!=(this.LASTIDX -this.FIRSTIDX) && move==Main.DOWN) || (this.currentWindow!=0 && move==Main.UP)) {
+    	// Just move cursor, all items used
         if(move == Main.DOWN)
             this.currentWindow ++;
         else
             this.currentWindow --;
-            
-        for (var i = 0; i <= this.LASTIDX; i++) {
+        for (var i = 0; i < Display.getNumberOfVideoListItems(); i++) {
             if(i == this.currentWindow)
-            	this.selectItem(this.videoList[i]);            
+            	this.selectItem(this.videoList[(i+this.FIRSTIDX)]);            
             else
-            	this.unselectItem(this.videoList[i]);
+            	this.unselectItem(this.videoList[(i+this.FIRSTIDX)]);
         }
     }
-    else if(this.currentWindow == this.LASTIDX && move == Main.DOWN) {
+    else if(this.currentWindow == (this.LASTIDX -this.FIRSTIDX)&& move == Main.DOWN) {
     	// Next Page
-		Main.log("Display.setVideoListPosition: next page. position= " + position);
+//		Main.log("Display.setVideoListPosition: next page. position= " + position);
 		var c_pos = position - this.currentWindow;
 		if (c_pos < 0) 
 			c_pos += Data.getVideoCount();
-		for(i = 0; i <= this.LASTIDX; i++) {
-//					var idx = (i + position - this.currentWindow) %Data.getVideoCount();
+			
+		for(i = 0; i < Display.getNumberOfVideoListItems(); i++) {
 			var idx = (i + c_pos) %Data.getVideoCount();
 			Main.log("idx= " + idx);
-			Display.setVideoItem(this.videoList[i], Display.getDisplayTitle (Data.getCurrentItem().childs[idx]), (idx == 0)? true: false);
-				// TODO: mark element with position == 0
+			Display.setVideoItem(this.videoList[(i+this.FIRSTIDX)], Display.getDisplayTitle (Data.getCurrentItem().childs[idx]), (idx == 0)? true: false);
 			}
     }
-    else if(this.currentWindow == this.FIRSTIDX && move == Main.UP)  {
+    else if(this.currentWindow == 0 && move == Main.UP)  {
     	// Previous Page
-		Main.log("Display.setVideoListPosition: previous page. position= " + position);
-		for(i = 0; i <= this.LASTIDX; i++) {
+//		Main.log("Display.setVideoListPosition: previous page. position= " + position);
+
+		for(i = 0; i < Display.getNumberOfVideoListItems(); i++) {
 			var idx = (i + position) %Data.getVideoCount();
-        	Display.setVideoItem(this.videoList[i], Display.getDisplayTitle (Data.getCurrentItem().childs[idx]), (idx == 0) ?true: false);
-				// TODO: mark element with position == 0
+        	Display.setVideoItem(this.videoList[(i+this.FIRSTIDX)], Display.getDisplayTitle (Data.getCurrentItem().childs[idx]), (idx == 0) ?true: false);
         }
     }
 };
@@ -515,6 +515,7 @@ Display.getDisplayTitle = function(item) {
 			res.c3 = "<" + Display.getNumString(item.childs.length, 2) +">"; 			
 		}
 		else {
+			res.c1 = item.payload.num;
 			res.c2 = item.title;
 		}
 		break;
@@ -599,10 +600,8 @@ Display.updateOlForLive = function (start_time, duration, now) {
 	Player.totalTime = Data.getCurrentItem().childs[Main.selectedVideo].payload.dur * 1000;
 	Player.totalTimeStr =Display.durationString(Player.totalTime / 1000.0);
 
-//		Display.updateTotalTime(Player.totalTime);
-	var digi = new Date((Data.getCurrentItem().childs[Main.selectedVideo].payload.start*1000));
-	Main.log (" Date(): StartTime= " + digi.getHours() + ":" + digi.getMinutes() + ":" + digi.getSeconds());
-//		Player.cptOffset = (now - Data.getCurrentItem().childs[Main.selectedVideo].payload.start) * 1000;
+//	var digi = new Date((Data.getCurrentItem().childs[Main.selectedVideo].payload.start*1000));
+//	Main.log (" Date(): StartTime= " + digi.getHours() + ":" + digi.getMinutes() + ":" + digi.getSeconds());
 	Player.setCurrentPlayTimeOffset((now - Data.getCurrentItem().childs[Main.selectedVideo].payload.start) * 1000);
 	Player.OnCurrentPlayTime(0);   // updates the HTML elements of the Progressbar 
 }; 
@@ -610,23 +609,15 @@ Display.updateOlForLive = function (start_time, duration, now) {
 Display.setOlTitle = function (title) {
 	this.olTitle = title;
 	$("#olTitle").text(this.olTitle);
-//	Main.log("Display.setOlTitle: font-size=" + $("#olTitle").css("font-size"));
-//	Main.log("Display.setOlTitle: height=" + $("#olTitle").css("height"));
-//	Main.log("Display.setOlTitle: outerHeight=" + $("#olTitle").outerHeight());
-	
-//	var elm = document.getElementById("olTitle");
-//	Display.putInnerHTML(elm, Display.olTitle);    
 };
 
 Display.resetStartStop = function () {
-	Main.log("Display.resetStartStop");
+//	Main.log("Display.resetStartStop");
 	Display.olStartStop = "";
 	Display.hideOlStartStop();
 	$("#olStartStop").text("");
-/*    var elm = document.getElementById("olStartStop");
-    Display.putInnerHTML(elm, Display.olStartStop);    
-*/	
 };
+
 Display.setStartStop = function(start, stop) {
 	this.olStartStop = "";
 	Display.showOlStartStop();
@@ -647,13 +638,10 @@ Display.setStartStop = function(start, stop) {
 	
 	$("#olStartStop").text(Display.olStartStop);
   
-/*	var elm = document.getElementById("olStartStop");
-    Display.putInnerHTML(elm, Display.olStartStop);    
-	*/
 };
 
 Display.setSkipDuration = function(duration) {
-	Main.log("Display.setSkipDuration: duration= " +duration);
+//	Main.log("Display.setSkipDuration: duration= " +duration);
 	this.olStartStop = "";
 //	if (this.olStartStop == "")
 		Display.showOlStartStop();
@@ -661,10 +649,6 @@ Display.setSkipDuration = function(duration) {
 	this.olStartStop = duration;    
 
 	$("#olStartStop").text("Next Skip: " + Display.olStartStop+"sec");
-
-/*    var elm = document.getElementById("olStartStop");
-    Display.putInnerHTML(elm, "Next Skip: " + Display.olStartStop+"sec");    
-	*/
 };
 
 Display.setTrickplay = function(direction, multiple) {
@@ -675,24 +659,16 @@ Display.setTrickplay = function(direction, multiple) {
 	this.olStartStop = multiple;    
 
 	$("#olStartStop").text( ((direction == 1) ? "FF": "RW") + ": " + Display.olStartStop+"x");
-
-/*    var elm = document.getElementById("olStartStop");
-    Display.putInnerHTML(elm, "Next Skip: " + Display.olStartStop+"sec");    
-	*/
 };
 
 
 // Player.OnCurrentPlayTime
 Display.updatePlayTime = function() {
-//    Player.curPlayTimeStr =  Display.getHumanTimeRepresentation(Player.curPlayTime);
-//    var timeElement = document.getElementById("olTimeInfo");
-//    Display.putInnerHTML(timeElement,  Player.curPlayTimeStr + " / " + Player.totalTimeStr);    
 	$("#olTimeInfo").text(Player.curPlayTimeStr + " / " + Player.totalTimeStr);
 };
 
 Display.updateProgressBar = function () {
 	var timePercent = (Player.curPlayTime *100)/ Player.totalTime;
-//    document.getElementById("olProgressBar").style.width = Math.round(timePercent) + "%";	
 	$("#olProgressBar").css("width", (Math.round(timePercent) + "%"));
 };
 
@@ -700,19 +676,14 @@ Display.updateRecBar = function (start_time, duration){
 	var now = Display.GetEpochTime();
 
 	var remaining = Math.round(((start_time + duration) - now) * 100/ duration);
-//    Main.log (" remaining= " + remaining + " start= " + start_time + " dur= " + duration);
-//	var elm = document.getElementById("olRecProgressBar");
 	$("#olRecProgressBar").show();
-//    elm.style.display="block";
 	$("#olRecProgressBar").css({"width": (remaining + "%"), "left": ((100 - remaining) + "%")});
-//    elm.style.width = remaining + "%";
-//    elm.style.left = (100 - remaining) + "%";
 };
 
 
 
 Display.status = function(status) {
-    Main.log("Display.status: " +status);
+//    Main.log("Display.status: " +status);
     Display.putInnerHTML(this.statusDiv, status);
     Display.putInnerHTML(this.statusPopup, status);
 };
@@ -815,7 +786,7 @@ Display.handlerShowProgress = function() {
 	    document.getElementById("olRecProgressBar").style.display="block";
 	    var now = Display.GetEpochTime();
 	    var remaining = Math.round(((Player.startTime + Player.duration) - now) * 100/ Player.duration);
-	    Main.log (" remaining= " + remaining);
+//	    Main.log (" remaining= " + remaining);
     	var elm = document.getElementById("olRecProgressBar");
 	    elm.style.display="block";
 	    elm.style.width = remaining + "%";
@@ -826,13 +797,11 @@ Display.handlerShowProgress = function() {
     
     var timePercent = (Player.curPlayTime *100)/ Player.totalTime;
     
-	Main.log("show OL Progress timePercent= " + timePercent);
+//	Main.log("show OL Progress timePercent= " + timePercent);
 
     document.getElementById("olProgressBar").style.width = timePercent + "%";
 
 	$("#olTimeInfo").text(Player.curPlayTimeStr + " / " + Player.totalTimeStr);
-//    var timeElement = document.getElementById("olTimeInfo");
-//    Display.putInnerHTML(timeElement,  Player.curPlayTimeStr + " / " + Player.totalTimeStr);    
 
     var Digital=new Date();
     var hours=Digital.getHours();
@@ -840,8 +809,6 @@ Display.handlerShowProgress = function() {
     if (minutes<=9)
     	   minutes='0'+minutes;
 	$("#olNow").text(hours + ':' + minutes);
-//	var nowElement = document.getElementById("olNow");
-//    Display.putInnerHTML(nowElement, hours + ':' + minutes);    
 };
 
 
@@ -906,7 +873,6 @@ OverlayHandler.prototype.init = function(showcb, hidecb) {
         success = false;
 	}
 */
-	//	Main.log(this.handlerName + " is initialized");	
 	return success;
 };
 
@@ -933,12 +899,10 @@ OverlayHandler.prototype.checkHideCallback = function () {
 
 OverlayHandler.prototype.show = function() {
 	if (!this.active ) {
-//		this.startTime = this.pluginTime.GetEpochTime();
 		this.startTime = Display.GetEpochTime();
 		
 		this.hideTime = this.startTime + (this.olDelay / 1000);
 
-//		Main.log(this.handlerName + " showing " + this.handlerName + " from= " + this.startTime + " to at least= " + this.hideTime);
 		if (this.showCallback) {
 			this.showCallback();
 			
@@ -959,7 +923,6 @@ OverlayHandler.prototype.cancel = function () {
 	if (!this.active)
 		return;
 	
-//	Main.log("cancel for handler " + this.handlerName);
 	if (this.hideCallback) {
 		this.hideCallback();			
 	}
