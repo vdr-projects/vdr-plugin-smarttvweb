@@ -38,8 +38,8 @@
 
 using namespace std;
 
-#define PLG_VERSION "0.9.5"
-#define SERVER "SmartTvWeb/0.9.5" 
+#define PLG_VERSION "0.9.6"
+#define SERVER "SmartTvWeb/0.9.6" 
 
 class SmartTvServer {
   public:
@@ -68,7 +68,6 @@ class SmartTvServer {
     int mServerFd;
     unsigned int mSegmentDuration;
     int mHasMinBufferTime;
-    unsigned int mHasBitrate;
     int mLiveChannels;
 
     vector<cHttpResource*> clientList;

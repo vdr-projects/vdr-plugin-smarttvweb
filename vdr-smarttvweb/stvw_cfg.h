@@ -49,7 +49,7 @@ class cSmartTvConfig {
   string mMediaFolder;
   unsigned int mSegmentDuration;
   int mHasMinBufferTime;
-  unsigned int mHasBitrate;
+  float mHasBitrateCorrection;
   int mLiveChannels;
 
   eGroupSep mGroupSep;
@@ -66,7 +66,7 @@ class cSmartTvConfig {
   string getMediaFolder() { return mMediaFolder; };
   unsigned int getSegmentDuration() {return mSegmentDuration; };
   int getHasMinBufferTime() { return mHasMinBufferTime; };
-  unsigned int getHasBitrate() {return mHasBitrate; };
+  float getHasBitrateCorrection() { return mHasBitrateCorrection; };
   int getLiveChannels() {return mLiveChannels; };
   eGroupSep getGroupSep() { return mGroupSep; };
   string getServerAddress() { return mServerAddress; };

@@ -32,7 +32,7 @@
 #include <cstdlib>
 
 cSmartTvConfig::cSmartTvConfig(string d): mConfigDir(d), mLog(NULL), mCfgFile(NULL),
-  mLogFile(), mMediaFolder(), mSegmentDuration(), mHasMinBufferTime(), mHasBitrate(), 
+  mLogFile(), mMediaFolder(), mSegmentDuration(), mHasMinBufferTime(), mHasBitrateCorrection(),
   mLiveChannels(), mGroupSep(IGNORE), mServerAddress("") {
 
 #ifndef STANDALONE
@@ -45,7 +45,7 @@ cSmartTvConfig::cSmartTvConfig(string d): mConfigDir(d), mLog(NULL), mCfgFile(NU
   mMediaFolder= "/hd2/mpeg";
   mSegmentDuration = 10;
   mHasMinBufferTime = 40;
-  mHasBitrate = 6000000;
+  mHasBitrateCorrection = 1.1;
   mLiveChannels = 30;
 
   readConfig();
@@ -64,7 +64,7 @@ void cSmartTvConfig::printConfig() {
   *(mLog->log()) << " MediaFolder:" << mMediaFolder << endl;
   *(mLog->log()) << " SegmentDuration: " << mSegmentDuration << endl;
   *(mLog->log()) << " HasMinBufferTime: " << mHasMinBufferTime << endl;
-  *(mLog->log()) << " HasBitrate: " << mHasBitrate << endl;
+  *(mLog->log()) << " HasBitrateCorrection: " << mHasBitrateCorrection << endl;
   *(mLog->log()) << " LiveChannels: " << mLiveChannels << endl;
   *(mLog->log()) << " GroupSeparators: " << ((mGroupSep==IGNORE)? "Ignore" : ((mGroupSep==EMPTYIGNORE)? "EmptyIgnore": "EmptyFolderDown")) << endl;
   *(mLog->log()) << " ServerAddress: " << mServerAddress << endl;
@@ -117,8 +117,8 @@ void cSmartTvConfig::readConfig() {
       //      cout << " Found mHasMinBufferTime= " << mHasMinBufferTime << endl;
       continue;
     }
-    if (strcmp(attr, "HasBitrate") == 0) {
-      mHasBitrate = atoi(value);
+    if (strcmp(attr, "HasBitrateCorrection") == 0) {
+      mHasBitrateCorrection = atof(value);
       //      cout << " Found mHasBitrate= " <<mHasBitrate << endl;
       continue;
     }
