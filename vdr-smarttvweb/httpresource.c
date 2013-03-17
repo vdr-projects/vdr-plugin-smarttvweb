@@ -1135,7 +1135,9 @@ int cHttpResource::sendManifest (struct stat *statbuf, bool is_hls) {
   cRecordings* recordings = &Recordings;
   cRecording* rec = recordings->GetByName(mDir.c_str());  
   double duration = rec->NumFrames() / rec->FramesPerSecond();
-  
+
+  int bitrate = (int)((getVdrFileSize() *8.0 * mFactory->getConfig()->getHasBitrateCorrection()/ duration) +0.5);
+
   time_t now = time(NULL);
 
   if (rec->Info() != NULL){
@@ -1159,12 +1161,8 @@ int cHttpResource::sendManifest (struct stat *statbuf, bool is_hls) {
   // duration is now either the actual duration of the asset or the target duration of the asset
   int end_seg = int (duration / seg_dur) +1;
 
-  // FIXME: Test Only
-  /*  if (rec->FramesPerSecond() > 40)
-    end_seg = int (duration *2 / seg_dur) +1;
-*/
   *(mLog->log()) << DEBUGPREFIX 
-		 << " m3u8 for mDir= " << mDir
+		 << " Manifest for mDir= " << mDir
 		 << " duration= " << duration
 		 << " seg_dur= " << seg_dur
 		 << " end_seg= " << end_seg
@@ -1173,17 +1171,17 @@ int cHttpResource::sendManifest (struct stat *statbuf, bool is_hls) {
 
 
   if (is_hls) {
-    writeM3U8(duration, seg_dur, end_seg);
+    writeM3U8(duration, bitrate, seg_dur, end_seg);
   }  
   else {
-    writeMPD(duration, seg_dur, end_seg);
+    writeMPD(duration, bitrate, seg_dur, end_seg);
   }
 
 #endif
   return OKAY;
 }
 
-void cHttpResource::writeM3U8(double duration, float seg_dur, int end_seg) {
+void cHttpResource::writeM3U8(double duration, int bitrate, float seg_dur, int end_seg) {
   mResponseMessage = new string();
   mResponseMessagePos = 0;
   *mResponseMessage = "";
@@ -1219,7 +1217,8 @@ void cHttpResource::writeM3U8(double duration, float seg_dur, int end_seg) {
   sendHeaders(200, "OK", NULL, "application/x-mpegURL", mResponseMessage->size(), -1);
 }
 
-void cHttpResource::writeMPD(double duration, float seg_dur, int end_seg) {
+
+void cHttpResource::writeMPD(double duration, int bitrate, float seg_dur, int end_seg) {
   mResponseMessage = new string();
   mResponseMessagePos = 0;
   *mResponseMessage = "";
@@ -1243,8 +1242,11 @@ void cHttpResource::writeMPD(double duration, float seg_dur, int end_seg) {
   *mResponseMessage += "<ChapterDataURL/>\n";
   *mResponseMessage += "</ProgramInformation>\n";
   *mResponseMessage += "<Period start=\"PT0S\" segmentAlignmentFlag=\"True\">\n"; 
-
-  snprintf(line, sizeof(line), "<Representation id=\"0\" mimeType=\"video/mpeg\" bandwidth=\"%d\" startWithRAP=\"True\" width=\"1280\" height=\"720\" group=\"0\">\n", mFactory->getConfig()->getHasBitrate());
+  // SD: 720x 576
+  // HD: 1280x 720
+  //  snprintf(line, sizeof(line), "<Representation id=\"0\" mimeType=\"video/mpeg\" bandwidth=\"%d\" startWithRAP=\"True\" width=\"1280\" height=\"720\" group=\"0\">\n", mFactory->getConfig()->getHasBitrate());
+  snprintf(line, sizeof(line), "<Representation id=\"0\" mimeType=\"video/mpeg\" bandwidth=\"%d\" startWithRAP=\"True\" %s group=\"0\">\n", 
+	   bitrate, ((bitrate < 10000000)? "width=\"720\" height=\"576\"" : "width=\"1280\" height=\"720\""));
   *mResponseMessage = *mResponseMessage + line;
 
   hdr = "<SegmentInfo duration=";
@@ -1963,7 +1965,7 @@ int cHttpResource::deleteRecording() {
     sendError(400, "Bad Request", NULL, "no id in query line");
     return OKAY;
   }
-  mPath = cUrlEncode::doXmlSaveDecode(id);
+  mPath = cUrlEncode::doUrlSaveDecode(id);
 
   cRecording* rec = Recordings.GetByName(mPath.c_str());
   if (rec == NULL) {
@@ -2188,7 +2190,7 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
     }
 
     if (writeXmlItem(cUrlEncode::doXmlSaveEncode(recording->Name()), link, "NA", desc, 
-		     cUrlEncode::doXmlSaveEncode(recording->FileName()).c_str(),
+		     cUrlEncode::doUrlSaveEncode(recording->FileName()).c_str(),
 		     -1, 
 		     recording->Start(), rec_dur, recording->FramesPerSecond(), 
 		     (recording->IsPesRecording() ? 0: 1), (recording->IsNew() ? 0: 1)) == ERROR) 
@@ -2741,6 +2743,28 @@ string cHttpResource::getOwnIp(int fd) {
     //    exit(1); /* Failed */  
   }  
   return string (inet_ntoa(sock.sin_addr));
+}
+
+uint64_t cHttpResource::getVdrFileSize() {
+  // iter over all vdr files and get file size
+  struct stat statbuf;
+  string file_structure = "%s/%05d.ts";     // Only ts supported for HLS and HAS
+  char pathbuf[4096];
+  int vdr_idx = 0;
+  uint64_t total_file_size = 0; 
+  bool more_to_go = true;
+
+  while (more_to_go) {
+    vdr_idx ++;
+    snprintf(pathbuf, sizeof(pathbuf), file_structure.c_str(), mDir.c_str(), vdr_idx);
+    if (stat(pathbuf, &statbuf) >= 0) {
+      total_file_size += statbuf.st_size;
+    }
+    else {
+      more_to_go = false;
+    }    
+  }
+  return total_file_size;
 }
 
 int cHttpResource::parseHttpRequestLine(string line) {

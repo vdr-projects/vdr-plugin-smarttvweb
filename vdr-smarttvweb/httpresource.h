@@ -154,8 +154,8 @@ class cHttpResource {
   int receiveResume();
   int deleteRecording();
 
-  void writeM3U8(double duration, float seg_dur, int end_seg);
-  void writeMPD(double duration, float seg_dur, int end_seg);
+  void writeM3U8(double duration, int bitrate, float seg_dur, int end_seg);
+  void writeMPD(double duration, int bitrate, float seg_dur, int end_seg);
 
 
   int sendMediaSegment (struct stat *statbuf);
@@ -169,6 +169,7 @@ class cHttpResource {
   const char *getMimeType(const char *name);
   string getConnStateName();
   string getOwnIp(int fd);
+  uint64_t getVdrFileSize();
   void checkRecording();
   bool isTimeRequest(struct stat *statbuf);
   int parseRangeHeaderValue(string);

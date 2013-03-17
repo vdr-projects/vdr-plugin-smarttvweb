@@ -71,7 +71,7 @@ void SmartTvServerStartThread(void* arg) {
 }
 
 SmartTvServer::SmartTvServer(): mRequestCount(0), isInited(false), serverPort(PORT), mServerFd(-1),
-  mSegmentDuration(10), mHasMinBufferTime(40), mHasBitrate(6000000), mLiveChannels(20), 
+  mSegmentDuration(10), mHasMinBufferTime(40),  mLiveChannels(20), 
   clientList(), mActiveSessions(0), mConfig(NULL) {
 }
 
@@ -214,8 +214,8 @@ void SmartTvServer::loop() {
 		      << " --------------------- Received connection ---------------------" << endl;
 #endif
 
-	FD_SET(rfd, &mReadState);        /* neuen Client fd dazu */
-	FD_SET(rfd, &mWriteState);        /* neuen Client fd dazu */
+	FD_SET(rfd, &mReadState);       
+	FD_SET(rfd, &mWriteState);      
 
 	if (rfd > maxfd) {
 	  maxfd = rfd;
@@ -225,7 +225,6 @@ void SmartTvServer::loop() {
 	  clientList.resize(rfd+1, NULL); // Check.
 	}
 	clientList[rfd] = new cHttpResource(rfd, req_id, serverPort, this);
-	//	clientList[rfd] = new cHttpResource(rfd, req_id, mOwnIp, serverPort, this);
 	mActiveSessions ++;
 	*(mLog.log()) << " + mActiveSessions= " << mActiveSessions << endl;
       }
@@ -352,7 +351,6 @@ void SmartTvServer::initServer(string dir) {
 
   mSegmentDuration= mConfig->getSegmentDuration();
   mHasMinBufferTime= mConfig->getHasMinBufferTime();
-  mHasBitrate = mConfig->getHasBitrate();
   mLiveChannels = mConfig->getLiveChannels();
 
   *(mLog.log()) <<"HTTP server listening on port " <<  serverPort << endl;
