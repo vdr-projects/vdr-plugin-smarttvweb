@@ -158,7 +158,9 @@ Main.init = function () {
 	Server.updateVdrStatus();
 
 	DirectAccess.init();
+	Config.getWidgetVersion();
 //	DirectAccess.show();
+//	Timers.init();
 	//	Display.initOlForRecordings();
     /*
      * Fetch JS file
@@ -685,7 +687,6 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (event) {
         	Player.jumpToVideo(90);
         	break;
            
-//        case tvKey.KEY_FF:
         case tvKey.KEY_RIGHT:
             Main.log("Right: Skip Forward");
             Display.showProgress();
@@ -696,7 +697,6 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (event) {
 				Player.skipForwardVideo();
             break;
         
-//        case tvKey.KEY_RW:
         case tvKey.KEY_LEFT:
             Main.log("Left: Skip Backward");
             Display.showProgress();
@@ -762,7 +762,12 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (event) {
             break;           
         case tvKey.KEY_PAUSE:
             Main.log("PAUSE");
-            Player.pauseVideo();
+            if(Player.getState() == Player.PAUSED) {
+                Player.resumeVideo();
+            }
+            else {
+                Player.pauseVideo();            	
+            }
             break;
         case tvKey.KEY_UP:
         	Player.adjustSkipDuration(1);
@@ -773,27 +778,11 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (event) {
             Display.showProgress();
         	break;
 		case tvKey.KEY_INFO:
+			Display.showInfo(Main.selectedVideo);
+			break;
 		case tvKey.KEY_ASPECT:
 			Player.toggleAspectRatio();
 			break;
-/*        case tvKey.KEY_UP:
-        case tvKey.KEY_PANEL_VOL_UP:
-        case tvKey.KEY_VOL_UP:
-            Main.log("VOL_UP");
-        	Display.showVolume();
-            if(Main.mute == 0)
-                Audio.setRelativeVolume(0);
-            break;
-            
-        case tvKey.KEY_DOWN:
-        case tvKey.KEY_PANEL_VOL_DOWN:
-        case tvKey.KEY_VOL_DOWN:
-            Main.log("VOL_DOWN");
-        	Display.showVolume();
-            if(Main.mute == 0)
-                Audio.setRelativeVolume(1);
-            break;      
-*/
         default:
             Main.log("Calling Default Key Hanlder");
         	this.defaultKeyHandler.handleDefKeyDown(keyCode);
@@ -825,22 +814,39 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function (event) {
  Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
  
  switch(keyCode) {
-	case tvKey.KEY_INFO:
 	case tvKey.KEY_ASPECT:
 		Player.toggleAspectRatio();
 		break;
 
  	case tvKey.KEY_0:
+		DirectAccess.show("0");
+		break;
  	case tvKey.KEY_1:
+		DirectAccess.show("1");
+		break;
  	case tvKey.KEY_2:
+		DirectAccess.show("2");
+		break;
  	case tvKey.KEY_3:
+		DirectAccess.show("3");
+		break;
  	case tvKey.KEY_4:
+		DirectAccess.show("4");
+		break;
  	case tvKey.KEY_5:
+		DirectAccess.show("5");
+		break;
  	case tvKey.KEY_6:
+		DirectAccess.show("6");
+		break;
  	case tvKey.KEY_7:
+		DirectAccess.show("7");
+		break;
  	case tvKey.KEY_8:
+		DirectAccess.show("8");
+		break;
  	case tvKey.KEY_9:
-		DirectAccess.show();
+		DirectAccess.show("9");
 		break;
  	case tvKey.KEY_UP:
  	case tvKey.KEY_CH_UP:
@@ -851,7 +857,7 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function (event) {
  		// Check, weather I am the last element of a folder. If yes, go one level up
  		if (Main.selectedVideo == (Data.getVideoCount() -1)) {
  			//Last VideoItem, check wrap around or folder fall-down
- 			if (Data.isRootFolder() != "true") {
+ 			if (Data.isRootFolder() != true) {
 // 				Main.selectedVideo = Data.folderUp();
  				var itm = Data.folderUp();
 				Main.selectedVideo = itm.id;
@@ -879,7 +885,7 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function (event) {
  		// if yes, then one up
  		if (Main.selectedVideo == 0) {
  			//First VideoItem, 
- 			if (Data.isRootFolder() != "true") {
+ 			if (Data.isRootFolder() != true) {
 // 				Main.selectedVideo = Data.folderUp();
  				var itm = Data.folderUp();
 				Main.selectedVideo = itm.id;
@@ -909,7 +915,17 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function (event) {
      	Main.log("STOP");
      	Player.stopVideo();
 //     	Display.setVideoList(Main.selectedVideo, Main.selectedVideo- ( Main.selectedVideo % (Display.LASTIDX +1)));
-     	Display.setVideoList(Main.selectedVideo, Main.selectedVideo- ( Main.selectedVideo % Display.getNumberOfVideoListItems()));
+     	//thlo: here
+     	
+     	if (Data.isRootFolder() != true) {
+			Display.addHeadline(Data.getCurrentItem().title);
+	     	Display.setVideoList(Main.selectedVideo, Main.selectedVideo- ( Main.selectedVideo % Display.getNumberOfVideoListItems()));
+     	}
+     	else {
+			Display.removeHeadline();
+	     	Display.setVideoList(Main.selectedVideo, Main.selectedVideo- ( Main.selectedVideo % Display.getNumberOfVideoListItems()));     		
+     	}
+     	
      	Display.show();
 		widgetAPI.blockNavigation(event);
 
@@ -917,29 +933,13 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function (event) {
      case tvKey.KEY_PAUSE:
          Main.log("PAUSE");
          break;
-     case tvKey.KEY_INFO:       
+     case tvKey.KEY_INFO: 
+			Display.showInfo(Main.selectedVideo);
+			break;
      case tvKey.KEY_ASPECT:
     	 Player.toggleAspectRatio();
     	 break;
 
-/*     case tvKey.KEY_UP:
-     case tvKey.KEY_PANEL_VOL_UP:
-     case tvKey.KEY_VOL_UP:
-         Main.log("VOL_UP");
-     	Display.showVolume();
-         if(Main.mute == 0)
-             Audio.setRelativeVolume(0);
-         break;
-         
-     case tvKey.KEY_DOWN:
-     case tvKey.KEY_PANEL_VOL_DOWN:
-     case tvKey.KEY_VOL_DOWN:
-         Main.log("VOL_DOWN");
-     	Display.showVolume();
-         if(Main.mute == 0)
-             Audio.setRelativeVolume(1);
-         break;      
-*/
      default:
      	this.defaultKeyHandler.handleDefKeyDown(keyCode);
          break;
@@ -961,18 +961,63 @@ cMenuKeyHndl.prototype.handleKeyDown = function (event) {
  
  switch(keyCode) {
  	case tvKey.KEY_0:
+		if (Main.state == Main.eLIVE) {
+			Main.log("cMenu DirectAccess: keyCode= " + keyCode);
+			DirectAccess.show("0");
+			}
+		break;
  	case tvKey.KEY_1:
+		if (Main.state == Main.eLIVE) {
+			Main.log("cMenu DirectAccess: keyCode= " + keyCode);
+			DirectAccess.show("1");
+			}
+		break;
  	case tvKey.KEY_2:
+		if (Main.state == Main.eLIVE) {
+			Main.log("cMenu DirectAccess: keyCode= " + keyCode);
+			DirectAccess.show("2");
+			}
+		break;
  	case tvKey.KEY_3:
+		if (Main.state == Main.eLIVE) {
+			Main.log("cMenu DirectAccess: keyCode= " + keyCode);
+			DirectAccess.show("3");
+			}
+		break;
  	case tvKey.KEY_4:
+		if (Main.state == Main.eLIVE) {
+			Main.log("cMenu DirectAccess: keyCode= " + keyCode);
+			DirectAccess.show("4");
+			}
+		break;
  	case tvKey.KEY_5:
+		if (Main.state == Main.eLIVE) {
+			Main.log("cMenu DirectAccess: keyCode= " + keyCode);
+			DirectAccess.show("5");
+			}
+		break;
  	case tvKey.KEY_6:
+		if (Main.state == Main.eLIVE) {
+			Main.log("cMenu DirectAccess: keyCode= " + keyCode);
+			DirectAccess.show("6");
+			}
+		break;
  	case tvKey.KEY_7:
+		if (Main.state == Main.eLIVE) {
+			Main.log("cMenu DirectAccess: keyCode= " + keyCode);
+			DirectAccess.show("7");
+			}
+		break;
  	case tvKey.KEY_8:
+		if (Main.state == Main.eLIVE) {
+			Main.log("cMenu DirectAccess: keyCode= " + keyCode);
+			DirectAccess.show("8");
+			}
+		break;
  	case tvKey.KEY_9:
 		if (Main.state == Main.eLIVE) {
 			Main.log("cMenu DirectAccess: keyCode= " + keyCode);
-			DirectAccess.show();
+			DirectAccess.show("9");
 			}
 		break;
  
@@ -1413,6 +1458,16 @@ Main.tvKeys = {
 
 		KEY_STOP :27, // ESC
 //		KEY_MUTE :27,
+		KEY_1 :49,
+		KEY_2 :50,
+		KEY_3 :51,
+		KEY_4 :52,
+		KEY_5 :53,
+		KEY_6 :54,
+		KEY_7 :55,
+		KEY_8 :56,
+		KEY_9 :57,
+		KEY_0 :48,
 
 		// Un-used keycodes
 		KEY_RETURN :88,
@@ -1426,16 +1481,6 @@ Main.tvKeys = {
 		KEY_FF :72,
 		KEY_PLAY :71,
 		KEY_STOP :70,
-		KEY_1 :101,
-		KEY_2 :98,
-		KEY_3 :6,
-		KEY_4 :8,
-		KEY_5 :9,
-		KEY_6 :10,
-		KEY_7 :12,
-//		KEY_8 :13,
-		KEY_9 :14,
-		KEY_0 :17,
 
 		KEY_PANEL_CH_UP :104,
 		KEY_PANEL_CH_DOWN :106,

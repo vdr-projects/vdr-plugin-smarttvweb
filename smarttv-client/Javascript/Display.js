@@ -16,6 +16,7 @@ var Display =
     volOlHandler : null,
     progOlHandler : null,
     popupOlHandler : null,
+    infoOlHandler : null,
     videoList : new Array()
 };
 
@@ -40,9 +41,11 @@ Display.init = function()
     this.progOlHandler = new OverlayHandler("ProgHndl");
     this.volOlHandler = new OverlayHandler("VolHndl");
     this.popupOlHandler = new OverlayHandler("PopupHndl");
+    this.infoOlHandler = new OverlayHandler("InfoHndl");
     this.progOlHandler.init(Display.handlerShowProgress, Display.handlerHideProgress);
     this.volOlHandler.init(Display.handlerShowVolume, Display.handlerHideVolume);
     this.popupOlHandler.init(Display.handlerShowPopup, Display.handlerHidePopup);
+    this.infoOlHandler.init(Display.handlerShowInfo, Display.handlerHideInfo);
     
     if (!this.statusDiv) {
         success = false;
@@ -74,11 +77,10 @@ Display.init = function()
     	elm.style.marginBottom= " 5px";
     	elm.style.textAlign = "center";
     }    
-    
+	Display.resetDescription();   
     Main.log("Display initialized" );
     return success;
 };
-
 
 Display.putInnerHTML = function (elm, val) {
 	switch (Config.deviceType) {
@@ -209,6 +211,11 @@ Display.resetSelectItems = function (itm) {
     Display.selectItem(document.getElementById("selectItem"+itm));
 };
 
+Display.updateWidgetVersion = function (ver) {
+	
+	$("#widgetVersion").text("  Version "+ ver);
+};
+
 /*
  * Video Select Screen Functions
  * 
@@ -251,6 +258,7 @@ Display.show = function() {
 	this.volOlHandler.cancel();
 	this.progOlHandler.cancel();
 	this.popupOlHandler.cancel();
+	this.infoOlHandler.cancel();
     $("#main").show();
 };
 
@@ -380,16 +388,23 @@ Display.resetVideoList = function () {
 	
 };
 
-Display.resetDescription = function () {
+/*Display.resetDescription = function () {
 	$("#description").text(""); // reset 
 
 };
+*/
 
 //Video Select Screen
 Display.handleDescription =function (selected) {
 	
 	if (Data.getCurrentItem().childs[selected].isFolder == true) {
-        Display.setDescription( "Dir: " +Data.getCurrentItem().childs[selected].title );
+		$("#descTitle").text("Dir: " +Data.getCurrentItem().childs[selected].title);
+//        Display.setDescription( "Dir: " +Data.getCurrentItem().childs[selected].title );
+		$("#descProg").text("");			
+		$("#descStart").text("");			
+		$("#descDuration").text("");
+		$("#descRemaining").text("");
+		$("#descDesc").text("");
     }
     else {
     	var itm = Data.getCurrentItem().childs[selected];
@@ -405,43 +420,69 @@ Display.handleDescription =function (selected) {
     	var min = Display.getNumString (digi.getMinutes(), 2);
 
     	var d_str ="";
-    	var msg = "";
+//    	var msg = "";
 		switch (Main.state) {
 		case Main.eLIVE:
     		var now = Display.GetEpochTime();
 
         	d_str = hour + ":" + min;
 
-        	msg += title + "<br>";
+/*        	msg += title + "<br>";
         	msg += "<b>"+ prog + "</b><br>";
         	msg += "<br>Start: " + d_str + "<br>";
         	msg += "Duration: " + Display.durationString(length) + "h<br>";
         	msg += "Remaining: " + Display.durationString((itm.payload.start + length - now));
 			msg += "<br><br>"+ desc;
-		break;
+	*/
+			$("#descProg").show();
+			$("#descRemaining").show();
+
+			$("#descTitle").text(title);			
+			$("#descProg").text(prog);			
+			$("#descStart").text("Start: " + d_str);			
+			$("#descDuration").text("Duration: " + Display.durationString(length) + "h");
+			$("#descRemaining").text("Remaining: " + Display.durationString((itm.payload.start + length - now)));
+			$("#descDesc").text(desc);
+
+			break;
 		case Main.eREC:
         	d_str = mon + "/" + day + " " + hour + ":" + min;
-
+/*
         	msg += "<b>" + title + "</b>";
         	msg += "<br><br>" + d_str;
         	msg += " Duration: " + Display.durationString(length) + "h";
 			msg += "<br><br>"+ desc;
-		break;
+*/
+			$("#descTitle").text(title);
+			$("#descStart").text("Start: " + d_str);			
+			$("#descDuration").text("Duration: " + Display.durationString(length) + "h");
+			$("#descDesc").text(desc);
+
+			break;
 		case Main.eMED:
-        	msg += "<b>" + title + "</b>";
+//        	msg += "<b>" + title + "</b>";
+			$("#descTitle").text(title);
 		break;
 		default:
 			Main.logToServer("ERROR in Display.handleDescription: Should not be here");
 		break;
 		}
 
-        Display.setDescription(msg);   	
+//        Display.setDescription(msg);   	
     }
 	
 };
+Display.resetDescription = function () {
+	$("#descTitle").text("");
+	$("#descProg").text("");			
+	$("#descStart").text("");			
+	$("#descDuration").text("");
+	$("#descRemaining").text("");
+	$("#descDesc").text("");
 
-
-
+	$("#descProg").hide();
+	$("#descRemaining").hide();
+};
 /*
  * this.currentWindow: Cursor (selected item)
  */
@@ -499,12 +540,13 @@ Display.setVideoListPosition = function(position, move) {
     }
 };
 
+/*
 Display.setDescription = function(description) {
     var descriptionElement = document.getElementById("description");
     
     Display.putInnerHTML(descriptionElement, description);
 };
-
+*/
 Display.getDisplayTitle = function(item) {
 	var res = {c1:"", c2:"", c3:""};
 	switch (Main.state) {
@@ -741,6 +783,60 @@ Display.handlerHideVolume = function() {
     document.getElementById("volume").style.display="none";
 };
 
+//---------------------------------------------------------
+/*
+ * Info Overlay handlers
+ */
+Display.showInfo = function(selected) {
+    var itm = Data.getCurrentItem().childs[selected];
+	var title = itm.title;
+    var prog = itm.payload.prog;
+    var desc = itm.payload.desc;
+    var length = itm.payload.dur;
+    	
+    var digi = new Date(parseInt(itm.payload.start*1000));
+    var mon = Display.getNumString ((digi.getMonth()+1), 2);
+    var day = Display.getNumString (digi.getDate(), 2);
+    var hour = Display.getNumString (digi.getHours(), 2);
+    var min = Display.getNumString (digi.getMinutes(), 2);
+
+    var d_str ="";
+	switch (Main.state) {
+	case Main.eLIVE:
+    	var now = Display.GetEpochTime();
+			
+        d_str = hour + ":" + min;
+
+		$("#infoTitle").text(title + "\n" + prog);
+		$("#infoDuration").text("Duration: " + Display.durationString(length) + "h Remaining: " + Display.durationString((itm.payload.start + length - now)));
+		$("#infoDesc").text(desc);
+		break;
+	case Main.eREC:
+        d_str = mon + "/" + day + " " + hour + ":" + min;
+		$("#infoTitle").text(title);
+		$("#infoDuration").text(d_str + " Duration: " + Display.durationString(length) + "h");
+		$("#infoDesc").text(desc);
+		break;
+	case Main.eMED:
+		$("#infoTitle").text(title);
+		break;
+	default:
+		Main.logToServer("ERROR in Display.handleDescription: Should not be here");
+		break;
+	}
+	this.infoOlHandler.show();
+	
+};
+
+Display.handlerShowInfo = function() {
+//	$("#infoOverlay").show();
+	$("#infoOverlay").slideDown(300);
+};
+
+Display.handlerHideInfo = function() {
+//	$("#infoOverlay").hide();
+	$("#infoOverlay").slideUp(300);
+};
 
 //---------------------------------------------------------
 /*
@@ -776,28 +872,26 @@ Display.showProgress = function() {
 };
 
 Display.handlerHideProgress = function() {
-    document.getElementById("overlay").style.display="none";
+    $("#overlay").fadeOut(300);
 };
 
 Display.handlerShowProgress = function() {
+    $("#overlay").fadeIn(400);
 
-	document.getElementById("overlay").style.display="block";
 	if (Player.isRecording == true) {
-	    document.getElementById("olRecProgressBar").style.display="block";
+	    $("#olRecProgressBar").show();
 	    var now = Display.GetEpochTime();
 	    var remaining = Math.round(((Player.startTime + Player.duration) - now) * 100/ Player.duration);
-//	    Main.log (" remaining= " + remaining);
     	var elm = document.getElementById("olRecProgressBar");
 	    elm.style.display="block";
 	    elm.style.width = remaining + "%";
 	    elm.style.left = (100 - remaining) + "%";
 	}
 	else
-	    document.getElementById("olRecProgressBar").style.display="none";
+	    $("#olRecProgressBar").hide();
     
     var timePercent = (Player.curPlayTime *100)/ Player.totalTime;
     
-//	Main.log("show OL Progress timePercent= " + timePercent);
 
     document.getElementById("olProgressBar").style.width = timePercent + "%";
 

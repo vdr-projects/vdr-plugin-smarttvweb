@@ -136,6 +136,21 @@ body {
 
 }
 
+#infoOverlay{
+    position: absolute;
+	display: none;
+	left: 0px; top: 0px;
+    width: 960px; height: 30%;
+    border-style:solid;
+	z-index:10;	
+	padding-top:20px;
+    padding-left:20px;
+    padding-right:20px;
+	background-color: darkblue;
+	background-color: rgba(0, 0, 139, 0.5);
+	background-color: -webkit-linear-gradient(-45deg, rgba(167,207,223,1) 0%,rgba(35,83,138,1) 100%);
+}
+
 #popup{
     position: absolute;
 	display: none;
