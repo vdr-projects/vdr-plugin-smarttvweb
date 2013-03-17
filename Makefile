@@ -25,10 +25,8 @@ endif
 
 ### The directory environment:
 
-#VDRDIR = ../../..
-VDRDIR = /usr/include/vdr
-LIBDIR = .
-#LIBDIR = ../../lib
+VDRDIR = ../../..
+LIBDIR = ../../lib
 TMPDIR = /tmp
 
 ### Allow user defined options to overwrite defaults:
