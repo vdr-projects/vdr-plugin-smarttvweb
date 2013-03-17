@@ -82,7 +82,9 @@ DirectAccess.init = function (){
 	}
 };
 
-DirectAccess.show = function () {
+DirectAccess.show = function (val) {
+	Main.log("DirectAccess.show " + val);
+	$("#directAccessText").text(val);
 	$("#directChanAccess").show();
 	$("#directAccessAnchor").focus();
 	DirectAccess.timeout = Display.GetEpochTime() + (DirectAccess.delay / 1000.0);

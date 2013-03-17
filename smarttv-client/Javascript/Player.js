@@ -338,7 +338,7 @@ Player.playVideo = function(resume_pos) {
 			Main.logToServer("Player.play with ?time=" + resume_pos);        
         }
 
-        if ((this.mFormat != this.ePDL) && (this.isLive == false)){
+        if ((this.mFormat == this.eHLS) && (this.isLive == false)){
         	Notify.showNotify("No Trickplay", true);
         }
         Audio.plugin.SetSystemMute(false); 
@@ -400,6 +400,7 @@ Player.resumeVideo = function() {
 };
 
 Player.jumpToVideo = function(percent) {
+	Spinner.show();
 	if (this.isLive == true) {
 		return;
 	}
@@ -407,7 +408,6 @@ Player.jumpToVideo = function(percent) {
     	Main.logToServer ("Player.jumpToVideo: Player not Playing");
     	return;
     }
-	Spinner.show();
     Player.bufferState = 0;
 	Display.showProgress();
 
@@ -460,6 +460,7 @@ Player.skipForwardVideo = function() {
 	if (Player.isRecording == false)
 		res = this.plugin.JumpForward(Player.skipDuration);
 	else {
+		Spinner.show();
 		this.bufferState = 0;
 		this.plugin.Stop();
 		var old = Player.curPlayTime;
@@ -485,6 +486,7 @@ Player.skipBackwardVideo = function() {
 	if (Player.isRecording == false)
 		res = this.plugin.JumpBackward(Player.skipDuration);
 	else {
+		Spinner.show();
 		this.bufferState = 0;
 		this.plugin.Stop();
 		var tgt = (Player.curPlayTime/1000.0) - Player.skipDuration;
