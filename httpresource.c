@@ -34,12 +34,13 @@
 
 #include <string>
 #include <cstring>
+#include <sstream>
 #include <iostream>
 #include <vector>
 #include "httpresource.h"
 #include "smarttvfactory.h"
 #include "stvw_cfg.h"
-
+#include "mngurls.h"
 #include "url.h"
 
 #ifndef STANDALONE
@@ -49,6 +50,10 @@
 #include <vdr/videodir.h>
 #include <vdr/epg.h>
 
+#else
+//standalone
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #endif
 
 #define PROTOCOL "HTTP/1.1"
@@ -101,8 +106,8 @@ sTimerEntry(string t, time_t s, int d) :  name(t), startTime(s), duration(d) {};
 // 8 Byte Per Entry
 struct tIndexPes {
   uint32_t offset;
-  uchar type;
-  uchar number;
+  uint8_t type;        // standalone
+  uint8_t number;       // standalone
   uint16_t reserved;
   };
 
@@ -115,16 +120,11 @@ struct tIndexTs {
   uint16_t number:16; // up to 64K files per recording
   };
 
+//cHttpResource::cHttpResource(int f, int id, int port, SmartTvServer* factory): mFactory(factory), mLog(),  
+//  mServerPort(port), mFd(f), mReqId(id), mConnTime(0), mHandleReadCount(0),  
 
-/*
-union tIndexRead {
-  struct tIndexTs in;
-  char buf[8];
-};
-*/
-
-cHttpResource::cHttpResource(int f, int id, int port, SmartTvServer* factory): mFactory(factory), mLog(),  
-  mServerPort(port), mFd(f), mReqId(id), mConnTime(0), mHandleReadCount(0),  
+cHttpResource::cHttpResource(int f, int id, int port, SmartTvServer* factory): cHttpResourceBase(f, id, port, factory),
+  mLog(), mConnTime(0), mHandleReadCount(0),  
   mConnected(true), mConnState(WAITING), mContentType(NYD), mReadBuffer(),
   mMethod(), mResponseMessagePos(0), mBlkData(NULL), mBlkPos(0), mBlkLen(0), 
   mPath(), mVersion(), protocol(), mReqContentLength(0),
@@ -139,17 +139,17 @@ cHttpResource::cHttpResource(int f, int id, int port, SmartTvServer* factory): m
   mBlkData = new char[MAXLEN];
 
   //#ifndef DEBUG
-  *(mLog->log())<< DEBUGPREFIX 
-		<< " cHttpResource created" << endl;
+  *(mLog->log()) << DEBUGPREFIX 
+		 << " cHttpResource created" << endl;
   //#endif
 }
 
 
 cHttpResource::~cHttpResource() {
   //#ifndef DEBUG
-  *(mLog->log())<< DEBUGPREFIX 
-		<< " Destructor of cHttpResource called"        
-		<< endl;
+  *(mLog->log()) << DEBUGPREFIX 
+		 << " Destructor of cHttpResource called"        
+		 << endl;
   //#endif
   delete[] mBlkData;
   if (mFile != NULL) {
@@ -171,7 +171,7 @@ int cHttpResource::checkStatus() {
     if (now - mConnTime > 2) {
       *(mLog->log()) << DEBUGPREFIX
 		     << " checkStatus: no activity for 2sec "
-		     << "mmConnState= " << getConnStateName()
+		     << "mConnState= " << getConnStateName()
 		     << endl;
       return ERROR;
     }
@@ -229,7 +229,6 @@ int cHttpResource::handleRead() {
     return ERROR; // Nothing to read
   }
 
-  //  if (( mConnState == WAITING) and ((time(NULL) - mConnTime) > 1)) {
   if (( mConnState == WAITING) and (mHandleReadCount > 1000)) {
     *(mLog->log()) << DEBUGPREFIX << " hmm, handleRead() no data since 1sec -> closing. mHandleReadCount= " << mHandleReadCount << endl;
     return ERROR; // Nothing to read   
@@ -389,11 +388,34 @@ int cHttpResource::processRequest() {
 
 
 #endif
+  if (mPath.compare("/yt-bookmarklet.js") == 0) {
+    if (handleHeadRequest() != 0)
+      return OKAY;
+
+    sendYtBookmarkletJs();
+    return OKAY;
+  }
+
+  if (mPath.compare("/bmlet-inst.html") == 0) {
+    if (handleHeadRequest() != 0)
+      return OKAY;
+
+    sendBmlInstHtml();
+    return OKAY;
+  }
+
 
   if (mPath.compare("/media.xml") == 0) {
     if (handleHeadRequest() != 0)
       return OKAY;
     sendMediaXml( &statbuf);
+    return OKAY;
+  }
+
+  if (mPath.compare("/clients") == 0) {
+    if (handleHeadRequest() != 0)
+      return OKAY;
+    handleClients();
     return OKAY;
   }
 
@@ -412,6 +434,7 @@ int cHttpResource::processRequest() {
     return sendFile(&statbuf);
   }
 
+
   if (mPath.compare("/favicon.ico") == 0) {
     mPath = mFactory->getConfigDir() + "/web/favicon.ico";
 
@@ -427,6 +450,12 @@ int cHttpResource::processRequest() {
     return sendFile(&statbuf);
   }
 
+  if (mPath.compare("/urls.xml") == 0) {
+    if (handleHeadRequest() != 0)
+      return OKAY;
+    sendUrlsXml();
+    return OKAY;
+  }
 
   if (mPath.size() > 8) {
     if (mPath.compare(mPath.size() -8, 8, "-seg.mpd") == 0) {
@@ -788,6 +817,14 @@ int cHttpResource::handlePost() {
       return OKAY;
 
     receiveResume();
+    return OKAY;
+  }
+
+  if (mPath.compare("/setYtUrl") == 0) {
+    if (handleHeadRequest() != 0)
+      return OKAY;
+
+    receiveYtUrl();
     return OKAY;
   }
 
@@ -1181,6 +1218,52 @@ int cHttpResource::sendManifest (struct stat *statbuf, bool is_hls) {
   return OKAY;
 }
 
+int cHttpResource::receiveYtUrl() {
+  vector<sQueryAVP> avps;
+  parseQueryLine(&avps);
+  string line; 
+  string store_str;
+  bool store = true;
+
+  /*  *(mLog->log()) << DEBUGPREFIX 
+		 << " receiveYtUrl: Query= " << mQuery 
+		 << endl;
+*/
+  if (getQueryAttributeValue(&avps, "store", store_str) == OKAY){
+    if (store_str.compare("false")==0) {
+      store = false;
+      *(mLog->log()) << DEBUGPREFIX 
+		     << " receiveYtUrl: set store to false "
+		     << endl;
+
+    }
+  }
+  if (getQueryAttributeValue(&avps, "line", line) == OKAY){
+    if (line.compare ("") == 0) {
+      *(mLog->log())<< DEBUGPREFIX
+		    << " receiveYtUrl: Nothing to push " 
+		    << endl;
+
+      sendHeaders(200, "OK", NULL, NULL, 0, -1);
+      return OKAY;
+    }
+    
+    mFactory->pushYtVideoId(line, store);
+
+    if (store)
+      mFactory->storeYtVideoId(line);
+
+    sendHeaders(200, "OK", NULL, NULL, 0, -1);
+    return OKAY;
+
+  }
+
+
+  sendError(400, "Bad Reqiest", NULL, "Mandatory Line attribute not present.");
+  return OKAY;
+
+}
+
 void cHttpResource::writeM3U8(double duration, int bitrate, float seg_dur, int end_seg) {
   mResponseMessage = new string();
   mResponseMessagePos = 0;
@@ -1440,6 +1523,67 @@ int cHttpResource::sendMediaSegment (struct stat *statbuf) {
   return OKAY;
 }
 
+int cHttpResource::sendUrlsXml () {
+  // read urls file and generate XML
+  string type;
+  string value;
+  string line;
+
+  mResponseMessage = new string();
+  mResponseMessagePos = 0;
+  *mResponseMessage = "";
+  mContentType = MEMBLOCK;
+
+  mConnState = SERVING;
+  
+  cManageUrls* urls = mFactory->getUrlsObj();
+
+  //  ifstream myfile ((mFactory->getConfigDir() +"/urls.txt").c_str());
+  // An empty xml is provided, if the file does not exist.
+
+  //thlo: here to continue
+  *mResponseMessage = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+  *mResponseMessage += "<rss version=\"2.0\">\n";
+  *mResponseMessage += "<channel>\n";
+
+  for (uint i = 0; i < urls->size(); i++) {
+    *mResponseMessage += "<item>\n<guid>";
+    *mResponseMessage += (urls->getEntry(i))->mEntry;
+    *mResponseMessage += "</guid>\n</item>\n";
+  }
+
+  /*
+  while ( myfile.good() ) {
+    getline (myfile, line);
+
+    if ((line == "") or (line[0] == '#'))
+      continue;
+
+    size_t pos = line.find('|');
+    type = line.substr(0, pos);
+    value = line.substr(pos+1);
+    
+    if (type.compare("YT")==0) {
+      *mResponseMessage += "<item>\n<guid>";
+      *mResponseMessage += value;
+      *mResponseMessage += "</guid>\n</item>\n";
+      continue;
+    }
+
+    *mResponseMessage += "<item>\n<title>";
+    *mResponseMessage += "Unknown: " + line + " type=" + type;
+    
+    *mResponseMessage += "</title>\n</item>\n";
+  }
+  myfile.close();
+*/
+  *mResponseMessage += "</channel>\n";
+  *mResponseMessage += "</rss>\n";
+
+  sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), -1);
+  return OKAY;
+}
+
 int cHttpResource::sendMediaXml (struct stat *statbuf) {
   char pathbuf[4096];
   string link;
@@ -1494,6 +1638,48 @@ int cHttpResource::sendMediaXml (struct stat *statbuf) {
   return OKAY;
 }
 
+
+void cHttpResource::handleClients() {
+  vector<sQueryAVP> avps;
+  parseQueryLine(&avps);
+  
+  string mac = "";
+  string ip = "";
+  string state = "";
+
+  getQueryAttributeValue(&avps, "mac", mac) ;
+  getQueryAttributeValue(&avps, "ip", ip);
+  getQueryAttributeValue(&avps, "state", state);
+
+  /*  if (getQueryAttributeValue(&avps, "mac", mac) == OKAY){
+  }
+
+  if (getQueryAttributeValue(&avps, "ip", ip) == OKAY){
+  }
+
+  if (getQueryAttributeValue(&avps, "state", state) == OKAY){
+  }
+*/
+  // state: started, running, stopped
+  *(mLog->log())<< DEBUGPREFIX
+		<< " handleClients mac= " << mac << " ip= " << ip << " state= " << state
+		<< endl;
+  if (mac.compare ("") == 0) {
+    *(mLog->log())<< DEBUGPREFIX
+      << " mac is empty. Ignoring"
+		  << endl;
+    sendHeaders(200, "OK", NULL, NULL, 0, -1);
+    return;
+  }
+  if (state.compare("stopped") == 0) {
+    mFactory->removeTvClient(ip, mac, time(NULL));
+  }
+  else {
+    mFactory->updateTvClient(ip, mac, time(NULL));
+  }
+  sendHeaders(200, "OK", NULL, NULL, 0, -1);
+}
+
 int cHttpResource::sendVdrStatusXml (struct stat *statbuf) {
 
 #ifndef STANDALONE
@@ -1530,6 +1716,120 @@ int cHttpResource::sendVdrStatusXml (struct stat *statbuf) {
   sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), -1);
 
 #endif
+  return OKAY;
+}
+
+int cHttpResource::sendYtBookmarkletJs() {
+  *(mLog->log()) << DEBUGPREFIX
+		 << " sendYtBookmarkletJs" << endl;
+
+  vector<sQueryAVP> avps;
+  parseQueryLine(&avps);
+  string store_str = "";
+  bool store= true;
+
+  if (getQueryAttributeValue(&avps, "store", store_str) == OKAY) {
+    if (store_str.compare("false") == 0) {
+	store= false;
+	*(mLog->log()) << DEBUGPREFIX
+		   << " store= false "  << endl;
+    }
+  }
+
+  mResponseMessage = new string();
+  *mResponseMessage = "";
+  mResponseMessagePos = 0;
+  mContentType = MEMBLOCK;
+
+  mConnState = SERVING;
+
+  stringstream own_host ;
+  own_host << "http://" 
+	 << getOwnIp(mFd)
+	 << ":" << mServerPort;
+
+  //  string own_host = "http://"+getOwnIp(mFd)+ ":" + str;
+
+  *(mLog->log()) << " Ownhost= " << own_host.str() << endl;
+
+
+  *mResponseMessage = "function get_query_var (querystring, name) {  "
+    "var filter = new RegExp( name + \"=([^&]+)\" ); "
+    "var res = null;"
+    "if (querystring != null)"
+    " res  = querystring.match(filter);"
+    " if (res != null) return unescape( res[1] );"
+    " else return \"\";"
+    "}"
+    "var vid_id= get_query_var(document.URL, \"v\");"
+
+    "var iframe = document.createElement(\"iframe\");"
+    "iframe.setAttribute(\"name\",\"myiframe\");"
+    "iframe.setAttribute(\"frameborder\",\"0\");"
+    "iframe.setAttribute(\"scrolling\",\"no\");"
+    "iframe.setAttribute(\"src\",\"about:blank\");"
+    "iframe.setAttribute(\"width\",\"1\");"
+    "iframe.setAttribute(\"height\",\"1\");"
+    "document.body.appendChild(iframe);"
+
+    "var form = document.createElement(\"form\");"
+    "form.setAttribute(\"method\", \"POST\");"
+    "form.setAttribute(\"target\", \"myiframe\");"
+    "form.setAttribute(\"action\", \"" + own_host.str() + "/setYtUrl?line=\"+vid_id"+((!store)?"+\"&store=false\"":"")+");"
+    "var hiddenField = document.createElement(\"input\");"
+    "form.appendChild(hiddenField);"
+    "hiddenField.setAttribute(\"type\", \"hidden\");"
+    "hiddenField.setAttribute(\"name\", \"line\");"
+    "hiddenField.setAttribute(\"value\", vid_id);"
+    "document.body.appendChild(form);"
+    "form.submit();"
+    ;
+
+  sendHeaders(200, "OK", NULL, "text/javascript", mResponseMessage->size(), -1);
+  return OKAY;
+}
+
+int cHttpResource::sendBmlInstHtml() {
+  *(mLog->log()) << DEBUGPREFIX
+		 << " sendBmlInstHtml" << endl;
+
+  mResponseMessage = new string();
+  *mResponseMessage = "";
+  mResponseMessagePos = 0;
+  mContentType = MEMBLOCK;
+
+  mConnState = SERVING;
+
+  stringstream own_host ;
+  own_host << "http://" 
+	 << getOwnIp(mFd)
+	 << ":" << mServerPort;
+
+  *(mLog->log()) << " Ownhost= " << own_host << endl;
+
+  *mResponseMessage = "<html><head>"
+    "<title>SmartTVWeb Bookmarklets</title>"
+    "</head><body>"
+    "<br>"
+    "<h2>Bookmarklet for collecting YouTube Pages</h2>"
+    "<hr width=\"80%\">"
+    "<br>"
+    "<h3>Installation</h3>"
+    "Drag the link below to your Bookmarks toolbar"
+    "<p>or</p>"
+    "<p>Right click and select &#8220;Bookmark This Link&#8221;</p>"
+    "<p><a href='javascript:document.body.appendChild(document.createElement(&quot;script&quot;)).src=&quot;"+own_host.str()+"/yt-bookmarklet.js&quot;;void(0)'>YT SaveNPlay</a>: Save the video and also Play it.</p>"
+    "<p><a href='javascript:document.body.appendChild(document.createElement(&quot;script&quot;)).src=&quot;"+own_host.str()+"/yt-bookmarklet.js?store=false&quot;;void(0)'>YT Play</a>: Play the video without saving.</p>"
+    "<br>"
+    "<hr width=\"80%\">"
+    "<h3>Usage</h3>"
+    "<p>Browse to your favorite YouTube page and click the bookmark to the bookmarklet (link above). The YouTube video is then provided to the VDR smarttvweb plugin, stored there and pushed to the TV screen for immediate playback. Tested with Firefox.</p>"
+    "<br>"
+    "<hr width=\"80%\">"
+    "<p>Have fun...<br></p>"
+    "</body>";
+
+  sendHeaders(200, "OK", NULL, "text/html", mResponseMessage->size(), -1);
   return OKAY;
 }
 
@@ -1850,7 +2150,9 @@ int cHttpResource::receiveResume() {
   string resume_str; 
 
   if (getQueryAttributeValue(&avps, "guid", guid) == OKAY){
-    entry.mFilename = guid;
+    //    entry.mFilename = guid;
+    entry.mFilename = cUrlEncode::doUrlSaveDecode(guid);
+    
     *(mLog->log())<< DEBUGPREFIX
 		  << " Found a id Parameter: " << guid
 		  << endl;
@@ -1911,7 +2213,9 @@ int cHttpResource::sendResumeXml () {
   string guid; 
 
   if (getQueryAttributeValue(&avps, "guid", guid) == OKAY){
-    entry.mFilename = guid;
+    //    entry.mFilename = guid;
+    entry.mFilename = cUrlEncode::doUrlSaveDecode(guid);
+
     *(mLog->log())<< DEBUGPREFIX
 		  << " Found a id Parameter: " << guid
 		  << endl;
@@ -1948,12 +2252,14 @@ int cHttpResource::sendResumeXml () {
 
 
   sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), -1);
+#endif
 
   return OKAY;
-#endif
 }
 
 int cHttpResource::deleteRecording() {
+#ifndef STANDALONE
+
   vector<sQueryAVP> avps;
   parseQueryLine(&avps);
   string id = "";
@@ -1991,6 +2297,7 @@ int cHttpResource::deleteRecording() {
 		  << " Deleted."
 		  << endl;
   sendHeaders(200, "OK", NULL, NULL, -1, -1);
+  #endif
   return OKAY;
 }
 
@@ -2211,6 +2518,7 @@ int cHttpResource::sendRecordingsXml(struct stat *statbuf) {
 
 bool cHttpResource::isTimeRequest(struct stat *statbuf) {
 
+#ifndef STANDALONE
   vector<sQueryAVP> avps;
   parseQueryLine(&avps);
   string time_str = "";
@@ -2394,6 +2702,9 @@ bool cHttpResource::isTimeRequest(struct stat *statbuf) {
     sendHeaders(200, "OK", NULL, "video/mpeg", mRemLength, -1);
   }  
   return true;
+#else
+  return false;
+#endif
 }
 
 int cHttpResource::sendVdrDir(struct stat *statbuf) {
@@ -2826,9 +3137,9 @@ int cHttpResource::parseHttpHeaderLine (string line) {
 void cHttpResource::checkRecording() {
   // sets mIsRecording to true when the recording is still on-going
   mIsRecording = false;
-  time_t now = time(NULL);
 
 #ifndef STANDALONE
+  time_t now = time(NULL);
 
   //  cRecordings* recordings = mFactory->getRecordings();
   cRecordings* recordings = &Recordings;
