@@ -27,6 +27,7 @@
 #include <cstring>
 #include <pthread.h>
 #include "log.h"
+#include "httpresource_base.h"
 
 using namespace std;
 
@@ -71,7 +72,7 @@ sFileEntry(string n, string l, int s) : sName(n), sPath(l), sStart(s) {
 class SmartTvServer;
 class cResumeEntry;
 
-class cHttpResource {
+class cHttpResource : public cHttpResourceBase {
 
  public:
   cHttpResource(int, int, int, SmartTvServer*);
@@ -79,20 +80,20 @@ class cHttpResource {
 
   int handleRead();
   int handleWrite();
-
   int checkStatus();
 
   int readFromClient();
+
   void threadLoop();
   int run();
 
  private:
-  SmartTvServer* mFactory;
+  //  SmartTvServer* mFactory;
   Log* mLog;
 
-  int mServerPort;
-  int mFd;
-  int mReqId;
+  //  int mServerPort;
+  //  int mFd;
+  //  int mReqId;
 
   time_t mConnTime;
   int mHandleReadCount;
@@ -146,14 +147,21 @@ class cHttpResource {
   int sendChannelsXml (struct stat *statbuf);
   int sendResumeXml ();
   int sendVdrStatusXml (struct stat *statbuf);
-  int sendEpgXml (struct stat *statbuf);
-  int sendMediaXml (struct stat *statbuf);
+  int sendYtBookmarkletJs();
+  int sendBmlInstHtml();
 
+  int sendEpgXml (struct stat *statbuf);
+  int sendUrlsXml ();
+  int sendMediaXml (struct stat *statbuf);
+  
+  void handleClients();
+  
   int sendManifest (struct stat *statbuf, bool is_hls = true);
 
   int receiveResume();
   int deleteRecording();
 
+  int receiveYtUrl();
   void writeM3U8(double duration, int bitrate, float seg_dur, int end_seg);
   void writeMPD(double duration, int bitrate, float seg_dur, int end_seg);
 

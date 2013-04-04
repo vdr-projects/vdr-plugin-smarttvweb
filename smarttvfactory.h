@@ -28,9 +28,13 @@
 #include <cstring>
 #include <vector>
 #include <list>
-#include "httpresource.h"
+#include <ctime>
+#include <sys/select.h>
+//#include "httpresource.h"
+#include "httpresource_base.h"
 #include "log.h"
 #include "stvw_cfg.h"
+#include "mngurls.h"
 
 #ifndef STANDALONE
 #include <vdr/recording.h>
@@ -38,8 +42,15 @@
 
 using namespace std;
 
-#define PLG_VERSION "0.9.6"
-#define SERVER "SmartTvWeb/0.9.6" 
+#define PLG_VERSION "0.9.7"
+#define SERVER "SmartTvWeb/0.9.7" 
+
+struct sClientEntry {
+  string mac;
+  string ip;
+  time_t lastKeepAlive;
+sClientEntry(string m, string i, time_t t ): mac(m), ip(i), lastKeepAlive(t) {};
+};
 
 class SmartTvServer {
   public:
@@ -60,7 +71,21 @@ class SmartTvServer {
     string getConfigDir() { return mConfigDir; };
     cSmartTvConfig* getConfig() { return mConfig; };
 
+    void updateTvClient(string ip, string mac, time_t upd);
+    void removeTvClient(string ip, string mac, time_t upd);
+
+    void storeYtVideoId(string);
+
+    cManageUrls* getUrlsObj();
+
+    void pushYtVideoId(string, bool);
+    void pushYtVideoIdToClient(string vid_id, string peer, bool);
+
  private:
+    void addHttpResource(int fd, cHttpResourceBase* resource);
+    int connectToClient(string peer);
+    void setNonBlocking(int fd);
+
     pthread_t mThreadId;
     int mRequestCount;
     bool isInited;
@@ -70,14 +95,20 @@ class SmartTvServer {
     int mHasMinBufferTime;
     int mLiveChannels;
 
-    vector<cHttpResource*> clientList;
+    vector<cHttpResourceBase*> clientList;
+    vector<sClientEntry*> mConTvClients;
+
     int mActiveSessions;
+    int mHttpClients;
+
     string mConfigDir;
     cSmartTvConfig *mConfig;
 
     int mMaxFd;
     fd_set mReadState;
     fd_set mWriteState;
+
+    cManageUrls* mManagedUrls;
 };
 
 

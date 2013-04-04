@@ -48,6 +48,8 @@
 
 
 #include "smarttvfactory.h"
+#include "httpresource.h"
+#include "httpclient.h"
 
 #ifndef STANDALONE
 #define PORT 8000
@@ -72,7 +74,8 @@ void SmartTvServerStartThread(void* arg) {
 
 SmartTvServer::SmartTvServer(): mRequestCount(0), isInited(false), serverPort(PORT), mServerFd(-1),
   mSegmentDuration(10), mHasMinBufferTime(40),  mLiveChannels(20), 
-  clientList(), mActiveSessions(0), mConfig(NULL) {
+  clientList(), mConTvClients(), mActiveSessions(0), mHttpClients(0), mConfig(NULL), mMaxFd(0),
+  mManagedUrls(NULL){
 }
 
 
@@ -102,6 +105,138 @@ void SmartTvServer::cleanUp() {
   mLog.shutdown();
 }
 
+void SmartTvServer::setNonBlocking(int fd) {
+  int oldflags = fcntl(fd, F_GETFL, 0);
+  oldflags |= O_NONBLOCK;
+  fcntl(fd, F_SETFL, oldflags);
+}
+
+void SmartTvServer::updateTvClient(string ip, string mac, time_t upd) {
+
+  bool found = false;
+  for (uint i = 0; i < mConTvClients.size(); i++) {
+    if (mConTvClients[i]->mac ==  mac) {
+      *(mLog.log()) << "SmartTvServer::updateTvClient: Found Entry for Mac= " << mac
+		    << endl;
+      found = true;
+      mConTvClients[i]->ip = ip;
+      mConTvClients[i]->lastKeepAlive = upd;
+      break;
+    }
+  }
+  if (found == false) {
+      *(mLog.log()) << "SmartTvServer::updateTvClient: Append Entry for Mac= " << mac
+		    << endl;
+    sClientEntry * entry = new sClientEntry(mac, ip, upd);
+    mConTvClients.push_back(entry);
+  }
+};
+
+void SmartTvServer::removeTvClient(string ip, string mac, time_t upd) {
+  // remove client with mac from list
+  bool found = false;
+  vector<sClientEntry*>::iterator iter;
+  for (iter = mConTvClients.begin() ; iter != mConTvClients.end(); ++iter)
+    if ((*iter)->mac == mac) {
+      found = true;
+      *(mLog.log()) << "SmartTvServer::removeTvClient: Found Entry for Mac= " << mac
+		    << endl;
+      iter = mConTvClients.erase(iter);
+      break;
+    }
+      
+  if (!found ) {
+    *(mLog.log()) << "SmartTvServer::removeTvClient: No entry for Mac= " << mac
+		  << " found"
+		  << endl;
+  }
+}
+
+cManageUrls* SmartTvServer::getUrlsObj() { 
+  if (mManagedUrls == NULL)
+    mManagedUrls = new cManageUrls(mConfigDir);
+
+  return mManagedUrls;
+};
+
+void SmartTvServer::storeYtVideoId(string guid) {
+  if (mManagedUrls == NULL)
+    mManagedUrls = new cManageUrls(mConfigDir);
+
+  mManagedUrls->appendEntry("YT", guid);
+}
+
+void SmartTvServer::pushYtVideoId(string vid_id, bool store) {
+  for (uint i = 0; i < mConTvClients.size(); i ++) {
+    if ((mConTvClients[i]->ip).compare("") != 0)
+      pushYtVideoIdToClient(vid_id, mConTvClients[i]->ip, store);
+  }
+}
+
+int SmartTvServer::connectToClient(string peer) {
+  *(mLog.log()) << " SmartTvServer::connectToClient: client= " << peer << endl;
+
+  int cfd; 
+  struct sockaddr_in server; 
+  cfd = socket(AF_INET, SOCK_STREAM, 0); 
+
+  if (cfd <0) { 
+    *(mLog.log()) << "Error: Cannot create client socket" << endl;
+    return -1; 
+  }
+  
+  memset((char *) &server, 0, sizeof(server));
+  server.sin_family = AF_INET; 
+  server.sin_port = htons(80);
+  server.sin_addr.s_addr =inet_addr(peer.c_str());
+
+  setNonBlocking(cfd);
+
+  if (connect(cfd, (const struct sockaddr *) &server, sizeof(struct sockaddr_in)) <0) { 
+    if (errno != EINPROGRESS) {
+      *(mLog.log()) << "Error while connecting" << endl; 
+      return -1; 
+    }
+    else
+      *(mLog.log()) << "Connecting" << endl; 
+  }
+  return cfd;
+}
+
+
+void SmartTvServer::addHttpResource(int rfd, cHttpResourceBase* resource) {
+
+  if (clientList.size() < (rfd+1)) {
+    clientList.resize(rfd+1, NULL); // Check.
+  }
+  if (clientList[rfd] == NULL) {
+    FD_SET(rfd, &mReadState);       
+    FD_SET(rfd, &mWriteState);      
+    clientList[rfd] = resource;
+
+    mHttpClients++;
+    if (rfd > mMaxFd) {
+      mMaxFd = rfd;
+    }    
+    mActiveSessions ++;
+  }
+  else {
+    *(mLog.log()) << "Error: clientList idx in use" << endl; 
+    // ERROR: 
+  }
+}
+
+void SmartTvServer::pushYtVideoIdToClient(string vid_id, string peer, bool store) {
+  *(mLog.log()) << " SmartTvServer::pushYtVideoIdToClient vid_id= " << vid_id 
+		<< " client= " << peer << endl;
+  
+  int cfd=  connectToClient(peer);
+  if (cfd < 0)
+    return;
+  addHttpResource(cfd, new cHttpYtPushClient(cfd, mHttpClients, serverPort, this, peer, vid_id, store));
+
+}
+
 int SmartTvServer::runAsThread() {
   int res = pthread_create(&mThreadId, NULL, (void*(*)(void*))SmartTvServerStartThread, (void *)this);
   if (res != 0) {
@@ -129,7 +264,7 @@ void SmartTvServer::loop() {
   int ret = 0;
   struct timeval timeout;
 
-  int maxfd;
+  //  int maxfd;
 
   fd_set read_set;
   fd_set write_set;
@@ -141,7 +276,7 @@ void SmartTvServer::loop() {
   FD_ZERO(&mWriteState);
 
   FD_SET(mServerFd, &mReadState);
-  maxfd = mServerFd;
+  mMaxFd = mServerFd;
 
   *(mLog.log()) << "mServerFd= " << mServerFd << endl;
 
@@ -179,7 +314,7 @@ void SmartTvServer::loop() {
     timeout.tv_sec = 5;
     timeout.tv_usec = 0;
 
-    ret = select(maxfd + 1, &read_set, &write_set, NULL, &timeout);
+    ret = select(mMaxFd + 1, &read_set, &write_set, NULL, &timeout);
     
     if (ret == 0) {
       // timeout: Check for dead TCP connections
@@ -217,8 +352,8 @@ void SmartTvServer::loop() {
 	FD_SET(rfd, &mReadState);       
 	FD_SET(rfd, &mWriteState);      
 
-	if (rfd > maxfd) {
-	  maxfd = rfd;
+	if (rfd > mMaxFd) {
+	  mMaxFd = rfd;
 	}
 
 	if (clientList.size() < (rfd+1)) {
