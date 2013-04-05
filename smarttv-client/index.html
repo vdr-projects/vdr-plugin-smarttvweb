@@ -16,6 +16,7 @@
         <script type="text/javascript" language="javascript" src="$MANAGER_WIDGET/Common/Util/Include.js"></script>
         <script type="text/javascript" language="javascript" src="$MANAGER_WIDGET/Common/Util/Language.js"></script>
 		<script type="text/javascript" language="javascript" src="$MANAGER_WIDGET/Common/Plugin/Define.js"></script>
+		<script type="text/javascript" language="javascript" src="$MANAGER_WIDGET/Common/webapi/1.0/webapis.js"></script>
         
         <!-- Widget code -->
         <script language="javascript" type="text/javascript" src="Javascript/Main.js"></script>
@@ -23,7 +24,7 @@
         <script language="javascript" type="text/javascript" src="Javascript/Data.js"></script>
         <script language="javascript" type="text/javascript" src="Javascript/Player.js"></script>
         <script language="javascript" type="text/javascript" src="Javascript/Display.js"></script>
-        <script language="javascript" type="text/javascript" src="Javascript/Audio.js"></script>
+<!--        <script language="javascript" type="text/javascript" src="Javascript/Audio.js"></script>-->
         <script language="javascript" type="text/javascript" src="Javascript/Network.js"></script>
         <script language="javascript" type="text/javascript" src="Javascript/Config.js"></script>
         <script language="javascript" type="text/javascript" src="Javascript/Helpbar.js"></script>
@@ -35,13 +36,16 @@
         <script language="javascript" type="text/javascript" src="Javascript/DirectAccess.js"></script>
         <script language="javascript" type="text/javascript" src="Javascript/Timers.js"></script>
         <script language="javascript" type="text/javascript" src="Javascript/Lang.js"></script>
+        <script language="javascript" type="text/javascript" src="Javascript/Urls.js"></script>
+        <script language="javascript" type="text/javascript" src="Javascript/Comm.js"></script>
                 
         <!-- Style sheets -->
         <link rel="stylesheet" href="CSS/Main.css" type="text/css">
 
         <!-- Plugins -->
-        <object id="pluginPlayer" border=0 classid="clsid:SAMSUNG-INFOLINK-PLAYER"></object>
-        <object id="pluginAudio" border=0 classid="clsid:SAMSUNG-INFOLINK-AUDIO"></object>
+<!--        <object id="pluginPlayer" border=0 classid="clsid:SAMSUNG-INFOLINK-PLAYER"></object>		-->
+
+<!--        <object id="pluginAudio" border=0 classid="clsid:SAMSUNG-INFOLINK-AUDIO"></object>-->
         <object id="pluginTime" border=0 classid="clsid:SAMSUNG-INFOLINK-TIME"></object>
         <object id="pluginObjectTVMW" border=0 classid="clsid:SAMSUNG-INFOLINK-TVMW"></object>  
         <object id="pluginObjectVideo" border=0 classid="clsid:SAMSUNG-INFOLINK-VIDEO"></object>      
@@ -51,7 +55,6 @@
         <object id="pluginNetwork" border=0 classid="clsid:SAMSUNG-INFOLINK-NETWORK"></object>
 
         <object id="pluginTaskmgnt" border=0 classid="clsid:SAMSUNG-INFOLINK-TASKMANAGER"></object>
-        <object id="pluginBD" border=0 classid="clsid:SAMSUNG-INFOLINK-FRONTPANEL"></object>
         
         
     </head>
@@ -61,6 +64,7 @@
         <!-- Dummy anchor as focus for key events -->
         <a href='javascript:void(0);' id='anchor' onkeydown='Main.keyDown();'></a>
 
+		<div id="webapiplayer"></div>
         <!-- Layout begins -->
 		<div id="statusPopup"></div>
 		<div id="notify">
@@ -81,7 +85,8 @@
 				<div id="selectItem1">1: Live</div>
 				<div id="selectItem2">2: Recordings</div>
 				<div id="selectItem3">3: Media</div>
-				<div id="selectItem4">4: Options</div>
+				<div id="selectItem4">4: YouTube</div>				
+				<div id="selectItem5">5: Options</div>
 			</div>
 		</div>
 		<div id="optionsScreen">
@@ -169,13 +174,16 @@
 		</div>
 		
 		<div id="infoOverlay">
-			<table style="width: 90%">
-				<tr><th id="infoTitle" align="left" style="padding-bottom:5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+			<table height="100%" width="90%">
+				<tr><th id="infoTitle" align="left">
 				</th></tr>
 				<tr><td id="infoDuration">
 				</td></tr>
-				<tr><td id="infoDesc" style="padding-top: 5px; overflow:hidden; ">
+				<tr><td id="infoDesc">
 				</td></tr>
+				<tr><td id="infoAudio" >
+				</td></tr>
+				
 		</table>
 		</div>
 		<div id="Spinning">

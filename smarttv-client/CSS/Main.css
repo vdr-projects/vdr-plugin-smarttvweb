@@ -24,6 +24,8 @@ body {
     left: 0px; top: 0px;
     width: 960px; height: 540px;
 	background-color: blue;
+	z-index:10;	
+	
 }
 
 #splashStatus {
@@ -41,6 +43,8 @@ body {
     position: absolute;
     left: 0px; top: 0px;
     width: 960px; height: 540px;
+    z-index:10;	
+    
     background: url("../Images/selectScreen-bg.png");
 	background: radial-gradient(ellipse at 80% 80%, #c5deea 0%,#8abbd7 31%,#066dab 100%);
     background: -webkit-radial-gradient(80% 80%, ellipse cover, rgba(197,222,234,1) 0%,rgba(138,187,215,1) 31%,rgba(6,109,171,1) 100%);
@@ -74,12 +78,18 @@ body {
 
 /*    background-size: 100%;
 */
+#webapiplayer {
+    position: absolute;
+    left: 0px; top: 0px;
+    width: 960px; height: 540px;
+}
 #optionsScreen {
     position: absolute;
     left: 0px; top: 0px;
     width: 960px; height: 540px;
    	background: url("../Images/selectScreen-bg.png");
     background: -webkit-radial-gradient(80% 80%, ellipse cover, rgba(197,222,234,1) 0%,rgba(138,187,215,1) 31%,rgba(6,109,171,1) 100%);
+	z-index:10;	
 }
 
 #optionsView {
@@ -100,7 +110,8 @@ body {
 
 #statusPopup {
     position: absolute;
-    left: 80%; top: 10px;
+	display: none;
+	left: 80%; top: 10px;
     width: 10%; height: 6%;
 	-webkit-border-radius: 1em;
 	-webkit-box-shadow:3px 3px 7px 4px rgba(0,0,0, 0.5);
@@ -112,6 +123,7 @@ body {
     padding-left:20px;
     padding-right:20px;
     background-color: rgba(0,0,0,0.5);
+   	z-index:20;	
 }
 
 #notify {
@@ -129,7 +141,7 @@ body {
     padding-left:20px;
     padding-right:20px;
     background-color: rgba(0,0,0,0.5);
-	z-index:20;
+	z-index:50;
 	overflow:hidden;
 	text-overflow: ellipsis;
 	white-space : nowrap;
@@ -140,9 +152,9 @@ body {
     position: absolute;
 	display: none;
 	left: 0px; top: 0px;
-    width: 960px; height: 30%;
+    width: 960px; height: 162px;
     border-style:solid;
-	z-index:10;	
+	z-index:50;	
 	padding-top:20px;
     padding-left:20px;
     padding-right:20px;
@@ -151,6 +163,36 @@ body {
 	background-color: -webkit-linear-gradient(-45deg, rgba(167,207,223,1) 0%,rgba(35,83,138,1) 100%);
 }
 
+#infoTitle{
+    position: absolute;
+	left: 2px; top: 0px;
+    width: 960px; height: 26px;	
+    overflow:hidden; 
+    text-overflow:ellipsis; 
+    white-space:nowrap;
+}
+
+#infoDuration{
+    position: absolute;
+	left: 2px; top: 26px;
+    width: 960px; height: 21px;	
+    font-size:14px;
+}
+
+#infoDesc{
+    position: absolute;
+	left: 2px; top: 47px;
+    width: 960px; height: 90px;	
+    font-size:14px;
+    overflow:hidden; 
+}
+
+#infoAudio {
+    position: absolute;
+	left: 2px; top: 141px;
+    width: 960px; height: 21px;	
+    font-size:14px;
+}
 #popup{
     position: absolute;
 	display: none;
@@ -159,7 +201,7 @@ body {
     border-style:solid;
 	border-width:2px;  
 	-webkit-border-radius: 7px;
-	z-index:10;
+	z-index:50;
 	
 	overflow-y: scroll;
 	padding-top:20px;
@@ -173,6 +215,8 @@ body {
 #main {
 	display: none;
 	position: absolute;
+	z-index:10;	
+	
 	left: 0px; top: 0px;
     width: 960px; height: 540px;
     background: rgba(0, 0, 139, 0.5);
@@ -188,7 +232,7 @@ body {
     background-repeat:repeat-x;
     padding-top:3px;
     padding-left:10px;
-    z-index:10;
+    z-index:15;
 	}
 
 #logo div {
@@ -374,7 +418,7 @@ body {
     background-repeat:repeat-x;
    	background-color: black;
    	background-color: rgba(0, 0, 0, 0.5);
-	z-index:20;
+	z-index:50;
 }
 
 #olProgressBarBG {
@@ -465,6 +509,6 @@ body {
     background-repeat:no-repeat;
     opacity:0.5;
 	display:none;  
-	z-index:20;
+	z-index:60;
 }
 

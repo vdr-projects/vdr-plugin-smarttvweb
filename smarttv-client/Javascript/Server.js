@@ -7,6 +7,7 @@ var Server = {
     XHRObj : null
 };
 
+
 Server.init = function()
 {
     var success = true;   
@@ -90,8 +91,8 @@ Server.updateVdrStatus = function (){
 		type : "GET",
 		success : function(data, status, XHR){
 			var free = $(data).find('free').text() / 1024.0;
-			var used = $(data).find('used').text() / 1024.0;
-			var percent = $(data).find('percent').text();
+//			var used = $(data).find('used').text() / 1024.0;
+//			var percent = $(data).find('percent').text();
 	
 			var unit = "GB";
 			var free_str = free.toFixed(2);
@@ -107,7 +108,7 @@ Server.updateVdrStatus = function (){
 			Main.log("VdrStatus: Error");
 			}
 	});
-}
+};
 
 
 Server.getResume = function (guid) {
@@ -178,4 +179,46 @@ Server.deleteRecording = function(guid) {
 			Notify.showNotify("Error", true);
 		}
 	});
+};
+
+
+Server.notifyServer = function (state) {
+	Main.log("Server.notifyServer state="+state +"&mac=" + Network.ownMac + "&ip=" + Network.ownIp);
+	$.ajax({
+		url: Config.serverUrl + "/clients?state="+state +"&mac=" + Network.ownMac + "&ip=" + Network.ownIp,
+		type : "GET",
+		success : function(data, status, XHR ) {
+			Main.log("Config.notifyServer OK" ) ;
+		},
+		error : function (XHR, status, error) {
+			Main.log("Config.notifyServer failed" ) ;
+		}
+	});	
+};
+
+var HeartbeatHandler = {
+	timeoutObj : null,
+	isActive : false
+};
+
+
+HeartbeatHandler.start = function(){
+	if (this.isActive ==true)
+		window.clearTimeout(this.timeoutObj);
+		
+	this.isActive = true;
+	HeartbeatHandler.update();
+};
+
+HeartbeatHandler.update = function() {
+	Server.notifyServer("running");
+	this.timeoutObj = window.setTimeout(function() {HeartbeatHandler.update(); }, (60*1000)); // once every 1min
+};
+
+HeartbeatHandler.stop = function(){
+	if (this.isActive == false )
+		return;
+
+	window.clearTimeout(this.timeoutObj);
+	this.isActive = false;
 };

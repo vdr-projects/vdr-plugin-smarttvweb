@@ -51,7 +51,8 @@ var Main = {
     eLIVE : 1, // State Live Select Screen / Video Playing 
     eREC : 2, // State Recording Select Screen / Video Playing
     eMED : 3, // State Media Select Screen / Video Playing
-    eOPT : 4, // Options
+    eURLS : 4, // State Urls
+    eOPT : 5, // Options
     
     defKeyHndl : null,
     selectMenuKeyHndl : null,
@@ -128,8 +129,7 @@ Main.init = function () {
 	Main.log("Main.init()");
 	
 	Buttons.init();
-    if ( Player.init() && Server.init() && Audio.init()) {
-    	Display.setVolume( Audio.getVolume() );
+    if ( Player.init() && Server.init() ) {
 
         // Start retrieving data from server
         Server.dataReceivedCallback = function() {
@@ -146,6 +146,14 @@ Main.init = function () {
             }
         };
 
+        UrlsFetcher.dataReceivedCallback = function() {
+			/* Use video information when it has arrived */
+        	Display.setVideoList(Main.selectedVideo, Main.selectedVideo); 
+        	Spinner.hide();
+            Display.show();
+        };
+        
+        
         // Enable key event processing
         this.enableKeys();
 	
@@ -155,10 +163,15 @@ Main.init = function () {
     }
 
 	ClockHandler.start("#selectNow");
+	HeartbeatHandler.start();
+	
 	Server.updateVdrStatus();
-
+//	Server.notifyServer("started");
+	
 	DirectAccess.init();
 	Config.getWidgetVersion();
+	Comm.init();
+
 //	DirectAccess.show();
 //	Timers.init();
 	//	Display.initOlForRecordings();
@@ -207,11 +220,18 @@ Main.logToServer = function (msg) {
 */
 };
 
-Main.onUnload = function()
-{
+Main.onUnload = function() {
+	Server.notifyServer("stopped");
     Player.deinit();
 };
 
+Main.testUrls = function () {
+	Main.log("################## Main.testUrls");
+	Spinner.show();
+	UrlsFetcher.autoplay = "6927QNxye6k";
+	UrlsFetcher.appendGuid("6927QNxye6k");
+
+};
 
 Main.changeState = function (state) {
 	Main.log("change state: OldState= " + this.state + " NewState= " + state);
@@ -232,50 +252,53 @@ Main.changeState = function (state) {
 		Main.log ("old Select= " + Main.selectMenuKeyHndl.select);
 		Display.resetSelectItems(old_state);
         
-//		document.getElementById("selectScreen").style.display="block";
 		$("#selectScreen").show();
 	
 		ClockHandler.start("#selectNow");
 		Display.hide();
 		Data.reset ();
+		//TODO: Should reset progress bar as well
 		Display.resetVideoList();	
 		Display.resetDescription ();
 		
 		break;
 	case Main.eLIVE:
-//		document.getElementById("selectScreen").style.display="none";
 		$("#selectScreen").hide();
 		ClockHandler.start("#logoNow");
 		Display.show();
 		Main.selectedVideo = 0;
-//		Data.reset ();
 		Main.liveSelected();
 		break;
 	case Main.eREC:
-//		document.getElementById("selectScreen").style.display="none";
 		$("#selectScreen").hide();
 		ClockHandler.start("#logoNow");
 		Display.show();
 		Main.selectedVideo = 0;
-//		Data.reset ();
 		Main.recordingsSelected();
 		break;
 	case Main.eMED:
-//		document.getElementById("selectScreen").style.display="none";
 		$("#selectScreen").hide();
 		ClockHandler.start("#logoNow");
 		Display.show();
 		Main.selectedVideo = 0;
-//		Data.reset ();
 		Main.mediaSelected();
 		break;
+	case Main.eURLS:
+		$("#selectScreen").hide();
+		ClockHandler.start("#logoNow");
+		Display.show();
+		Main.selectedVideo = 0;
+		Main.urlsSelected();
+
+//		window.setTimeout(function() {Main.testUrls (); }, (5*1000));
+
+		break;
+		
 	case Main.eOPT:
 		// Options
 //    	Options.init();
-//		document.getElementById("selectScreen").style.display="none";
 		$("#selectScreen").hide();
 		Options.show();
-//		document.getElementById("optionsScreen").style.display="block";
 		Main.optionsSelected();
 		break;
 	}
@@ -303,10 +326,6 @@ Main.recordingsSelected = function() {
     };
 
     Server.errorCallback = Main.serverError;
-/*    Server.errorCallback = function (msg) {
-    	Server.errorCallback = Main.serverError;
-    };
-*/
     Server.setSort(true);
 /*    if (Config.format == "") {
         Server.fetchVideoList(Config.serverUrl + "/recordings.xml?model=samsung"); 
@@ -336,10 +355,24 @@ Main.mediaSelected = function() {
     	Display.showPopup(msg);
     	Main.changeState(0);
     };
-//    Player.isLive = false;   
     Server.setSort(true);
     Spinner.show();
     Server.fetchVideoList(Config.serverUrl + "/media.xml"); /* Request video information from server */
+};
+
+Main.urlsSelected = function() {
+	Server.retries = 0;
+    Player.stopCallback = function() {
+    	// 
+    	Display.show();
+    };
+    Server.errorCallback = function (msg) {
+    	Display.showPopup(msg);
+    	Main.changeState(0);
+    };
+    Server.setSort(true);
+    Spinner.show();
+    UrlsFetcher.fetchUrlList();
 };
 
 Main.optionsSelected = function() {
@@ -378,7 +411,7 @@ event = event || window.event;
 		// selectView
         this.selectMenuKeyHndl.handleKeyDown(event);
 		break;
-	case 1: 
+	case Main.eLIVE: 
 		// Live
 		Main.log("Live - Main.keyDown PlayerState= " + Player.getState());
 	    if(Player.getState() == Player.STOPPED) {
@@ -391,8 +424,9 @@ event = event || window.event;
 	    };
 
 		break;
-	case 2: 
-	case 3:
+	case Main.eREC: 
+	case Main.eMED:
+	case Main.eURLS:
 		// recordings
 //		Main.log("Recordings - Main.keyDown PlayerState= " + Player.getState());
 	    if(Player.getState() == Player.STOPPED) {
@@ -405,7 +439,7 @@ event = event || window.event;
 	    };
 
 		break;
-	case 4:
+	case Main.eOPT:
 //		Options.onInput();
 //		Main.log ("ERROR: Wrong State");
 		break;
@@ -447,9 +481,11 @@ Main.playItem = function (url) {
 //		Server.getResume(Player.guid);
 		
     	Main.log(" playItem: now= " + now + " start_time= " + start_time + " dur= " + duration + " (Start + Dur - now)= " + ((start_time + duration) -now));
+    	Main.logToServer(" playItem: now= " + now + " start_time= " + start_time + " dur= " + duration + " (Start + Dur - now)= " + ((start_time + duration) -now));
 
-    	Player.totalTime = Data.getCurrentItem().childs[Main.selectedVideo].payload.dur * 1000;
-	    Player.totalTimeStr =Display.durationString(Player.totalTime / 1000.0);
+		Player.setDuration();
+//thlo    	Player.totalTime = Data.getCurrentItem().childs[Main.selectedVideo].payload.dur * 1000;
+//thlo	    Player.totalTimeStr =Display.durationString(Player.totalTime / 1000.0);
 
 	  //thlo
 	    if (Config.usePdlForRecordings == false) {	
@@ -471,9 +507,10 @@ Main.playItem = function (url) {
     	if ((now - (start_time + duration)) < 0) {
 			// still recording
 			Main.log("*** Still Recording! ***");
+			Main.logToServer("*** Still Recording! ***");
 			Player.isRecording = true; 
 			Player.startTime = start_time;
-			Player.duration = duration;
+			Player.duration = duration; // EpgDuration
 //			document.getElementById("olRecProgressBar").style.display="block";
 			$("#olRecProgressBar").show();
 			Display.updateRecBar(start_time, duration);
@@ -496,12 +533,6 @@ Main.playItem = function (url) {
 			}
 */
 		}
-/*		else {
-			// TODO: Obsolete
-			$("#olRecProgressBar").hide();
-//	    	document.getElementById("olRecProgressBar").display="none";
-		}
-*/
 		Player.setVideoURL( Data.getCurrentItem().childs[Main.selectedVideo].payload.link + url_ext);
 		Player.guid = Data.getCurrentItem().childs[Main.selectedVideo].payload.guid;
 		Main.log("Main.playItem - Player.guid= " +Player.guid);
@@ -528,6 +559,19 @@ Main.playItem = function (url) {
 		Player.guid = "unknown";
 
 		break;
+	case Main.eURLS:
+		Display.hide();
+    	Display.showProgress();
+		Player.mFormat = Player.ePDL;
+    	
+    	Main.log(" playItem: now= " + now + " start_time= " + start_time + " dur= " + duration + " (Start + Dur - now)= " + ((start_time + duration) -now));
+
+		Display.setOlTitle(Data.getCurrentItem().childs[Main.selectedVideo].title);
+
+		Main.log("playItem: guid= " + Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
+		UrlsFetcher.getYtVideoUrl( Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
+
+		break;
 	default:
 		Main.logToServer("ERROR in Main.playItem: should not be here");
 		break;
@@ -536,19 +580,8 @@ Main.playItem = function (url) {
 };
 
 Main.selectPageUp = function() {
-/*	if (this.selectedVideo == 0) {
-		 Main.changeState(0);
-		 return;
-	};
-*/	
-//	Main.previousVideo(Display.LASTIDX + 1);
 	Main.previousVideo(Display.getNumberOfVideoListItems());
 	
-/*	this.selectedVideo = (this.selectedVideo - (Display.LASTIDX + 1));
-    if (this.selectedVideo < 0) {
-    	this.selectedVideo = 0;
-    }	
-*/
     var first_item = this.selectedVideo - Display.currentWindow;
     if (first_item < 0 )
     	first_item = 0;
@@ -558,14 +591,8 @@ Main.selectPageUp = function() {
 };
 
 Main.selectPageDown = function() {
-//	Main.nextVideo (Display.LASTIDX + 1);
 	Main.nextVideo (Display.getNumberOfVideoListItems());
 
-/*	this.selectedVideo = (this.selectedVideo + Display.LASTIDX + 1);    
-    if (this.selectedVideo >= Data.getVideoCount()) {
-    	this.selectedVideo = Data.getVideoCount() -1;
-    }	
-*/
     var first_item = this.selectedVideo - Display.currentWindow;
 
     Main.log("selectPageDown: this.selectedVideo= " + this.selectedVideo + " first_item= " + first_item + " curWind= " + Display.currentWindow);
@@ -783,6 +810,13 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (event) {
 		case tvKey.KEY_ASPECT:
 			Player.toggleAspectRatio();
 			break;
+		case tvKey.KEY_BLUE:
+			Player.nextAudioTrack();
+			break;
+        case tvKey.KEY_YELLOW:
+			Player.nextSubtitleTrack();
+        	break;
+		break;
         default:
             Main.log("Calling Default Key Hanlder");
         	this.defaultKeyHandler.handleDefKeyDown(keyCode);
@@ -939,6 +973,12 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function (event) {
      case tvKey.KEY_ASPECT:
     	 Player.toggleAspectRatio();
     	 break;
+     case tvKey.KEY_BLUE:
+    	 Player.nextAudioTrack();
+		break;
+     case tvKey.KEY_YELLOW:
+			Player.nextSubtitleTrack();
+     	break;
 
      default:
      	this.defaultKeyHandler.handleDefKeyDown(keyCode);
@@ -1103,7 +1143,7 @@ function cSelectMenuKeyHndl (def_hndl) {
 	Main.log(this.handlerName + " created");
 
 	this.select = 1;
-	this.selectMax = 4; // Highest Select Entry
+	this.selectMax = 5; // Highest Select Entry
 };
 
 cSelectMenuKeyHndl.prototype.handleKeyDown = function (event) {
@@ -1133,35 +1173,42 @@ cSelectMenuKeyHndl.prototype.handleKeyDown = function (event) {
     	this.select = 4;
         Main.changeState (this.select);
     	break;
-    	
-        case tvKey.KEY_ENTER:
-        case tvKey.KEY_PLAY:
-        case tvKey.KEY_PANEL_ENTER:
-            Main.log("ENTER");
-    		Main.log ("CurSelect= " + this.select);
 
-            Main.changeState (this.select);
+    case tvKey.KEY_5:
+    	Main.log("KEY_5 pressed");
+    	this.select = 5;
+        Main.changeState (this.select);
+    	break;
 
-        case tvKey.KEY_DOWN:
-            Display.unselectItem(document.getElementById("selectItem"+this.select));
-            if (++this.select > this.selectMax) 	          	
-            	this.select = 1;
-            Display.selectItem(document.getElementById("selectItem"+this.select));
-            Main.log("DOWN " +this.select);
-            break;
+    case tvKey.KEY_ENTER:
+    case tvKey.KEY_PLAY:
+    case tvKey.KEY_PANEL_ENTER:
+    	Main.log("ENTER");
+    	Main.log ("CurSelect= " + this.select);
+
+    	Main.changeState (this.select);
+
+    	break; //thlo: correct?
+    case tvKey.KEY_DOWN:
+    	Display.unselectItem(document.getElementById("selectItem"+this.select));
+    	if (++this.select > this.selectMax) 	          	
+    		this.select = 1;
+    	Display.selectItem(document.getElementById("selectItem"+this.select));
+    	Main.log("DOWN " +this.select);
+    	break;
             
-        case tvKey.KEY_UP:
-            Display.unselectItem(document.getElementById("selectItem"+this.select));
+    case tvKey.KEY_UP:
+    	Display.unselectItem(document.getElementById("selectItem"+this.select));
 
-            if (--this.select < 1)
-            	this.select = this.selectMax;
-            Display.selectItem(document.getElementById("selectItem"+this.select));
+    	if (--this.select < 1)
+    		this.select = this.selectMax;
+    	Display.selectItem(document.getElementById("selectItem"+this.select));
 
-            Main.log("UP "+ this.select);
-            break;            
-        default:
-        	this.defaultKeyHandler.handleDefKeyDown(keyCode);
-            break;
+    	Main.log("UP "+ this.select);
+    	break;            
+    default:
+    	this.defaultKeyHandler.handleDefKeyDown(keyCode);
+    break;
     }
 };
 
@@ -1187,29 +1234,11 @@ cDefaulKeyHndl.prototype.handleDefKeyDown = function (keyCode) {
                 widgetAPI.blockNavigation(event);
         	}
         	else {
+        		Server.notifyServer("stopped");
                 widgetAPI.sendReturnEvent(); 
         		
         	}
             break;
-
-/*        case tvKey.KEY_VOL_UP:
-            Main.log(this.handlerName + "VOL_UP");
-        	Display.showVolume();
-            if(Main.mute == 0)
-                Audio.setRelativeVolume(0);
-            break;
-            
-        case tvKey.KEY_VOL_DOWN:
-            Main.log(this.handlerName + "VOL_DOWN");
-        	Display.showVolume();
-            if(Main.mute == 0)
-                Audio.setRelativeVolume(1);
-            break;      
-        case tvKey.KEY_MUTE:
-            Main.log(this.handlerName + "MUTE");
-            Main.muteMode();
-            break;
-*/
         default:
             Main.log(this.handlerName + "Unhandled key");
             break;

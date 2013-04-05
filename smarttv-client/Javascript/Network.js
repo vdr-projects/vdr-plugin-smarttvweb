@@ -2,6 +2,7 @@ var Network = {
 	plugin : null,
 	ownMac : "",
 	ownGw : "",
+	ownIp : "",
 	isInited: false
 };
 
@@ -12,9 +13,11 @@ Network.init = function () {
         if ((nw_type == 0) ||  (nw_type == 1)) {
     		this.ownMac = this.plugin.GetMAC(nw_type);
     		this.ownGw = this.plugin.GetGateway(nw_type);
+    		this.ownIp = this.plugin.GetIP(nw_type);
         }
         Main.log( "ownMac= " +  this.ownMac);
         Main.log ("ownGw= " + this.ownGw);
+        Main.log ("ownIp= " + this.ownIp);
         this.isInited = true;
     }
     catch (e) {
