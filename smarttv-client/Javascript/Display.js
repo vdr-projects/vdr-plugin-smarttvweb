@@ -100,7 +100,10 @@ Display.GetEpochTime = function() {
 	switch (Config.deviceType) {
 	case 0:
 		// Samsung specific UTC time function
-		res = Display.pluginTime.GetEpochTime();
+//		res = Display.pluginTime.GetEpochTime();
+		var now_millis = ((new Date).getTime());
+		res =   (now_millis /1000.0);
+
 		break;
 	default:
 		var now_millis = ((new Date).getTime());
@@ -273,14 +276,19 @@ Display.tuneLeftSide = function() {
 			res.w2 = "80%";
 			res.w3 = "5%";
 		break;
+		case Main.eREC:
+			res.w1 = "20%";
+			res.w2 = "70%";
+			res.w3 = "5%";
+		break;
 		case Main.eMED:
 			res.w1 = "5%";
 			res.w2 = "85%";
 			res.w3 = "5%";
 		break;
-		case Main.eREC:
-			res.w1 = "20%";
-			res.w2 = "70%";
+		case Main.eURLS:
+			res.w1 = "5%";
+			res.w2 = "85%";
 			res.w3 = "5%";
 		break;
 		default:
@@ -463,6 +471,12 @@ Display.handleDescription =function (selected) {
 //        	msg += "<b>" + title + "</b>";
 			$("#descTitle").text(title);
 		break;
+		case Main.eURLS:
+//        	msg += "<b>" + title + "</b>";
+			$("#descTitle").text(title);
+			$("#descDuration").text("Duration: " + Display.durationString(length) + "h");
+			$("#descDesc").text(desc);
+		break;
 		default:
 			Main.logToServer("ERROR in Display.handleDescription: Should not be here");
 		break;
@@ -588,6 +602,9 @@ Display.getDisplayTitle = function(item) {
 			res.c2 = item.title; 
 		}
 		break;
+	case Main.eURLS:
+		res.c2 = item.title; 
+		break;
 	default:
 		Main.logToServer("ERROR in Display.getDisplayTitle: Shall be in state 1, 2 or 3. State= " + Main.state);
 		break;
@@ -639,8 +656,9 @@ Display.updateOlForLive = function (start_time, duration, now) {
 	
 	Display.setOlTitle(Data.getCurrentItem().childs[Main.selectedVideo].title + " - " +Data.getCurrentItem().childs[Main.selectedVideo].payload.prog);
 	Display.setStartStop (start_time, (start_time + duration));
-	Player.totalTime = Data.getCurrentItem().childs[Main.selectedVideo].payload.dur * 1000;
-	Player.totalTimeStr =Display.durationString(Player.totalTime / 1000.0);
+	Player.setDuration();
+//thlo	Player.totalTime = Data.getCurrentItem().childs[Main.selectedVideo].payload.dur * 1000;
+//thlo	Player.totalTimeStr =Display.durationString(Player.totalTime / 1000.0);
 
 //	var digi = new Date((Data.getCurrentItem().childs[Main.selectedVideo].payload.start*1000));
 //	Main.log (" Date(): StartTime= " + digi.getHours() + ":" + digi.getMinutes() + ":" + digi.getSeconds());
@@ -706,11 +724,13 @@ Display.setTrickplay = function(direction, multiple) {
 
 // Player.OnCurrentPlayTime
 Display.updatePlayTime = function() {
-	$("#olTimeInfo").text(Player.curPlayTimeStr + " / " + Player.totalTimeStr);
+//	$("#olTimeInfo").text(Player.curPlayTimeStr + " / " + Player.totalTimeStr);
+	$("#olTimeInfo").text(Player.curPlayTimeStr + " / " + Player.getDurationStr());
 };
 
 Display.updateProgressBar = function () {
-	var timePercent = (Player.curPlayTime *100)/ Player.totalTime;
+//thlo	var timePercent = (Player.curPlayTime *100)/ Player.totalTime;
+	var timePercent = (Player.curPlayTime *100)/ Player.getDuration();
 	$("#olProgressBar").css("width", (Math.round(timePercent) + "%"));
 };
 
@@ -810,22 +830,48 @@ Display.showInfo = function(selected) {
 		$("#infoTitle").text(title + "\n" + prog);
 		$("#infoDuration").text("Duration: " + Display.durationString(length) + "h Remaining: " + Display.durationString((itm.payload.start + length - now)));
 		$("#infoDesc").text(desc);
+		$("#infoAudio").text("Audio Tracks: " + Player.getNumOfAudioTracks() + " Subtitle Tracks: " + Player.getNumOfSubtitleTracks());
 		break;
 	case Main.eREC:
         d_str = mon + "/" + day + " " + hour + ":" + min;
 		$("#infoTitle").text(title);
 		$("#infoDuration").text(d_str + " Duration: " + Display.durationString(length) + "h");
 		$("#infoDesc").text(desc);
+		$("#infoAudio").text("Audio Tracks: " + Player.getNumOfAudioTracks() + " Subtitle Tracks: " + Player.getNumOfSubtitleTracks());
 		break;
 	case Main.eMED:
 		$("#infoTitle").text(title);
+		$("#infoDuration").text("Duration: " + Display.durationString(Player.getDuration()) );
+		$("#infoAudio").text("Audio Tracks: " + Player.getNumOfAudioTracks() + " Subtitle Tracks: " + Player.getNumOfSubtitleTracks());
+		break;
+	case Main.eURLS:
+		$("#infoTitle").text(title);
+		$("#infoDuration").text("Duration: " + Display.durationString(length) );
+		$("#infoDesc").text(desc);
+
+/*		var tgt_height = $("#infoDesc").height();
+		var temp = desc;
+
+		Main.log("tgt_height= " +tgt_height + " outerHeight= " + $('#infoDesc').outerHeight());
+		if( tgt_height < $('#infoDesc').outerHeight() ) {
+		    while(tgt_height < $('#infoDesc').outerHeight()) {
+		    	$('#infoDesc').text( temp = temp.substr(0, temp.length-1) );
+		    }
+		    $('#infoDesc').text( temp = temp.substr(0, temp.length-3) );
+		    $('#infoDesc').append('...');
+		}
+		*/
+		$("#infoAudio").text("Audio Tracks: " + Player.getNumOfAudioTracks() + " Subtitle Tracks: " + Player.getNumOfSubtitleTracks());
 		break;
 	default:
 		Main.logToServer("ERROR in Display.handleDescription: Should not be here");
 		break;
 	}
 	this.infoOlHandler.show();
-	
+	Main.log("Info title= (" + $("#infoTitle").position().top + ", " + $("#infoTitle").position().left+")");
+	Main.log("Info dur= (" + $("#infoDuration").position().top + ", " + $("#infoDuration").position().left+")");
+	Main.log("Info desc= (" + $("#infoDesc").position().top + ", " + $("#infoDesc").position().left+")");
+	Main.log("Info desc line-height: " + $("#infoDesc").css('line-height'));
 };
 
 Display.handlerShowInfo = function() {
@@ -881,7 +927,8 @@ Display.handlerShowProgress = function() {
 	if (Player.isRecording == true) {
 	    $("#olRecProgressBar").show();
 	    var now = Display.GetEpochTime();
-	    var remaining = Math.round(((Player.startTime + Player.duration) - now) * 100/ Player.duration);
+//thlo	    var remaining = Math.round(((Player.startTime + Player.duration) - now) * 100/ Player.duration);
+	    var remaining = Math.round(((Player.startTime + Player.getDuration()) - now) * 100/ Player.getDuration());
     	var elm = document.getElementById("olRecProgressBar");
 	    elm.style.display="block";
 	    elm.style.width = remaining + "%";
@@ -890,12 +937,14 @@ Display.handlerShowProgress = function() {
 	else
 	    $("#olRecProgressBar").hide();
     
-    var timePercent = (Player.curPlayTime *100)/ Player.totalTime;
+//thlo    var timePercent = (Player.curPlayTime *100)/ Player.totalTime;
+    var timePercent = (Player.curPlayTime *100)/ Player.getDuration();
     
 
     document.getElementById("olProgressBar").style.width = timePercent + "%";
 
-	$("#olTimeInfo").text(Player.curPlayTimeStr + " / " + Player.totalTimeStr);
+//thlo	$("#olTimeInfo").text(Player.curPlayTimeStr + " / " + Player.totalTimeStr);
+	$("#olTimeInfo").text(Player.curPlayTimeStr + " / " + Player.getDurationStr());
 
     var Digital=new Date();
     var hours=Digital.getHours();

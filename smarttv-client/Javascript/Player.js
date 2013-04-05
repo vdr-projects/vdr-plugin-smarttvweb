@@ -1,12 +1,11 @@
 /*
  * This module only works with the Samsung Media Players. For other player objects, the code need to be adjusted
  */
+var mainPlayer;
 
 var Player =
 {
-    plugin : null,
-    pluginBD : null,
-    mFrontPanel : null,
+	AVPlayerObj : null,
     isLive : false,
     isRecording : false,
     mFormat : 0,
@@ -19,7 +18,7 @@ var Player =
     url : "",
     guid : "unknown",
     startTime : 0,
-    duration : 0,
+    duration : 0, // EpgDuration
  
     resumePos : -1,
     state : 0,
@@ -40,6 +39,8 @@ var Player =
     trickPlaySpeed : 1, // Multiple of 2 only.
     trickPlayDirection : 1,
     
+    curAudioTrack : 0,
+    curSubtitleTrack : 0, // Zero means off
     
     STOPPED : 0,
     PLAYING : 1,
@@ -81,8 +82,9 @@ Player.resetAtStop = function () {
 	this.isLive =false;
     this.isRecording = false;
     this.mFormat =Player.eUND;	
-	
-	};
+    this.curAudioTrack =0;
+    this.curSubtitleTrack = 0;
+};
 
 Player.toggleAspectRatio = function () {
 /*	var height = Player.plugin.GetVideoHeight();
@@ -105,24 +107,10 @@ Player.toggleAspectRatio = function () {
 		// it is cropped 16 to 9
 		this.aspectRatio = this.eASP16to9;
 		Notify.showNotify("16 : 9", true);
-		Main.logToServer("Player.toggleAspectRatio: 16 by 9 Now");
+//		Main.logToServer("Player.toggleAspectRatio: 16 by 9 Now");
 		break;
 	}
 	Player.setFullscreen();
-/*	if (this.aspectRatio == this.eASP16to9) {
-		// Do 4 to 3
-		this.plugin.SetDisplayArea(120, 0, 720, 540);
-		// 4/3 = x/540
-		this.aspectRatio = this.eASP4to3;
-		Main.logToServer("Player.toggleAspectRatio: 4 by 3 Now");
-	}
-	else {
-		// do 16 to 9
-		Player.setFullscreen();
-		this.aspectRatio = this.eASP16to9;
-		Main.logToServer("Player.toggleAspectRatio: 16 by 9 Now");
-	}
-	*/
 };
 
 
@@ -133,141 +121,184 @@ Player.setWindow = function() {
 Player.setFullscreen = function() {
 //  this.plugin.SetDisplayArea(0, 0, 960, 540);
 
-	var h = Player.plugin.GetVideoHeight();
-	var w = Player.plugin.GetVideoWidth();
-	Main.logToServer ("Resolution= " + w + " x " + h );
+	var resolution = Player.AVPlayerObj.getVideoResolution().split("|");
+	
+	var w = resolution[0];
+	var h =  resolution[1];
+	Main.logToServer ("Player.setFullscreen: Resolution= " + w + " x " + h );
 	Main.log ("Resolution= " + w + " x " + h );
 
 	switch (this.aspectRatio) {
 	case this.eASP16to9:
-		this.plugin.SetDisplayArea(0, 0, 960, 540);
-		this.plugin.SetCropArea(0, 0, w, h);
-		Main.logToServer("Player.toggleAspectRatio: 16 by 9 Now");
+//		this.plugin.SetDisplayArea(0, 0, 960, 540);
+//		this.plugin.SetCropArea(0, 0, w, h);
+		Player.AVPlayerObj.setDisplayArea({left: 0, top:0, width:960, height:540 });
+		Player.AVPlayerObj.setCropArea(Player.onCropSuccess, Player.onError, {left: 0, top:0, width:w, height:h });
+
+		Main.logToServer("Player.setFullscreen: 16 by 9 Now");
 		break;
 	case this.eASP4to3:
 		// it is 4 to 3. do cropped do 16 to 9
-		this.plugin.SetDisplayArea(120, 0, 720, 540);
-		this.plugin.SetCropArea(0, 0, w, h);
+//		this.plugin.SetDisplayArea(120, 0, 720, 540);
+//		this.plugin.SetCropArea(0, 0, w, h);
+		Player.AVPlayerObj.setDisplayArea({left: 120, top:0, width:720, height:540 });
+		Player.AVPlayerObj.setCropArea(Player.onCropSuccess, Player.onError, {left: 0, top:0, width:w, height:h });
 		// 4/3 = x/540
-		Main.logToServer("Player.toggleAspectRatio: 4 by 3 Now");
+		Main.logToServer("Player.setFullscreen: 4 by 3 Now");
 		break;
 	case this.eASPcrop16to9:
 		// it is cropped 16 to 9
 		var z = Math.ceil(w*w*27 /(h*64));
-		Main.logToServer("Player.toggleAspectRatio: Crop 16 by 9 Now: z= " + z);
-		this.plugin.SetDisplayArea(0, 0, 960, 540);
-		this.plugin.SetCropArea(0, Math.round((h-z)/2), w, z);
+		Main.logToServer("Player.setFullscreen: Crop 16 by 9 Now: z= " + z);
+//		this.plugin.SetDisplayArea(0, 0, 960, 540);
+//		this.plugin.SetCropArea(0, Math.round((h-z)/2), w, z);
+		Player.AVPlayerObj.setDisplayArea({left: 0, top:0, width:960, height:540 });
+		Player.AVPlayerObj.setCropArea(Player.onCropSuccess, Player.onError, {left: 0, top:Math.round((h-z)/2), width:w, height:z });
 		break;
 	}
-/*	if (this.aspectRatio == this.eASP16to9) {
-		// Do 4 to 3
-		this.plugin.SetDisplayArea(120, 0, 720, 540);
-		// 4/3 = x/540
-		this.aspectRatio = this.eASP4to3;
-		Main.logToServer("Player.toggleAspectRatio: 4 by 3 Now");
-	}
-	else {
-		// do 16 to 9
-		Player.setFullscreen();
-		this.aspectRatio = this.eASP16to9;
-		Main.logToServer("Player.toggleAspectRatio: 16 by 9 Now");
-	}
-	*/
 };
+
+//successcallback
+//function onAVPlayObtained(avplay) {             
+Player.onAVPlayObtained = function (avplay) {             
+	Player.AVPlayerObj = avplay;
+	Player.AVPlayerObj.hide();
+	Main.logToServer("onAVPlayObtained: sName= " + avplay.sName+ " sVersion: " + avplay.sVersion);
+	var cb = new Object();
+	cb.containerID = 'webapiplayer';
+	cb.zIndex = 0;
+	cb.bufferingCallback = new Object();
+	cb.bufferingCallback.onbufferingstart= Player.onBufferingStart;
+    cb.bufferingCallback.onbufferingprogress = Player.onBufferingProgress;
+    cb.bufferingCallback.onbufferingcomplete = Player.onBufferingComplete;           
+	
+	cb.playCallback = new Object;
+    cb.playCallback.oncurrentplaytime = Player.OnCurrentPlayTime;
+	cb.playCallback.onresolutionchanged = Player.onResolutionChanged;
+	cb.playCallback.onstreamcompleted = Player.OnRenderingComplete;
+	cb.playCallback.onerror = Player.onError;
+
+	cb.displayRect= new Object();
+	cb.displayRect.top = 0;
+	cb.displayRect.left = 0;
+	cb.displayRect.width = 960;
+	cb.displayRect.height = 540;
+	cb.autoRatio = false;
+
+	try {
+		Player.AVPlayerObj.init(cb);
+	}
+	catch (e) {
+		Main.log("Player: Error during init: " + e.message);
+		Main.logToServer("Player: Error during init: " + e.message);
+	};
+};
+
+//errorcallback
+//function onGetAVPlayError(error) {
+Player.onGetAVPlayError = function (error) {
+  Main.log('Player.onGetAVPlayError: ' + error.message);
+  Main.logToServer('Player.onGetAVPlayError: ' + error.message);
+};
+
 
 Player.init = function() {
     var success = true;
           Main.log("success vale :  " + success);    
     this.state = this.STOPPED;
+
+	try {
+		var custom = webapis.avplay;
+		Main.logToServer("webapis.ver= " + webapis.ver);
+		custom.getAVPlay(Player.onAVPlayObtained, Player.onGetAVPlayError);
+	}
+	catch(exp) {
+		Main.log('Player.init: getAVplay Exception :[' +exp.code + '] ' + exp.message);
+	}             
+
     
-    this.plugin = document.getElementById("pluginPlayer");
-    this.pluginBD = document.getElementById("pluginBD");
-    try {
-        this.pluginBD.DisplayVFD_Show(0101); // Stop    	
-    }
-    catch (e) {
-    	
-    }
-    
-/*    var pl_version = "";
-    try {
-    	pl_version = this.plugin.GetPlayerVersion();
-    }
-    catch (e) {
-    	Main.logToServer("Error while getting player version: " +e);
-    }
-    Main.logToServer("PlayerVersion= " + pl_version);
-*/    
-    if (!this.plugin)
-    {
-          Main.log("success vale this.plugin :  " + success);    
-         success = false;
-    }
     this.skipDuration = Config.skipDuration; // Use Config default also here
-    
-//    var vermsg = this.plugin.GetPlayerVersion();
-//    Main.log ("player plugin version: " +vermsg);
-   
-    this.plugin.OnCurrentPlayTime = 'Player.OnCurrentPlayTime';
-    this.plugin.OnStreamInfoReady = 'Player.OnStreamInfoReady';
-    this.plugin.OnBufferingStart = 'Player.onBufferingStart';
-    this.plugin.OnBufferingProgress = 'Player.onBufferingProgress';
-    this.plugin.OnBufferingComplete = 'Player.onBufferingComplete';           
-    this.plugin.OnConnectionFailed = 'Player.OnConnectionFailed'; // fails to connect to the streaming server
-    this.plugin.OnStreamNotFound = 'Player.OnStreamNotFound'; // 404 file not found   
-    this.plugin.OnNetworkDisconnected = 'Player.OnNetworkDisconnected'; //  when the ethernet is disconnected or the streaming server stops supporting the content in the middle of streaming.
-    this.plugin.OnRenderingComplete = 'Player.OnRenderingComplete';
-    
+       
     Main.log("success= " + success);       
     return success;
 };
 
-Player.deinit = function()
-{
-      Main.log("Player deinit !!! " );       
-      
-      if (this.plugin)
-      {
-            this.plugin.Stop();
-      }
+Player.deinit = function() {
+	Main.log("Player deinit !!! " );       
+
+    if (Player.AVPlayerObj != null) {
+		Player.AVPlayerObj.stop();
+    }
 };
 
+Player.getNumOfAudioTracks = function () {
+	return (Player.AVPlayerObj.totalNumOfAudio != null) ? Player.AVPlayerObj.totalNumOfAudio : "Unknown";
+};
 
-Player.setBuffer = function (){
-	var res = true;
+Player.getNumOfSubtitleTracks = function () {
+	return (Player.AVPlayerObj.totalNumOfSubtitle != null) ? Player.AVPlayerObj.totalNumOfSubtitle : "Unknown";
+};
+
+Player.nextAudioTrack = function () {
+
+	Player.curAudioTrack = (Player.curAudioTrack +1 ) % Player.AVPlayerObj.totalNumOfAudio;
+	
+	try {
+		if (Player.AVPlayerObj.setAudioStreamID(Player.curAudioTrack) == false) {
+			Main.logToServer("Player.nextAudioTrack: Failed to set audio track to " + Player.curAudioTrack);
+			Display.showPopup("Player.nextAudioTrack: Failed to set audio track to " + Player.curAudioTrack);
+		}
+		else {
+			Main.logToServer("Player.nextAudioTrack: Track= " + Player.curAudioTrack);
+			Notify.showNotify("Audio Track " + Player.curAudioTrack, true);
+		}
+		
+	}
+	catch (e) {
+		Main.logToServer("Player.nextAudioTrack: Caught Error: " + e.message);
+		Display.showPopup("Player.nextAudioTrack: Caught Error: " + e.message);
+	}	
+};
+
+Player.nextSubtitleTrack = function () {
+	if (!Player.AVPlayerObj.getSubtitleAvailable() ) {
+		return;
+	}
+
+	Player.curSubtitleTrack = (Player.curSubtitleTrack +1 ) % (Player.AVPlayerObj.totalNumOfSubtitle +1);
+
+	try {
+		if (Player.AVPlayerObj.setSubtitleStreamID(Player.curSubtitleTrack) == false) {
+			Main.logToServer("Player.nextSubtitleTrack: Failed to set subtitle track to " + Player.curSubtitleTrack);
+			Display.showPopup("Player.nextSubtitleTrack: Failed to set subtitle track to " + Player.curSubtitleTrack);
+		}
+		else {
+			Main.logToServer("Player.nextSubtitleTrack: Track= " + Player.curSubtitleTrack);
+			Notify.showNotify("Subtitle " + Player.curSubtitleTrack, true);
+		}
+			
+	}
+	catch (e) {
+		Main.logToServer("Player.nextSubtitleTrack: Caught Error: " + e.message);
+		Display.showPopup("Player.nextSubtitleTrack: Caught Error: " + e.message);
+	}	
+	
+};
+
+Player.getBuffer = function (){
+	var res = {};
 	var buffer_byte = (Config.totalBufferDuration * Config.tgtBufferBitrate) / 8.0;
 	var initial_buf = Config.initialBuffer;
 	if (Player.isLive == true)
 		initial_buf = initial_buf *4;
 	
-	Main.logToServer("Seting TotalBufferSize to " + Math.round(buffer_byte) +"Byte dur= " +Config.totalBufferDuration + "sec init_buffer_perc= " +initial_buf +"% pend_buffer_perc= " +Config.pendingBuffer + "% initialTimeOut= " +Config.initialTimeOut + "sec");
-	
-	//The SetTotalBufferSize function sets the streaming buffer size of media player.
-	res = this.plugin.SetTotalBufferSize(Math.round(buffer_byte));
-	if (res == false) {
-		Display.showPopup("SetTotalBufferSize(" + Math.round(buffer_byte) +") returns error");
-		Main.logToServer("SetTotalBufferSize(" + Math.round(buffer_byte) +") returns error");
-	}
-  
-	// The SetInitialBuffer function sets the first buffering size as percentage of buffer size before starting playback.
-	res = this.plugin.SetInitialBuffer(Math.round( buffer_byte * initial_buf/ 100.0));
-	if (res == false) {
-		Display.showPopup("SetInitialBuffer(" + Math.round(buffer_byte * initial_buf/ 100.0) +") returns error");
-		Main.logToServer("SetInitialBuffer(" + Math.round(buffer_byte * initial_buf/ 100.0) +") returns error");
-	}	
-	//he SetInitialTimeOut function sets the maximum time out value for initial buffering before starting playback.
-	res = this.plugin.SetInitialTimeOut(Config.initialTimeOut);
-	if (res == false) {
-		Display.showPopup("SetInitialTimeOut(" + 2 +") returns error");
-		Main.logToServer("SetInitialTimeOut(" + 2 +") returns error");
-	}
+	res.totalBufferSize = Math.round(buffer_byte);
+	res.initialBufferSize = Math.round( buffer_byte * initial_buf/ 100.0);
+	res.pendingBufferSize = Math.round(buffer_byte * Config.pendingBuffer /100.0); 
 
-	// The SetPendingBuffer function sets the size of a buffer as percentage of total buffer size that media player goes out from buffering status.
-	res = this.plugin.SetPendingBuffer(Math.round(buffer_byte * Config.pendingBuffer /100.0)); 
-	if (res == false) {
-		Display.showPopup("SetPendingBuffer(" + Math.round(buffer_byte * Config.pendingBuffer /100.0) +") returns error");
-		Main.logToServer("SetPendingBuffer(" + Math.round(buffer_byte * Config.pendingBuffer /100.0) +") returns error");
-	}
+	Main.logToServer("Setting totalBufferSize= " + res.totalBufferSize +"Byte initialBufferSize= " +res.initialBufferSize + "byte pendingBufferSize= " +res.pendingBufferSize +"byte " );
+	
+	return res;
 };
 
 Player.setVideoURL = function(url) {
@@ -282,6 +313,19 @@ Player.setCurrentPlayTimeOffset = function(val) {
 //	Display.showPopup("CurrentPlayTimeOffset= " + this.cptOffset);
 };
 
+Player.setDuration = function () {
+	Player.totalTime = Data.getCurrentItem().childs[Main.selectedVideo].payload.dur * 1000;
+	Player.totalTimeStr =Display.durationString(Player.totalTime / 1000.0);
+};
+
+Player.getDuration = function () {
+	return Player.totalTime;
+};
+
+Player.getDurationStr = function () {
+	return Player.totalTimeStr;
+};
+
 Player.playVideo = function(resume_pos) {
 	if (Config.deviceType != 0) {
 		Display.showPopup ("Only supported for TVs");
@@ -291,23 +335,20 @@ Player.playVideo = function(resume_pos) {
         Main.log("No videos to play");
     }
     else {
-    	Player.setFullscreen();
     	Player.bufferState = 0;
     	Display.bufferUpdate();
+    	Player.AVPlayerObj.show();
 
     	Spinner.show();
 
-//    	Player.curPlayTime = 0;
     	Display.updatePlayTime();
 
         Display.status("Play");
     	Display.hideStatus();
-//    	Display.showStatus();
 
     	Display.showProgress();
         this.state = this.PLAYING;
         
-//        Player.setBuffer();
         Player.ResetTrickPlay();
         Player.skipDuration = Config.skipDuration; // reset
 
@@ -315,35 +356,43 @@ Player.playVideo = function(resume_pos) {
 
         this.requestStartTime = new Date().getTime();
         if (Player.isRecording == false) {
-            if (resume_pos == -1) {
-//            	this.plugin.Play( this.url );
-            	this.plugin.InitPlayer(this.url);
-                Player.setBuffer();
-            	this.plugin.StartPlayback();
-            }
-            else {
-            	Main.logToServer ("Player.playVideo: resume_pos= " +resume_pos);
-                Player.setBuffer();
-				this.plugin.ResumePlay(this.url, resume_pos);        
-            }
+        	if (resume_pos == -1) 
+        		resume_pos = 0;
+
+        	try {
+        		//				Player.AVPlayerObj.open (this.url, Player.getBuffer());
+				Player.AVPlayerObj.open (this.url);
+				Player.AVPlayerObj.play(Player.onPlaySuccess, Player.onError, resume_pos);
+			}
+			catch (e) {
+				Main.log("Player.play: Error caugth " + e.msg);
+				Main.logToServer("Player.play: Error caugth " + e.msg);
+				Display.showPopup("Player.play: Error caugth " + e.msg);
+			}
+
         }
         else {
         	if (resume_pos == -1) 
         		resume_pos = 0;
 			Player.setCurrentPlayTimeOffset(resume_pos * 1000.0);
-//			this.plugin.Play( this.url+ "?time=" + resume_pos );
-        	this.plugin.InitPlayer(this.url+ "?time=" + resume_pos );
-            Player.setBuffer();
-        	this.plugin.StartPlayback();
+			try {
+//				Player.AVPlayerObj.open(this.url+ "?time=" + resume_pos, Player.getBuffer() );
+				Player.AVPlayerObj.open(this.url+ "?time=" + resume_pos );
+				Player.AVPlayerObj.play(Player.onPlaySuccess , Player.onError);
+			}
+			catch(e) {
+				Main.log("Player.play: Error: " + e.message);
+				Main.logToServer("Player.play: Error: " + e.message);
+				Display.showPopup("Player.play: Error: " + e.message);
+			};
 			Main.logToServer("Player.play with ?time=" + resume_pos);        
         }
 
         if ((this.mFormat == this.eHLS) && (this.isLive == false)){
         	Notify.showNotify("No Trickplay", true);
         }
-        Audio.plugin.SetSystemMute(false); 
-        pluginObj.setOffScreenSaver();
-        this.pluginBD.DisplayVFD_Show(0100); // Play
+//        Audio.plugin.SetSystemMute(false); 
+//        pluginObj.setOffScreenSaver();
     }
 };
 
@@ -354,21 +403,32 @@ Player.pauseVideo = function() {
     this.state = this.PAUSED;
     Display.status("Pause");
 	Display.showStatus();
-    var res = this.plugin.Pause();
+	var res = false;
+	try {
+		res = Player.AVPlayerObj.pause();
+	}
+	catch(e) {
+		Main.log("Player.pause: Error " + e.message);
+		Main.logToServer("Player.pause: Error " + e.message);
+		Display.showPopup("Player.pause: Error " + e.message);  
+	}
 	if (res == false)
 		Display.showPopup("pause ret= " +  ((res == true) ? "True" : "False"));  
-	pluginObj.setOnScreenSaver();
-    this.pluginBD.DisplayVFD_Show(0102); // Pause
+//	pluginObj.setOnScreenSaver();
 };
 
 Player.stopVideo = function() {
 	if (this.state != this.STOPPED) {
+		
 		this.state = this.STOPPED;
         Display.status("Stop");
-        this.plugin.Stop();
-        
-//        Display.setTime(0);
+    	Player.AVPlayerObj.hide();
 
+		try {
+			Player.AVPlayerObj.stop();
+        }
+		catch (e) {
+		}
         if (this.stopCallback) {
         	Main.log(" StopCallback");
             this.stopCallback();
@@ -378,8 +438,7 @@ Player.stopVideo = function() {
 		Display.resetAtStop();
         
         Spinner.hide();
-		pluginObj.setOnScreenSaver();
-	    this.pluginBD.DisplayVFD_Show(0101); // Stop
+//		pluginObj.setOnScreenSaver();
     }
     else {
         Main.log("Ignoring stop request, not in correct state");
@@ -392,11 +451,15 @@ Player.resumeVideo = function() {
     this.state = this.PLAYING;
     Display.status("Play");
 	Display.hideStatus();
-    var res = this.plugin.Resume();
+	var res = false;
+	try {
+		res = Player.AVPlayerObj.resume();
+	}
+	catch (e){
+	}
 	if (res == false)
 		Display.showPopup("resume ret= " +  ((res == true) ? "True" : "False"));  
-	pluginObj.setOffScreenSaver();
-    this.pluginBD.DisplayVFD_Show(0100); // Play
+//	pluginObj.setOffScreenSaver();
 };
 
 Player.jumpToVideo = function(percent) {
@@ -413,7 +476,7 @@ Player.jumpToVideo = function(percent) {
 
 	//TODO: the totalTime should be set already
 	if (this.totalTime == -1 && this.isLive == false) 
-		this.totalTime = this.plugin.GetDuration();
+		this.totalTime = Player.AVPlayerObj.getDuration();
 	var tgt = Math.round(((percent-2)/100.0) *  this.totalTime/ 1000.0);
 	var res = false;
 
@@ -421,34 +484,26 @@ Player.jumpToVideo = function(percent) {
 
 	if (Player.isRecording == false) {
 		if (tgt > (Player.curPlayTime/1000.0)) 
-			res = this.plugin.JumpForward(tgt - (Player.curPlayTime/1000.0));
+			res = Player.AVPlayerObj.jumpForward(tgt - (Player.curPlayTime/1000.0));
 		else 
-			res = this.plugin.JumpBackward( (Player.curPlayTime/1000.0)- tgt);
+			res = Player.AVPlayerObj.jumpBackward( (Player.curPlayTime/1000.0)- tgt);
 	}
 	else {
-		this.plugin.Stop();
+		Player.AVPlayerObj.stop();
 		var old = Player.curPlayTime;
 
 		Player.setCurrentPlayTimeOffset(tgt * 1000.0);
 		
-//		res = this.plugin.Play( this.url+ "?time=" + tgt );
-    	this.plugin.InitPlayer(this.url+ "?time=" + tgt );
-    	res = this.plugin.StartPlayback();
+//    	Player.AVPlayerObj.open(this.url+ "?time=" + tgt, Player.getBuffer() );
+    	Player.AVPlayerObj.open(this.url+ "?time=" + tgt);
+    	res = Player.AVPlayerObj.play(Player.onPlaySuccess , Player.onError);
 
 		Main.logToServer("Player.play with ?time=" + tgt);
 		if (res == false)
 			Player.setCurrentPlayTimeOffset(old);
-			
-		// set currentPlayTimeOffsert to tgt
-		// set new url with time
-		// play
 	}
 	Main.logToServer("Player.jumpToVideo: jumpTo= " + percent + "% of " + (this.totalTime/1000) + "sec tgt = " + tgt + "sec cpt= " + (this.curPlayTime/1000) +"sec" + " res = " + res);	
-//    Display.showPopup("jumpToVideo= " + percent + "% of " + (this.totalTime/1000) + "sec<br>--> tgt = " + tgt + "sec curPTime= " + (this.curPlayTime/1000)+"sec");
-//	Display.showStatus();
 
-	//	this.plugin.Stop();
-//	var res = this.plugin.ResumePlay(this.url, tgt );
 	if (res == false)
 		Display.showPopup("ResumePlay ret= " +  ((res == true) ? "True" : "False"));  
 };
@@ -458,17 +513,17 @@ Player.skipForwardVideo = function() {
 	Display.showProgress();
 	var res = false;
 	if (Player.isRecording == false)
-		res = this.plugin.JumpForward(Player.skipDuration);
+		res = Player.AVPlayerObj.jumpForward(Player.skipDuration);
 	else {
 		Spinner.show();
 		this.bufferState = 0;
-		this.plugin.Stop();
+		Player.AVPlayerObj.stop();
 		var old = Player.curPlayTime;
 		var tgt = (Player.curPlayTime/1000.0) + Player.skipDuration;
 		Player.setCurrentPlayTimeOffset(tgt * 1000.0);
-//		res = this.plugin.Play( this.url+ "?time=" + tgt );		
-    	this.plugin.InitPlayer(this.url+ "?time=" + tgt );
-    	res = this.plugin.StartPlayback();
+//    	Player.AVPlayerObj.open(this.url+ "?time=" + tgt, Player.getBuffer());
+    	Player.AVPlayerObj.open(this.url+ "?time=" + tgt);
+    	res = Player.AVPlayerObj.play(Player.onPlaySuccess , Player.onError);
 		
 		Main.logToServer("Player.skipForwardVideo with ?time=" + tgt);
 		if (res == false)
@@ -484,18 +539,18 @@ Player.skipBackwardVideo = function() {
 	Display.showProgress();
 	var res = false;
 	if (Player.isRecording == false)
-		res = this.plugin.JumpBackward(Player.skipDuration);
+		res = Player.AVPlayerObj.jumpBackward(Player.skipDuration);
 	else {
 		Spinner.show();
 		this.bufferState = 0;
-		this.plugin.Stop();
+		Player.AVPlayerObj.stop();
 		var tgt = (Player.curPlayTime/1000.0) - Player.skipDuration;
 		if (tgt < 0)
 			tgt = 0;
 		Player.setCurrentPlayTimeOffset(tgt * 1000.0);
-//		res = this.plugin.Play( this.url+ "?time=" + tgt );	
-    	this.plugin.InitPlayer(this.url+ "?time=" + tgt );
-    	res = this.plugin.StartPlayback();
+//    	Player.AVPlayerObj.open(this.url+ "?time=" + tgt, Player.getBuffer());
+    	Player.AVPlayerObj.open(this.url+ "?time=" + tgt);
+    	res = Player.AVPlayerObj.play(Player.onPlaySuccess , Player.onError);
 
 		Main.logToServer("Player.skipBackwardVideo with ?time=" + tgt);
 		if (res == false)
@@ -548,7 +603,6 @@ Player.fastForwardVideo = function() {
 			this.trickPlaySpeed = 1;
 			this.trickPlayDirection = 1;
 		}
-
 	}
 	if (Player.isRecording == true) {
 		if (this.trickPlaySpeed > 2)
@@ -566,7 +620,7 @@ Player.fastForwardVideo = function() {
 
 	Main.log("FastForward: Direction= " + ((this.trickPlayDirection == 1) ? "Forward": "Backward") + "trickPlaySpeed= " + this.trickPlaySpeed);
 	Main.logToServer("FastForward: Direction= " + ((this.trickPlayDirection == 1) ? "Forward": "Backward") + "trickPlaySpeed= " + this.trickPlaySpeed);
-	if (this.plugin.SetPlaybackSpeed(this.trickPlaySpeed * this.trickPlayDirection) == false) {
+	if (Player.AVPlayerObj.setSpeed(this.trickPlaySpeed * this.trickPlayDirection) == false) {
     	Display.showPopup("trick play returns false. Reset Trick-Play" );	
     	Player.ResetTrickPlay();
 //    	this.trickPlaySpeed = 1;
@@ -575,11 +629,9 @@ Player.fastForwardVideo = function() {
 };
 
 Player.RewindVideo = function() {
-
 	if ((this.trickPlayDirection == 1) && (this.trickPlaySpeed == 1)){
 		this.trickPlayDirection = -1;
-		this.trickPlaySpeed = this.trickPlaySpeed * 2;
-		
+		this.trickPlaySpeed = this.trickPlaySpeed * 2;		
 	}
 	else if (this.trickPlayDirection == 1) {
 		// I am in fast forward mode, so decrease
@@ -588,7 +640,6 @@ Player.RewindVideo = function() {
 			this.trickPlaySpeed = 1;
 			this.trickPlayDirection = -1;
 		}
-		
 	}
 	else
 		this.trickPlaySpeed = this.trickPlaySpeed * 2;
@@ -597,7 +648,6 @@ Player.RewindVideo = function() {
 		if (this.trickPlayDirection <0 )
 			Player.ResetTrickPlay();
 			return;
-//			this.trickPlayDirection = 1;
 	}
 		
 	if (this.trickPlaySpeed != 1) {
@@ -610,23 +660,15 @@ Player.RewindVideo = function() {
 
 	Main.log("Rewind: Direction= " + ((this.trickPlayDirection == 1) ? "Forward": "Backward") + "trickPlaySpeed= " + this.trickPlaySpeed);
 
-	if (this.plugin.SetPlaybackSpeed(this.trickPlaySpeed * this.trickPlayDirection) == false) {
+	if (Player.AVPlayerObj.setSpeed(this.trickPlaySpeed * this.trickPlayDirection) == false) {
     	Display.showPopup("trick play returns false. Reset Trick-Play" );	
     	Player.ResetTrickPlay();
-//    	this.trickPlaySpeed = 1;
-//    	this.trickPlayDirection = 1;
 	}
 
 
 	Main.log("Rewind: Direction= " + ((this.trickPlayDirection == 1) ? "Forward": "Backward") + "trickPlaySpeed= " + this.trickPlaySpeed);
 	Main.logToServer("Rewind: Direction= " + ((this.trickPlayDirection == 1) ? "Forward": "Backward") + "trickPlaySpeed= " + this.trickPlaySpeed);
 
-	/*	if (this.plugin.SetPlaybackSpeed(this.trickPlaySpeed * this.trickPlayDirection) == false) {
-    	Display.showPopup("trick play returns false. Reset Trick-Play" );	
-    	this.trickPlaySpeed = 1;
-    	this.trickPlayDirection = 1;
-	}
-*/
 };
 
 Player.ResetTrickPlay = function() {
@@ -634,7 +676,7 @@ Player.ResetTrickPlay = function() {
 		this.trickPlaySpeed = 1;
 		this.trickPlayDirection = 1;
 		Main.log("Reset Trickplay " );
-		if (this.plugin.SetPlaybackSpeed(this.trickPlaySpeed * this.trickPlayDirection) == false) {
+		if (Player.AVPlayerObj.setSpeed(this.trickPlaySpeed * this.trickPlayDirection) == false) {
 	    	Display.showPopup("trick play returns false. Reset Trick-Play" );	
 	    	this.trickPlaySpeed = 1;
 	    	this.trickPlayDirection = 1;
@@ -656,30 +698,44 @@ Player.getState = function() {
 // ------------------------------------------------
 // Global functions called directly by the player 
 //------------------------------------------------
+Player.onResolutionChanged = function () {
+	Main.log('Player.onResolutionChanged : ');
+};
+
+Player.onError = function () {
+	Main.log('Player.onError: ' );
+	Main.logToServer('Player.onError: ' );
+};
+
+
+Player.onPlaySuccess = function () {
+	Player.OnStreamInfoReady();
+};
+
+Player.onCropSuccess = function () {
+	Main.log('Player.onCropSuccess: ');
+//	Main.logToServer('Player.onCropSuccess: ');
+};
+
 
 Player.onBufferingStart = function() {
-	Main.logToServer("Buffer Start: cpt= " + (Player.curPlayTime/1000.0) +"sec");
+//	Main.logToServer("Buffer Start: cpt= " + (Player.curPlayTime/1000.0) +"sec");
+	Main.log("Buffer Start: cpt= " + (Player.curPlayTime/1000.0) +"sec");
 	Player.bufferStartTime = new Date().getTime();
 
 	if (this.requestStartTime != 0) {
-		Main.logToServer("Player.onBufferingStart Server RTT= " + (Player.bufferStartTime -this.requestStartTime ) + "ms");
 		this.requestStartTime  = 0;
 	}
 
 	Spinner.show();
 	Player.bufferState = 0;
 	Display.bufferUpdate();
-	// should trigger from here the overlay
+
 	Display.showProgress();
 	Display.status("Buffering...");
-//	Display.showStatus();
 };
 
-Player.onBufferingProgress = function(percent)
-{
-	// should trigger from here the overlay
-//    Display.status("Buffering:" + percent + "%");
-
+Player.onBufferingProgress = function(percent) {
     Player.bufferState = percent;
 	Display.bufferUpdate();
 	Display.showProgress();
@@ -691,6 +747,7 @@ Player.onBufferingComplete = function() {
 	Spinner.hide();
 
 	Main.logToServer("onBufferingComplete cpt= " +(Player.curPlayTime/1000.0) +"sec - Buffering Duration= " + (new Date().getTime() - Player.bufferStartTime) + " ms");
+	Main.log("onBufferingComplete cpt= " +(Player.curPlayTime/1000.0) +"sec - Buffering Duration= " + (new Date().getTime() - Player.bufferStartTime) + " ms");
 
     Player.bufferState = 100;
 	Display.bufferUpdate();
@@ -700,14 +757,16 @@ Player.onBufferingComplete = function() {
 // or I should set it according to the aspect ratio
     Display.hide();   
     
-//	Main.logToServer("onBufferingComplete ");
-/*	Player.pauseVideo();
-	window.setTimeout(Player.resumeVideo, 1000);	*/
 };
 
 
 Player.OnCurrentPlayTime = function(time) {
-	Player.curPlayTime = parseInt(time) + parseInt(Player.cptOffset);
+	Main.log ("Player.OnCurrentPlayTime " + time.millisecond);
+		
+	if (typeof time == "number")
+		Player.curPlayTime = parseInt(time) + parseInt(Player.cptOffset);
+	else
+		Player.curPlayTime = parseInt(time.millisecond) + parseInt(Player.cptOffset);
 	
     // Update the Current Play Progress Bar 
     Display.updateProgressBar();
@@ -715,24 +774,23 @@ Player.OnCurrentPlayTime = function(time) {
     if (Player.isRecording == true) {
     	Display.updateRecBar(Player.startTime, Player.duration);
     }
+    Main.log ("Player.OnCurrentPlayTime: curPlayTimeStr= " + Player.curPlayTimeStr);
     Player.curPlayTimeStr =  Display.durationString(Player.curPlayTime / 1000.0);
+
     Display.updatePlayTime();
 };
 
 
 Player.OnStreamInfoReady = function() {
     Main.log("*** OnStreamInfoReady ***");
+//    Main.logToServer("*** OnStreamInfoReady ***");
     Player.setFullscreen();
-//	Main.logToServer("GetCurrentBitrates= " + Player.plugin.GetCurrentBitrates());
 	if ((Player.isLive == false) && (Player.isRecording == false)) {
-		Player.totalTime = Player.plugin.GetDuration();
+		Player.totalTime = Player.AVPlayerObj.getDuration();
 	}
-//    Player.curPlayTimeStr =  Display.durationString(Player.totalTime / 1000.0);
     Player.totalTimeStr =Display.durationString(Player.totalTime / 1000.0);
+    Main.log("Player.totalTimeStr= " + Player.totalTimeStr);
     
-//    var height = Player.plugin.GetVideoHeight();
-//    var width = Player.plugin.GetVideoWidth();
-//    Main.logToServer("Resolution= " + width + " x " + height );
 };
 
 Player.OnRenderingComplete = function() {

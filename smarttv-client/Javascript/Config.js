@@ -18,6 +18,7 @@ var Config = {
 	usePdlForRecordings : true,
 	uploadJsFile : "",
 	directAcessTimeout : 1500,
+	preferredQuality : 2,
 	widgetVersion : "unknown", 
 	deviceType : 0   // Used to differentiate between browsers and platforms
 	// 0: Samsung
@@ -84,7 +85,7 @@ Config.init = function () {
 			Config.readContext();
 		}		
 	}
-
+	Server.notifyServer("started");
 	Config.fetchConfig();
 };
 
@@ -111,6 +112,7 @@ Config.getWidgetVersion = function () {
 	});
 };
 
+
 Config.fetchConfig = function () {
 	$.ajax({
 		url: this.serverUrl + "/widget.conf",
@@ -133,7 +135,8 @@ Config.fetchConfig = function () {
         	Config.usePdlForRecordings = ($(data).find('usePdlForRecordings').text() == "false") ? false : true;
         	Config.uploadJsFile = $(data).find('uploadJsFile').text();
         	Config.directAcessTimeout = $(data).find('directAcessTimeout').text();
-
+        	Config.preferredQuality = $(data).find('preferredQuality').text();
+        	
         	Player.skipDuration = Config.skipDuration;
         	if (Config.directAcessTimeout != "") {
         		DirectAccess.delay = Config.directAcessTimeout;
