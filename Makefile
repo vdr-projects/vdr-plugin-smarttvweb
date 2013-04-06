@@ -55,7 +55,7 @@ DEFINES += -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE
 
 ### The object files (add further files here):
 
-OBJS = $(PLUGIN).o smarttvfactory.o httpresource.o log.o url.o stvw_cfg.o
+OBJS = $(PLUGIN).o smarttvfactory.o httpresource.o httpclient.o mngurls.o log.o url.o stvw_cfg.o
 
 OBJS2 = 
 
