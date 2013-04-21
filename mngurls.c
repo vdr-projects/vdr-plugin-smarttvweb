@@ -39,6 +39,7 @@ cManageUrls::~cManageUrls() {
   //TODO: delete entries
 };
 
+
 //called from outside to add an entry
 void cManageUrls::appendEntry(string type, string url) {
   // iter through entries
@@ -60,6 +61,27 @@ void cManageUrls::appendEntry(string type, string url) {
     appendToFile(type+"|"+url);
   }
 }
+
+
+void cManageUrls::deleteEntry(string type, string url) {
+  *(mLog->log()) << " cManageUrls::deleteEntry: type= " << type << "guid= " << url << endl;
+
+  bool found = false;
+  if (type.compare("YT") !=0) {
+    return;
+  }
+  for (int i = 0; i < mEntries.size(); i ++) {
+    if (url.compare(mEntries[i]->mEntry) == 0) {
+      // delete the entry here
+      *(mLog->log()) << " cManageUrls::deleteEntry ... " << endl;
+      found = true;
+      break;
+    }
+  }
+
+}
+
+
 
 size_t cManageUrls::size() { 
   return mEntries.size(); 
