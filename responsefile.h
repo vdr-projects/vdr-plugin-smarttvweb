@@ -1,5 +1,5 @@
 /*
- * httpresource_base.h: VDR on Smart TV plugin
+ * responsefile.h: VDR on Smart TV plugin
  *
  * Copyright (C) 2012, 2013 T. Lohmar
  *
@@ -20,25 +20,32 @@
  *
  */
 
-#ifndef __HTTPREQUEST_base_H__
-#define __HTTPREQUEST_base_H__
+#ifndef __RESPONSE_FILE_H__
+#define __RESPONSE_FILE_H__
 
-class SmartTvServer;
+#include <cstdio>
+#include "responsebase.h"
 
-class cHttpResourceBase {
+class cHttpResource;
 
+// create the complete response for the file request
+// info on range request should be provided.
+class cResponseFile : public cResponseBase {
  public:
- cHttpResourceBase(int f, int id, int port, SmartTvServer* fac): mFd(f), mReqId(id), mFactory(fac), mServerPort(port) {};
-  virtual ~cHttpResourceBase() {};
+  cResponseFile(cHttpResource* );
+  virtual ~cResponseFile(); // same as sendFile
 
-  virtual int handleRead() =0;
-  virtual int handleWrite() = 0;
-  virtual int checkStatus() =0;
+  int fillDataBlk();
 
-  int mFd;
-  int mReqId;
-  SmartTvServer* mFactory;
-  int mServerPort;
+  int sendFile();
+
+ private:
+  const char *getMimeType(const char *name) ;
+
+  int openFile(const char *name);
+
+  FILE *mFile;
+  unsigned long long mFileSize;
 };
 
 #endif

@@ -22,12 +22,6 @@
 
 //Manage Urls
 
-/*
-the object is kept by the factory.
-The object is loaded with the first url request (get or post)
-The object is then kept.
-  The file is updated with every new url entry, so that it does not need to wrte when closing
-*/
 #ifndef __MANAGEURLS_H__
 #define __MANAGEURLS_H__
 
@@ -47,6 +41,8 @@ class cManageUrls {
   virtual ~cManageUrls();
   
   void appendEntry (string type, string guid);
+  void deleteEntry(string type, string guid);
+
   size_t size();
   sUrlEntry* getEntry(int index);
 

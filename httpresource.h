@@ -25,9 +25,13 @@
 
 #include <string>
 #include <cstring>
+#include <vector>
 #include <pthread.h>
+
 #include "log.h"
 #include "httpresource_base.h"
+
+#define MAXLEN 32768 
 
 using namespace std;
 
@@ -53,24 +57,9 @@ enum eConnState {
   TOCLOSE
 };
 
-enum eContentType {
-  NYD,   // Not Yet Defined
-  VDRDIR,
-  SINGLEFILE,
-  MEMBLOCK
-};
-
-struct sFileEntry {
-  string sName;
-  string sPath;
-  int sStart;
-
-sFileEntry(string n, string l, int s) : sName(n), sPath(l), sStart(s) {
-  };
-};
-
 class SmartTvServer;
-class cResumeEntry;
+class cResponseBase;
+
 
 class cHttpResource : public cHttpResourceBase {
 
@@ -82,34 +71,24 @@ class cHttpResource : public cHttpResourceBase {
   int handleWrite();
   int checkStatus();
 
-  int readFromClient();
 
-  void threadLoop();
-  int run();
+ public:
 
- private:
-  //  SmartTvServer* mFactory;
   Log* mLog;
-
-  //  int mServerPort;
-  //  int mFd;
-  //  int mReqId;
 
   time_t mConnTime;
   int mHandleReadCount;
   bool mConnected;
-  eConnState mConnState;
-  eContentType mContentType;
+  eConnState mConnState; 
 
   string mReadBuffer;
   string mMethod;
 
-  string *mResponseMessage;
-  int mResponseMessagePos;
+  /*
   char* mBlkData;
   int mBlkPos;
   int mBlkLen;
-
+*/
   string mRequest;
   string mQuery;
   string mPath;
@@ -122,17 +101,10 @@ class cHttpResource : public cHttpResourceBase {
   
   bool mAcceptRanges;
   cRange rangeHdr;
-  unsigned long long mFileSize;
-  bool mStreamToEnd;
-  uint64_t mRemLength;
-  FILE *mFile;
-  int mVdrIdx;
-  string mFileStructure;
-  bool mIsRecording;
-  float mRecProgress;
+
+  cResponseBase* mResponse;
 
   void setNonBlocking();
-  int fillDataBlk();
 
   int handlePost();
   int handleHeadRequest();
@@ -140,56 +112,14 @@ class cHttpResource : public cHttpResourceBase {
   int processHttpHeaderNew();
 
   int readRequestPayload();
-  void sendError(int status, const char *title, const char *extra, const char *text);
-  int sendDir(struct stat *statbuf);
-  int sendVdrDir(struct stat *statbuf);
-  int sendRecordingsXml (struct stat *statbuf);
-  int sendChannelsXml (struct stat *statbuf);
-  int sendResumeXml ();
-  int sendVdrStatusXml (struct stat *statbuf);
-  int sendYtBookmarkletJs();
-  int sendBmlInstHtml();
 
-  int sendEpgXml (struct stat *statbuf);
-  int sendUrlsXml ();
-  int sendMediaXml (struct stat *statbuf);
-  
-  void handleClients();
-  
-  int sendManifest (struct stat *statbuf, bool is_hls = true);
-
-  int receiveResume();
-  int deleteRecording();
-
-  int receiveYtUrl();
-  void writeM3U8(double duration, int bitrate, float seg_dur, int end_seg);
-  void writeMPD(double duration, int bitrate, float seg_dur, int end_seg);
-
-
-  int sendMediaSegment (struct stat *statbuf);
-
-  void sendHeaders(int status, const char *title, const char *extra, const char *mime,
-		   long long int length, time_t date);
-
-  int sendFile(struct stat *statbuf);
-
-  // Helper Functions
-  const char *getMimeType(const char *name);
   string getConnStateName();
-  string getOwnIp(int fd);
-  uint64_t getVdrFileSize();
-  void checkRecording();
-  bool isTimeRequest(struct stat *statbuf);
   int parseRangeHeaderValue(string);
   int parseHttpRequestLine(string);
   int parseHttpHeaderLine (string);
   int parseQueryLine (vector<sQueryAVP> *avps);
-  int parseResume(cResumeEntry &entry, string &id);
-
-  int parseFiles(vector<sFileEntry> *entries, string prefix, string dir_base, string dir_name, struct stat *statbuf);
-
   int getQueryAttributeValue(vector<sQueryAVP> *avps, string id, string &val);
-  int openFile(const char *name);
-  int writeXmlItem(string title, string link, string programme, string desc, string guid, int no, time_t start, int dur, double fps, int is_pes, int is_new);
+
+  string getOwnIp();
 };
 #endif

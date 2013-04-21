@@ -1,5 +1,5 @@
 /*
- * httpresource_base.h: VDR on Smart TV plugin
+ * responsevdrdir.h: VDR on Smart TV plugin
  *
  * Copyright (C) 2012, 2013 T. Lohmar
  *
@@ -20,25 +20,45 @@
  *
  */
 
-#ifndef __HTTPREQUEST_base_H__
-#define __HTTPREQUEST_base_H__
+#ifndef __HTTPRESPONSE_VDRDIR_H__
+#define __HTTPRESPONSE_VDRDIR_H__
 
-class SmartTvServer;
+#include <cstdio>
+#include <string>
+#include <cstring>
+#include "responsebase.h"
 
-class cHttpResourceBase {
+using namespace std;
 
+//class cHttpResource;
+
+class cResponseVdrDir : public cResponseBase{
  public:
- cHttpResourceBase(int f, int id, int port, SmartTvServer* fac): mFd(f), mReqId(id), mFactory(fac), mServerPort(port) {};
-  virtual ~cHttpResourceBase() {};
+  cResponseVdrDir(cHttpResource*);
+  virtual ~cResponseVdrDir();
 
-  virtual int handleRead() =0;
-  virtual int handleWrite() = 0;
-  virtual int checkStatus() =0;
+  int fillDataBlk();
 
-  int mFd;
-  int mReqId;
-  SmartTvServer* mFactory;
-  int mServerPort;
+  int sendVdrDir(struct stat *statbuf);
+  int sendMediaSegment (struct stat *statbuf);
+ protected:
+
+  //  cHttpResource* mRequest;
+
+  //range
+  bool mIsRecording;
+  bool mStreamToEnd;
+  float mRecProgress;
+
+  int mVdrIdx;
+  FILE* mFile;
+  string mFileStructure;
+
+  bool isTimeRequest(struct stat *statbuf);
+  void checkRecording() ;
+
+  int openFile(const char *name);
+
 };
 
 #endif

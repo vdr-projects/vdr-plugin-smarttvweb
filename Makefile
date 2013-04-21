@@ -16,12 +16,12 @@ VERSION = $(shell grep 'static const char \*VERSION *=' $(PLUGIN).c | awk '{ pri
 
 
 CXX      ?= g++
-ifdef DEBUG
+#ifdef DEBUG
 CXXFLAGS ?= -g -O0 -fPIC -Wall -Woverloaded-virtual #-Werror
-else
-CXXFLAGS ?= -fPIC -Wall -Woverloaded-virtual #-Werror
+#else
+#CXXFLAGS ?= -fPIC -Wall -Woverloaded-virtual #-Werror
 #CXXFLAGS ?= -O2 -fPIC -Wall -Woverloaded-virtual #-Werror
-endif
+#endif
 
 ### The directory environment:
 
@@ -55,7 +55,7 @@ DEFINES += -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE
 
 ### The object files (add further files here):
 
-OBJS = $(PLUGIN).o smarttvfactory.o httpresource.o httpclient.o mngurls.o log.o url.o stvw_cfg.o
+OBJS = $(PLUGIN).o smarttvfactory.o httpresource.o httpclient.o mngurls.o log.o url.o stvw_cfg.o responsebase.o responsefile.o responsevdrdir.o responsememblk.o
 
 OBJS2 = 
 
