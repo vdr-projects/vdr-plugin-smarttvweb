@@ -41,7 +41,7 @@ class cManageUrls {
   virtual ~cManageUrls();
   
   void appendEntry (string type, string guid);
-  void deleteEntry(string type, string guid);
+  bool deleteEntry(string type, string guid);
 
   size_t size();
   sUrlEntry* getEntry(int index);
@@ -52,6 +52,7 @@ class cManageUrls {
 
   Log* mLog;
 
+  string mFilename;
   ofstream* mFile;
   vector<sUrlEntry*> mEntries;
   

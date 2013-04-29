@@ -359,3 +359,33 @@ string cHttpYtPushClient::getMsgBody(int) {
   return "{\"type\":\"YT\",payload:{\"id\":\"" + mVideoId +"\", \"store\":"+((mStore)?"true":"false")+"}}";
 }
 
+//------------------------------
+//----- cHttpCfgPushClient ------
+//------------------------------
+
+cHttpCfgPushClient::cHttpCfgPushClient(int f, int id, int port, SmartTvServer* fac, string peer) : cHttpClientBase(f, id, port, fac, peer) {
+
+  createRequestMessage("");
+}
+
+cHttpCfgPushClient::~cHttpCfgPushClient() {
+}
+
+string cHttpCfgPushClient::getMsgBody(int) {
+  return "{\"type\":\"CFGADD\",payload:{\"serverAddr\":\"" + mPeer +"\"" +"}}";
+}
+
+//------------------------------
+//----- cHttpInfoClient ------
+//------------------------------
+cHttpInfoClient::cHttpInfoClient(int f, int id, int port, SmartTvServer* fac, string peer, string bdy) : cHttpClientBase(f, id, port, fac, peer), mBody(bdy) {
+
+  createRequestMessage("");
+}
+
+cHttpInfoClient::~cHttpInfoClient() {
+}
+
+string cHttpInfoClient::getMsgBody(int) {
+  return "{\"type\":\"INFO\",payload:" + mBody +"}";;
+}

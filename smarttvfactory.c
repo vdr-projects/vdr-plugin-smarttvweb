@@ -45,11 +45,12 @@
 
 #include <iostream>
 #include <fstream>
-
+#include <sstream>
 
 #include "smarttvfactory.h"
 #include "httpresource.h"
 #include "httpclient.h"
+#include "url.h"
 
 #ifndef STANDALONE
 #define PORT 8000
@@ -72,9 +73,9 @@ void SmartTvServerStartThread(void* arg) {
   pthread_exit(NULL);
 }
 
-SmartTvServer::SmartTvServer(): mRequestCount(0), isInited(false), serverPort(PORT), mServerFd(-1),
+SmartTvServer::SmartTvServer(): cStatus(), mRequestCount(0), isInited(false), serverPort(PORT), mServerFd(-1),
   mSegmentDuration(10), mHasMinBufferTime(40),  mLiveChannels(20), 
-  clientList(), mConTvClients(), mActiveSessions(0), mHttpClients(0), mConfig(NULL), mMaxFd(0),
+  clientList(), mConTvClients(), mActiveSessions(0), mHttpClientId(0), mConfig(NULL), mMaxFd(0),
   mManagedUrls(NULL){
 }
 
@@ -83,6 +84,101 @@ SmartTvServer::~SmartTvServer() {
 
   if (mConfig != NULL)
     delete mConfig;
+}
+
+// Status methods
+void SmartTvServer::Recording(const cDevice *Device, const char *Name, const char *FileName, bool On) {
+#ifndef DEBUG
+  *(mLog.log()) << "SmartTvServer::Recording: Recording"  
+		<< ((On) ? " started" : " stopped")
+		<< endl;
+#endif
+  stringstream msg;  
+  string name ;
+  
+  if (Name == NULL) {
+    if (FileName == NULL) {
+      *(mLog.log()) << "WARNING in SmartTvServer::Recording: Name and FileName are NULL. Return.  " << endl;
+      return;
+    }
+    cRecording* rec = Recordings.GetByName(FileName);
+    if (rec == NULL) {
+      *(mLog.log()) << "WARNING in SmartTvServer::Recording: No Recording Entry found. Return.  " << endl;
+      return;
+    }
+    name = rec->Name();
+  }
+  else 
+    name = Name;
+
+  string method = (On) ? "RECSTART" : "RECSTOP";
+  string guid = (FileName == NULL) ? "" : cUrlEncode::doUrlSaveEncode(FileName);
+
+  msg << "{\"type\":\""+method+"\",\"name\":\"" << name << "\",\"guid\":\""+guid+"\"}";
+
+  *(mLog.log()) << "SmartTvServer::Recording: Recording"
+		<< ((On) ? " started" : " stopped")
+		<< " Msg=  " << msg.str() 
+		<< endl;
+
+  for (uint i = 0; i < mConTvClients.size(); i ++) {
+    if ((mConTvClients[i]->ip).compare("") != 0) {
+
+      int cfd=  connectToClient(mConTvClients[i]->ip);
+      if (cfd < 0) 
+	continue;
+      addHttpResource(cfd, new cHttpInfoClient(cfd, mHttpClientId, serverPort, this, mConTvClients[i]->ip, msg.str()));
+    }
+  }
+};
+
+void SmartTvServer::TimerChange(const cTimer *Timer, eTimerChange Change) {
+ #ifndef DEBUG
+  *(mLog.log()) << "SmartTvServer::TimerChange" 
+		<< endl;
+#endif
+
+  stringstream msg;
+  string method = "";
+  switch (Change) {
+  case tcMod:
+    method = "TCMOD";
+    break;
+  case tcAdd:
+    method = "TCADD";
+    break;
+  case tcDel:
+    method = "TCDEL";
+    break;
+  }
+
+
+  if (Timer == NULL) {
+    *(mLog.log()) << "WARNING in SmartTvServer::TimerChange - Timer is NULL. Method= " << method << ", returning" << endl;
+    return;
+  }
+
+  string name = Timer->File();  
+  if (Timer->Event() != NULL) {
+    if (Timer->Event()->Title() != NULL)
+      name = Timer->Event()->Title();
+  }
+
+
+  msg << "{\"type\":\"" << method << "\",\"name\":\"" << name << "\", \"start\":" << Timer->Start() <<"}";
+
+#ifndef DEBUG
+  *(mLog.log()) << "SmartTvServer::TimerChange: Msg=  " << msg.str() << endl;
+#endif
+
+  for (uint i = 0; i < mConTvClients.size(); i ++) {
+    if ((mConTvClients[i]->ip).compare("") != 0) {
+      int cfd=  connectToClient(mConTvClients[i]->ip);
+      if (cfd < 0) 
+	continue;
+      addHttpResource(cfd, new cHttpInfoClient(cfd, mHttpClientId, serverPort, this, mConTvClients[i]->ip, msg.str()));
+    }
+  } 
 }
 
 void SmartTvServer::cleanUp() {
@@ -166,6 +262,15 @@ void SmartTvServer::storeYtVideoId(string guid) {
   mManagedUrls->appendEntry("YT", guid);
 }
 
+bool SmartTvServer::deleteYtVideoId(string guid) {
+  if (mManagedUrls == NULL)
+    mManagedUrls = new cManageUrls(mConfigDir);
+
+  return mManagedUrls->deleteEntry("YT", guid);
+}
+
+
+
 void SmartTvServer::pushYtVideoId(string vid_id, bool store) {
   for (uint i = 0; i < mConTvClients.size(); i ++) {
     if ((mConTvClients[i]->ip).compare("") != 0)
@@ -214,7 +319,7 @@ void SmartTvServer::addHttpResource(int rfd, cHttpResourceBase* resource) {
     FD_SET(rfd, &mWriteState);      
     clientList[rfd] = resource;
 
-    mHttpClients++;
+    mHttpClientId++;
     if (rfd > mMaxFd) {
       mMaxFd = rfd;
     }    
@@ -233,8 +338,18 @@ void SmartTvServer::pushYtVideoIdToClient(string vid_id, string peer, bool store
   int cfd=  connectToClient(peer);
   if (cfd < 0)
     return;
-  addHttpResource(cfd, new cHttpYtPushClient(cfd, mHttpClients, serverPort, this, peer, vid_id, store));
+  addHttpResource(cfd, new cHttpYtPushClient(cfd, mHttpClientId, serverPort, this, peer, vid_id, store));
 
+}
+
+void SmartTvServer::pushCfgServerAddressToTv( string tv_addr) {
+  *(mLog.log()) << " SmartTvServer::pushCfgServerAddressToTv TV= " << tv_addr 
+		<< endl;
+  
+  int cfd=  connectToClient(tv_addr);
+  if (cfd < 0)
+    return;
+  addHttpResource(cfd, new cHttpCfgPushClient(cfd, mHttpClientId, serverPort, this, tv_addr));
 }
 
 int SmartTvServer::runAsThread() {
