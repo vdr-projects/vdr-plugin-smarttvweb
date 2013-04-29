@@ -23,11 +23,12 @@
 #include "mngurls.h"
 
 
-cManageUrls::cManageUrls(string dir): mLog(), mFile(NULL), mEntries() {
+cManageUrls::cManageUrls(string dir): mLog(), mFilename(), mFile(NULL), mEntries() {
   mLog = Log::getInstance();
 
   loadEntries(dir);
-  mFile = new ofstream((dir +"/urls.txt").c_str(), ios::out | ios::app);  
+  mFilename = dir +"/urls.txt"; 
+  mFile = new ofstream(mFilename.c_str(), ios::out | ios::app);  
   mFile->seekp(ios_base::end);
 };
 
@@ -63,22 +64,46 @@ void cManageUrls::appendEntry(string type, string url) {
 }
 
 
-void cManageUrls::deleteEntry(string type, string url) {
+bool cManageUrls::deleteEntry(string type, string url) {
   *(mLog->log()) << " cManageUrls::deleteEntry: type= " << type << "guid= " << url << endl;
 
   bool found = false;
   if (type.compare("YT") !=0) {
-    return;
+    *(mLog->log()) << " cManageUrls::deleteEntry: Not a YT Url "  << endl;
+    return false;
   }
+  
   for (int i = 0; i < mEntries.size(); i ++) {
     if (url.compare(mEntries[i]->mEntry) == 0) {
       // delete the entry here
       *(mLog->log()) << " cManageUrls::deleteEntry ... " << endl;
+      mEntries.erase(mEntries.begin() +i);
       found = true;
       break;
     }
   }
 
+  if (found) {
+    *(mLog->log()) << " cManageUrls::deleteEntry - rewriting urls.txt file ... " << endl;
+    if (mFile != NULL) {
+      mFile->close();
+      delete mFile;
+    }
+    mFile = new ofstream(mFilename.c_str(), ios::out);  
+    
+    for (int i = 0; i < mEntries.size(); i ++) {
+      appendToFile(mEntries[i]->mType+"|"+mEntries[i]->mEntry);
+    }
+
+    // close the file
+    mFile->close();
+    delete mFile;
+    
+    // open for append
+    mFile = new ofstream(mFilename.c_str(), ios::out | ios::app);  
+    mFile->seekp(ios_base::end);
+  }
+  return found;
 }
 
 

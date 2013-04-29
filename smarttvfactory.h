@@ -38,12 +38,17 @@
 
 #ifndef STANDALONE
 #include <vdr/recording.h>
+#include <vdr/status.h>
+
+#else
+class cStatus {
+};
 #endif
 
 using namespace std;
 
-#define PLG_VERSION "0.9.7"
-#define SERVER "SmartTvWeb/0.9.7" 
+#define PLG_VERSION "0.9.8-pre"
+#define SERVER "SmartTvWeb/0.9.8-pre" 
 
 struct sClientEntry {
   string mac;
@@ -52,7 +57,8 @@ struct sClientEntry {
 sClientEntry(string m, string i, time_t t ): mac(m), ip(i), lastKeepAlive(t) {};
 };
 
-class SmartTvServer {
+class SmartTvServer : public cStatus {
+
   public:
     SmartTvServer();
     virtual ~SmartTvServer();
@@ -74,17 +80,23 @@ class SmartTvServer {
     void updateTvClient(string ip, string mac, time_t upd);
     void removeTvClient(string ip, string mac, time_t upd);
 
-    void storeYtVideoId(string);
+    void storeYtVideoId(string guid);
+    bool deleteYtVideoId(string guid);
 
     cManageUrls* getUrlsObj();
 
     void pushYtVideoId(string, bool);
     void pushYtVideoIdToClient(string vid_id, string peer, bool);
 
+    void pushCfgServerAddressToTv( string tv_addr);
  private:
     void addHttpResource(int fd, cHttpResourceBase* resource);
     int connectToClient(string peer);
     void setNonBlocking(int fd);
+    
+    // status callbacks
+    void Recording(const cDevice *Device, const char *Name, const char *FileName, bool On);
+    void TimerChange(const cTimer *Timer, eTimerChange Change);
 
     pthread_t mThreadId;
     int mRequestCount;
@@ -99,7 +111,7 @@ class SmartTvServer {
     vector<sClientEntry*> mConTvClients;
 
     int mActiveSessions;
-    int mHttpClients;
+    int mHttpClientId;
 
     string mConfigDir;
     cSmartTvConfig *mConfig;

@@ -143,6 +143,63 @@ int cResponseMemBlk::receiveYtUrl() {
 
 }
 
+int cResponseMemBlk::receiveDelYtUrl() {
+  if (isHeadRequest())
+    return OKAY;
+
+  vector<sQueryAVP> avps;
+  mRequest->parseQueryLine(&avps);
+  string id = "";
+
+  if (mRequest->getQueryAttributeValue(&avps, "guid", id) == ERROR){
+    *(mLog->log())<< DEBUGPREFIX
+		  << " ERROR in cResponseMemBlk::receiveDelYtUrl: guid not found in query." 
+		  << endl;
+    sendError(400, "Bad Request", NULL, "No guid in query line");
+    return OKAY;
+  }
+
+  if (mRequest->mFactory->deleteYtVideoId(id)) {
+    sendHeaders(200, "OK", NULL, NULL, -1, -1);
+  }
+  else {
+    sendError(400, "Bad Request.", NULL, "Entry not found. Deletion failed!");
+  }
+
+  return OKAY;
+  
+}
+
+int cResponseMemBlk::receiveCfgServerAddrs() {
+  vector<sQueryAVP> avps;
+  mRequest->parseQueryLine(&avps);
+  string addr; 
+
+  if (isHeadRequest())
+    return OKAY;
+
+  if (mRequest->getQueryAttributeValue(&avps, "addr", addr) == OKAY){
+    if (addr.compare ("") == 0) {
+      *(mLog->log())<< DEBUGPREFIX
+		    << " receiveCfgServerAddrs: no server address" 
+		    << endl;
+
+      sendHeaders(400, "Bad Request", NULL, "TV address field empty", 0, -1);
+      return OKAY;
+    }
+    
+    //    mRequest->mFactory->pushYtVideoId(line, store);
+
+    sendHeaders(200, "OK", NULL, NULL, 0, -1);
+    return OKAY;
+
+  }
+
+  sendError(400, "Bad Request", NULL, "Mandatory TV address attribute not present.");
+  return OKAY;
+
+}
+
 void cResponseMemBlk::receiveClientInfo() {
   vector<sQueryAVP> avps;
   mRequest->parseQueryLine(&avps);
@@ -176,10 +233,11 @@ void cResponseMemBlk::receiveClientInfo() {
     mRequest->mFactory->updateTvClient(ip, mac, time(NULL));
   }
   sendHeaders(200, "OK", NULL, NULL, 0, -1);
+#ifndef DEBUG
   *(mLog->log())<< DEBUGPREFIX
 		<< " receiveClientInfo -done " 
 		<< endl;
-
+#endif
 }
 
 
@@ -248,7 +306,8 @@ int cResponseMemBlk::receiveResume() {
   }
 
   *(mLog->log())<< DEBUGPREFIX 
-		<< " Resume: id= " << dev_id
+		<< " Resume:"
+    //		<< " id= " << dev_id
 		<< " resume= " << entry << endl;
 
   vector<sQueryAVP> avps;
@@ -259,9 +318,10 @@ int cResponseMemBlk::receiveResume() {
   if (mRequest->getQueryAttributeValue(&avps, "guid", guid) == OKAY){
     entry.mFilename = cUrlEncode::doUrlSaveDecode(guid);
     
-    *(mLog->log())<< DEBUGPREFIX
+    /*   *(mLog->log())<< DEBUGPREFIX
 		  << " Found a id Parameter: " << guid
 		  << endl;
+*/
   }
   if (mRequest->getQueryAttributeValue(&avps, "resume", resume_str) == OKAY){
     entry.mResume = atof(resume_str.c_str());
@@ -273,8 +333,13 @@ int cResponseMemBlk::receiveResume() {
 #ifndef STANDALONE
   cRecording *rec = Recordings.GetByName(entry.mFilename.c_str());
   if (rec == NULL) {
-    //Error 404
-    sendError(404, "Not Found", NULL, "Failed to find recording.");
+    //Error 400
+    *(mLog->log())<< DEBUGPREFIX 
+		  << " ERROR in receiveResume: recording not found - filename= " << entry.mFilename
+		  << " resume= " << entry.mResume
+		  << endl;
+
+    sendError(400, "Bad Request", NULL, "Failed to find the recording.");
     return OKAY;
   }
 
@@ -287,11 +352,82 @@ int cResponseMemBlk::receiveResume() {
 		<< endl;
 
   resume.Save(int(entry.mResume * rec->FramesPerSecond() ));
+  rec->ResetResume();
 #endif
 
   sendHeaders(200, "OK", NULL, NULL, -1, -1);
   return OKAY;
 }
+
+
+int cResponseMemBlk::sendResumeXml () {
+  if (isHeadRequest())
+    return OKAY;
+#ifndef STANDALONE
+
+  mResponseMessage = new string();
+  *mResponseMessage = "";
+  mResponseMessagePos = 0;
+
+  mRequest->mConnState = SERVING;
+  
+  char f[400];
+
+  cResumeEntry entry;
+  string id;
+
+  parseResume(entry, id);
+
+  vector<sQueryAVP> avps;
+  mRequest->parseQueryLine(&avps);
+  string guid; 
+
+  if (mRequest->getQueryAttributeValue(&avps, "guid", guid) == OKAY){
+    entry.mFilename = cUrlEncode::doUrlSaveDecode(guid);
+
+    *(mLog->log() )<< DEBUGPREFIX
+		   << " Found guid: " << guid
+		   << " filename: " << entry.mFilename
+		   << endl;
+  }
+
+
+  cRecording *rec = Recordings.GetByName(entry.mFilename.c_str());
+  if (rec == NULL) {
+    //Error 404
+    *(mLog->log())<< DEBUGPREFIX
+		  << " ERROR in sendResume: recording not found - filename= " << entry.mFilename << endl;
+    sendError(400, "Bad Request", NULL, "Failed to find the recording.");
+    return OKAY;
+  }
+  if (rec->IsNew()) {
+    *(mLog->log())<< DEBUGPREFIX
+		  << " sendResume: file is new "  << endl;
+    sendError(400, "Bad Request", NULL, "File is new.");
+    return OKAY;
+  }
+  cResumeFile resume(entry.mFilename.c_str(), rec->IsPesRecording());
+
+  *(mLog->log())<< DEBUGPREFIX
+		<< " resume request for " << entry.mFilename 
+		<< " resume= " << resume.Read() 
+		<< " (" << resume.Read() *1.0 / rec->FramesPerSecond() << "sec)"
+		<< endl;
+
+  *mResponseMessage  += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+  *mResponseMessage += "<resume>";
+  snprintf(f, sizeof(f), "%.02f", resume.Read() *1.0 / rec->FramesPerSecond());
+  *mResponseMessage += f;
+  *mResponseMessage += "</resume>\n";
+
+
+  sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), -1);
+#endif
+
+  return OKAY;
+}
+
+
 
 int cResponseMemBlk::receiveDelRecReq() {
   if (isHeadRequest())
@@ -1387,74 +1523,6 @@ int cResponseMemBlk::sendEpgXml (struct stat *statbuf) {
 }
 
 
-int cResponseMemBlk::sendResumeXml () {
-  if (isHeadRequest())
-    return OKAY;
-#ifndef STANDALONE
-
-  mResponseMessage = new string();
-  *mResponseMessage = "";
-  mResponseMessagePos = 0;
-  //  mRequest->mContentType = MEMBLOCK;
-
-  mRequest->mConnState = SERVING;
-  
-  char f[400];
-
-  cResumeEntry entry;
-  string id;
-
-  parseResume(entry, id);
-
-  vector<sQueryAVP> avps;
-  mRequest->parseQueryLine(&avps);
-  string guid; 
-
-  if (mRequest->getQueryAttributeValue(&avps, "guid", guid) == OKAY){
-    //    entry.mFilename = guid;
-    entry.mFilename = cUrlEncode::doUrlSaveDecode(guid);
-
-    *(mLog->log() )<< DEBUGPREFIX
-		   << " Found guid: " << guid
-		   << " filename: " << entry.mFilename
-		   << endl;
-  }
-
-
-  cRecording *rec = Recordings.GetByName(entry.mFilename.c_str());
-  if (rec == NULL) {
-    //Error 404
-    *(mLog->log())<< DEBUGPREFIX
-		  << " sendResume: File Not Found filename= " << entry.mFilename << endl;
-    sendError(404, "Not Found", NULL, "Failed to find recording.");
-    return OKAY;
-  }
-  if (rec->IsNew()) {
-    *(mLog->log())<< DEBUGPREFIX
-		  << " sendResume: file is new "  << endl;
-    sendError(400, "Bad Request", NULL, "File is new.");
-    return OKAY;
-  }
-  cResumeFile resume(entry.mFilename.c_str(), rec->IsPesRecording());
-
-  *(mLog->log())<< DEBUGPREFIX
-		<< " resume request for " << entry.mFilename 
-		<< " resume= " << resume.Read() 
-		<< " (" << resume.Read() *1.0 / rec->FramesPerSecond() << "sec)"
-		<< endl;
-
-  *mResponseMessage  += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
-  *mResponseMessage += "<resume>";
-  snprintf(f, sizeof(f), "%.02f", resume.Read() *1.0 / rec->FramesPerSecond());
-  *mResponseMessage += f;
-  *mResponseMessage += "</resume>\n";
-
-
-  sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), -1);
-#endif
-
-  return OKAY;
-}
 
 int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
   if (isHeadRequest())
@@ -1480,11 +1548,20 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
   bool has_4_hd = true;
   string mode = "";
   bool add_desc = true; 
+  string guid = "";
+  bool single_item = false;
   
   if (mRequest->getQueryAttributeValue(&avps, "model", model) == OKAY){
     *(mLog->log())<< DEBUGPREFIX
 		  << " Found a Model Parameter: " << model
 		  << endl;
+  }
+
+  if (mRequest->getQueryAttributeValue(&avps, "guid", guid) == OKAY){
+    *(mLog->log())<< DEBUGPREFIX
+		  << " Found a guid Parameter: " << guid
+		  << endl;
+    single_item = true;
   }
 
   if (mRequest->getQueryAttributeValue(&avps, "type", type) == OKAY){
@@ -1528,30 +1605,8 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
 		<< " generating /recordings.xml" 
 		<< endl;
 #endif
-  sendHeaders(200, "OK", NULL, "application/xml", -1, statbuf->st_mtime);
 
-  string hdr = "";
-  hdr += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
-  hdr += "<rss version=\"2.0\">\n";
-  hdr+= "<channel>\n";
-  hdr+= "<title>VDR Recordings List</title>\n";
-
-  *mResponseMessage += hdr;
-
-  /*
-  if (writeXmlItem("HAS - Big Bugs Bunny", "http://192.168.1.122/sm/BBB-DASH/HAS_BigBuckTS.xml|COMPONENT=HAS", "NA", "Big Bucks Bunny - HAS", 
-		   "-", 0, 0) == ERROR) 
-    return ERROR;
-
-  if (writeXmlItem("HLS - Big Bugs Bunny", "http://192.168.1.122/sm/BBB-DASH/HLS_BigBuckTS.m3u8|COMPONENT=HLS", "NA", "Big Bucks Bunny - HLS", 
-		   "-", 0, 0) == ERROR) 
-    return ERROR;
-  if (writeXmlItem("HAS - Big Bugs Bunny", "http://192.168.1.122:8000/hd2/mpeg/BBB-DASH/HAS_BigBuckTS.xml|COMPONENT=HAS", "NA", "Big Bucks Bunny - HAS from own Server", 
-		   "-", 0, 0) == ERROR) 
-    return ERROR;
-*/
   //--------------------
-  cRecordings* recordings = &Recordings;
   char f[600];
 
 #ifndef DEBUG
@@ -1589,12 +1644,31 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
 		<< endl;
 #endif
 
+
+  string hdr = "";
+  hdr += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+  hdr += "<rss version=\"2.0\">\n";
+  hdr+= "<channel>\n";
+  hdr+= "<title>VDR Recordings List</title>\n";
+
+  *mResponseMessage += hdr;
+
+  int item_count = 0;
   int rec_dur = 0;
-  for (cRecording *recording = recordings->First(); recording; recording = recordings->Next(recording)) {
+  cRecording *recording = NULL;
+  if (single_item) {
+    recording = Recordings.GetByName(guid.c_str());
+    if (recording == NULL)
+      *(mLog->log())<< DEBUGPREFIX << " WARNING in sendRecordingsXml: recording " << guid << " not found" << endl;
+  }
+  else {
+    recording = Recordings.First();
+  }
+  //  for (cRecording *recording = Recordings.First(); recording; recording = Recordings.Next(recording)) {
+  while (recording != NULL) {
     hdr = "";
 
     if (recording->IsPesRecording() or ((recording->FramesPerSecond() > 30.0) and !has_4_hd )) 
-      //      snprintf(f, sizeof(f), "http://%s:%d%s", mServerAddr.c_str(), mServerPort, 
       snprintf(f, sizeof(f), "http://%s:%d%s", own_ip.c_str(), mRequest->mServerPort, 
 	       cUrlEncode::doUrlSaveEncode(recording->FileName()).c_str());
     else
@@ -1611,13 +1685,8 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
     for (uint x = 0; x < act_rec.size(); x++) {
       if (act_rec[x].name == name) {
 
-	/*	*(mLog->log())<< DEBUGPREFIX
-		      << " !!!!! Found active Recording !!! "
-		      << endl;
-*/
+	// *(mLog->log())<< DEBUGPREFIX << " !!!!! Found active Recording !!! " << endl;
 	rec_dur +=  (act_rec[x].startTime + act_rec[x].duration - now);
-	
-
       }
     } // for
 
@@ -1631,10 +1700,15 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
 		     cUrlEncode::doUrlSaveEncode(recording->FileName()).c_str(),
 		     -1, 
 		     recording->Start(), rec_dur, recording->FramesPerSecond(), 
-		     (recording->IsPesRecording() ? 0: 1), (recording->IsNew() ? 0: 1)) == ERROR) 
-      // Better Internal Server Error
-      return ERROR;
-
+		     (recording->IsPesRecording() ? 0: 1), (recording->IsNew() ? 0: 1)) == ERROR) {
+      *mResponseMessage = "";
+      sendError(500, "Internal Server Error", NULL, "writeXMLItem returned an error");
+      return OKAY;
+    }
+    item_count ++;
+    //    if (!single_item)
+    //      recording = Recordings.Next(recording);
+    recording = (!single_item) ? Recordings.Next(recording) : NULL;
   }
 
   hdr = "</channel>\n";
@@ -1642,8 +1716,10 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
   
   *mResponseMessage += hdr;
 
+  *(mLog->log())<< DEBUGPREFIX << " Recording Count= " <<item_count<< endl;
 
 #endif
+  sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), statbuf->st_mtime);
   return OKAY;
 }
 
@@ -1658,7 +1734,9 @@ int cResponseMemBlk::fillDataBlk() {
   }
 
   if (mResponseMessage == NULL) {
+#ifndef DEBUG
     *(mLog->log())<< DEBUGPREFIX << " mResponseMessage == NULL -> Done" << endl;
+#endif
     mRequest->mConnState = TOCLOSE;
     return ERROR;
   }

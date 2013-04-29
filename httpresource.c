@@ -92,10 +92,10 @@ cHttpResource::cHttpResource(int f, int id, int port, SmartTvServer* factory): c
   setNonBlocking();
   //  mBlkData = new char[MAXLEN];
 
-  //#ifndef DEBUG
+#ifndef DEBUG
   *(mLog->log()) << DEBUGPREFIX 
 		 << " cHttpResource created" << endl;
-  //#endif
+#endif
 }
 
 
@@ -577,6 +577,13 @@ int cHttpResource::handlePost() {
 
     mResponse = new cResponseMemBlk(this);
     ((cResponseMemBlk*)mResponse)->receiveYtUrl();
+    return OKAY;
+  }
+
+  if (mPath.compare("/deleteYtUrl") == 0) {
+
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->receiveDelYtUrl();
     return OKAY;
   }
 

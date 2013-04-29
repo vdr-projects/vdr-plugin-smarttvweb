@@ -72,6 +72,9 @@ class cResponseMemBlk : public cResponseBase {
   int receiveDelRecReq();
 
   int receiveYtUrl();
+  int receiveDelYtUrl();
+
+  int receiveCfgServerAddrs();
 
   void writeM3U8(double duration, int bitrate, float seg_dur, int end_seg);
   void writeMPD(double duration, int bitrate, float seg_dur, int end_seg);

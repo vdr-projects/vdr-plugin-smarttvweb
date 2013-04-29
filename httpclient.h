@@ -87,4 +87,26 @@ class cHttpYtPushClient : public cHttpClientBase  {
 
 };
 
+class cHttpCfgPushClient : public cHttpClientBase  {
+ public:
+  cHttpCfgPushClient(int, int, int, SmartTvServer*, string peer);
+  virtual ~cHttpCfgPushClient();
+
+ protected:
+  string getMsgBody(int );
+
+  string mServerAddress;
+};
+
+class cHttpInfoClient : public cHttpClientBase  {
+ public:
+  cHttpInfoClient(int, int, int, SmartTvServer*, string peer, string body);
+  virtual ~cHttpInfoClient();
+
+ protected:
+  string getMsgBody(int );
+
+  string mBody;
+};
+
 #endif
