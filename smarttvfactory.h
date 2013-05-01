@@ -47,8 +47,8 @@ class cStatus {
 
 using namespace std;
 
-#define PLG_VERSION "0.9.8-pre"
-#define SERVER "SmartTvWeb/0.9.8-pre" 
+#define PLG_VERSION "0.9.8"
+#define SERVER "SmartTvWeb/0.9.8" 
 
 struct sClientEntry {
   string mac;
