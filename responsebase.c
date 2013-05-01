@@ -75,6 +75,7 @@ void cResponseBase::sendError(int status, const char *title, const char *extra, 
 void cResponseBase::sendHeaders(int status, const char *title, const char *extra, const char *mime,
 				long long int length, time_t date) {
 
+
   time_t now;
   char timebuf[128];
   char f[400];
@@ -97,10 +98,12 @@ void cResponseBase::sendHeaders(int status, const char *title, const char *extra
     snprintf(f, sizeof(f), "Content-Type: %s\r\n", mime);
     hdr += f;
   }
+
   if (length >= 0) {
     snprintf(f, sizeof(f), "Content-Length: %lld\r\n", length);
     hdr += f;
   }
+
   if (date != -1) {
     strftime(timebuf, sizeof(timebuf), RFC1123FMT, gmtime(&date));
     snprintf(f, sizeof(f), "Last-Modified: %s\r\n", timebuf);
