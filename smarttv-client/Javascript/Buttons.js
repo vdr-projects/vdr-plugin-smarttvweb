@@ -50,7 +50,16 @@ Buttons.ynEnterCallback = function () {
 			break;
 		case 1:
 			Main.logToServer("ynButtons: Yes "+Player.resumePos);
-			Server.deleteRecording(Player.guid);
+			
+			switch (Main.state) {
+			case Main.eREC:
+				Server.deleteRecording(Player.guid);				
+				break;
+			case Main.eURLS:
+				Server.deleteUrls(Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
+				break;
+			}
+			
 			break;
 		}
 		Buttons.ynHide();

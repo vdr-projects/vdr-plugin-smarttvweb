@@ -3,7 +3,8 @@ var Data =
 	assets : new Item,
 	folderList : [],
 	createAccessMap : false,
-	directAccessMap : {}
+	directAccessMap : {},
+	sortType : 0
 };
 
 Array.prototype.remove = function(from, to) {
@@ -17,19 +18,28 @@ Data.reset = function() {
 	this.assets = new Item;
 	this.folderList = [];		
 	this.createAccessMap = false;
-
+	this.sortType = 0;
 //	this.folderList.push({item : this.assets, id: 0});
 	Main.log("Data.reset: folderList.push. this.folderList.length= " + this.folderList.length);
 };
 
 Data.completed= function(sort) {
-	if (sort == true)
-		this.assets.sortPayload();
+	if (sort == true) {
+		this.assets.sortPayload(Data.sortType);
+		if (this.createAccessMap == true) {
+			Main.log("ERROR: access map does not match anymore");
+		}
+	}
 	
 	this.folderList.push({item : this.assets, id: 0});
     Main.log("---------- completed ------------");    
 	Main.log("Data.completed: Data.folderList.length= " + this.folderList.length);
 	Main.log("Data.completed(): createAccessMap= " + ((this.createAccessMap == true) ? "true": "false"));
+};
+
+Data.nextSortType = function () {
+	Data.sortType = (Data.sortType +1) %3;
+	this.assets.sortPayload(Data.sortType);	
 };
 
 Data.selectFolder = function (idx, first_idx) {
@@ -106,7 +116,7 @@ function Item() {
     this.title = "root";
     this.isFolder = true;
     this.childs = [];
-    this.payload = "";  // only set, if (isFolder == false)
+    this.payload = {};  // only set, if (isFolder == false)
 }
 
 Item.prototype.isFolder = function() {
@@ -168,6 +178,7 @@ Item.prototype.addChild = function (key, pyld, level) {
 				Data.directAccessMap[pyld.num].push(this.childs.length); // should start from 1
 			}
     		folder.title = t;
+    		folder.payload['start'] = 0;
     		folder.addChild(key, pyld, level+1);
     		this.childs.push(folder);
     	}
@@ -233,7 +244,7 @@ Item.prototype.print = function(level) {
     	prefix += " ";
     
     for (var i = 0; i < this.childs.length; i++) {
-    	Main.log(prefix + this.childs[i].title);
+    	Main.log(prefix + this.childs[i].payload.start + "\t" + this.childs[i].title + " isFolder= " + this.childs[i].isFolder);
     	if (this.childs[i].isFolder == true) {
     		Main.log(prefix+"Childs:");
         	this.childs[i].print(level +1);
@@ -241,6 +252,7 @@ Item.prototype.print = function(level) {
     }
 };
 
+/*
 Item.prototype.sortPayload = function() {
     for (var i = 0; i < this.childs.length; i++) {
     	if (this.childs[i].isFolder == true) {
@@ -256,4 +268,49 @@ Item.prototype.sortPayload = function() {
     	}		
     });
 };
+*/
+Item.prototype.sortPayload = function(sel) {
+	for (var i = 0; i < this.childs.length; i++) {
+		if (this.childs[i].isFolder == true) {
+			this.childs[i].sortPayload(sel);
+		}
+	}
 
+	switch (sel) {
+	case 1:
+		// Dy Date
+		this.childs.sort(function(a,b) { 
+			if (a.payload.start == b.payload.start) {
+				return ((a.title < b.title) ? -1 : 1);
+			}
+			else {
+				return (a.payload.start - b.payload.start);
+			}
+		});
+		break;
+	case 2:
+		// Dy Date
+		this.childs.sort(function(a,b) { 
+			if (a.payload.start == b.payload.start) {
+				return (a.title >= b.title);
+			}
+			else {
+				return (b.payload.start - a.payload.start);
+			}
+		});
+		break;
+	case 0:
+	default:
+	    this.childs.sort(function(a,b) { 
+	    	if (a.title == b.title) {
+	    		return (a.payload.start - b.payload.start);
+	    	}
+	    	else {
+	    		return ((a.title < b.title) ? -1 : 1);
+
+	    	}		
+	    });
+
+		break;
+	}
+};

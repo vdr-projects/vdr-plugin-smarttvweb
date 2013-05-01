@@ -89,7 +89,7 @@ body {
     width: 960px; height: 540px;
    	background: url("../Images/selectScreen-bg.png");
     background: -webkit-radial-gradient(80% 80%, ellipse cover, rgba(197,222,234,1) 0%,rgba(138,187,215,1) 31%,rgba(6,109,171,1) 100%);
-	z-index:10;	
+	z-index:15;	
 }
 
 #optionsView {
@@ -129,25 +129,28 @@ body {
 #notify {
     position: absolute;
 	display: none;
-    left: 70%; top: 10px;
-    width: 20%; height: 6%;
+    right: 4%; top: 10px;
+	max-height: 30%;
+    max-width: 40%;
 	-webkit-border-radius: 1em;
 	-webkit-box-shadow:3px 3px 7px 4px rgba(0,0,0, 0.5);
     border-style:solid;
 	border-width:2px;  
     font-size:16px;
-	
-	padding-top:20px;
-    padding-left:20px;
+	padding-top:12px;
+	padding-bottom:10px;
+	padding-left:20px;
     padding-right:20px;
     background-color: rgba(0,0,0,0.5);
 	z-index:50;
 	overflow:hidden;
+
+}
+/*
 	text-overflow: ellipsis;
 	white-space : nowrap;
 
-}
-
+*/
 #infoOverlay{
     position: absolute;
 	display: none;
@@ -215,7 +218,7 @@ body {
 #main {
 	display: none;
 	position: absolute;
-	z-index:10;	
+	z-index:15;	
 	
 	left: 0px; top: 0px;
     width: 960px; height: 540px;

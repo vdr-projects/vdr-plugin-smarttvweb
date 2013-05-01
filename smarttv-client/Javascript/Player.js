@@ -225,6 +225,7 @@ Player.init = function() {
 
 Player.deinit = function() {
 	Main.log("Player deinit !!! " );       
+	Main.logToServer("Player deinit !!! " );       
 
     if (Player.AVPlayerObj != null) {
 		Player.AVPlayerObj.stop();
