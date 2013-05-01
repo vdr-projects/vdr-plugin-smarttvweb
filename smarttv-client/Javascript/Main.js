@@ -61,11 +61,21 @@ var Main = {
     menuKeyHndl : null
 };
 
+$(document).unload(function(){
+	Main.onUnload ();
+}); 
+
+Main.onUnload = function() {
+	Server.notifyServer("stopped");
+    Player.deinit();
+};
+
 $(document).ready(function(){
 	Main.onLoad ();
 }); 
 
 Main.onLoad = function() {
+
 	window.onShow = showHandler;		
 	window.onshow = showHandler;		
 
@@ -166,7 +176,6 @@ Main.init = function () {
 	HeartbeatHandler.start();
 	
 	Server.updateVdrStatus();
-//	Server.notifyServer("started");
 	
 	DirectAccess.init();
 	Config.getWidgetVersion();
@@ -187,11 +196,11 @@ Main.init = function () {
 		Main.logToServer (xmlDoc);
 	
 	}
-*/	 /*
-	  *
-	 Read widget conf. find the file to log
+*/	
+//	 Read widget conf. find the file to log
+/*
 	xhttp=new XMLHttpRequest();
-	xhttp.open("GET","$MANAGER_WIDGET/Common/webapi/1.0/webapis.js",false);
+	xhttp.open("GET","$MANAGER_WIDGET/Common/webapi/1.0/deviceapis.js",false);
 	xhttp.send("");
 	xmlDoc=xhttp.responseText;
 	Main.logToServer (xmlDoc);
@@ -220,10 +229,6 @@ Main.logToServer = function (msg) {
 */
 };
 
-Main.onUnload = function() {
-	Server.notifyServer("stopped");
-    Player.deinit();
-};
 
 Main.testUrls = function () {
 	Main.log("################## Main.testUrls");
@@ -318,11 +323,14 @@ Main.liveSelected = function() {
 };
 
 Main.recordingsSelected = function() {
+		
 	Server.retries = 0;
     Player.stopCallback = function() {
     	Display.show();
-		Server.saveResume ();    	
 		Data.getCurrentItem().childs[Main.selectedVideo].payload.isnew = "false";
+		var res = Display.getDisplayTitle (Data.getCurrentItem().childs[Main.selectedVideo]); 
+		Display.setVideoItem(Display.videoList[Display.currentWindow +Display.FIRSTIDX], res);
+		Server.saveResume ();    	
     };
 
     Server.errorCallback = Main.serverError;
@@ -370,7 +378,7 @@ Main.urlsSelected = function() {
     	Display.showPopup(msg);
     	Main.changeState(0);
     };
-    Server.setSort(true);
+    Server.setSort(false);
     Spinner.show();
     UrlsFetcher.fetchUrlList();
 };
@@ -1061,6 +1069,22 @@ cMenuKeyHndl.prototype.handleKeyDown = function (event) {
 			}
 		break;
  
+		
+ 	case tvKey.KEY_YELLOW:
+ 		if (Main.state == Main.eURLS) {
+ 			Buttons.ynShow();
+ 		}
+ 		break;
+ 	case tvKey.KEY_BLUE:
+		if (Main.state == Main.eREC) {
+			//change sorting
+			Spinner.show();
+			Data.nextSortType();
+			Main.selectedVideo = 0;
+			Display.setVideoList(Main.selectedVideo, Main.selectedVideo); 
+			Spinner.hide();
+		}
+ 		break;
      	
      case tvKey.KEY_RIGHT:
          Main.log("Right");

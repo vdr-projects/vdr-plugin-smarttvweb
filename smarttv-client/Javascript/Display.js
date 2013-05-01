@@ -324,6 +324,7 @@ Display.setVideoList = function(selected, first) {
     	if ((first_item+i) <0) {
 			// wrap around
     		idx = (first_item+i) + Data.getVideoCount();
+    		
             res = Display.getDisplayTitle (Data.getCurrentItem().childs[(first_item+i) + Data.getVideoCount()]); 
     	}
     	else if ((first_item+i) >= Data.getVideoCount()) {
@@ -589,7 +590,7 @@ Display.getDisplayTitle = function(item) {
 			var min = Display.getNumString (digi.getMinutes(), 2);
 
 			var d_str = mon + "/" + day + " " + hour + ":" + min;
-			res.c1 = d_str;
+			res.c1 = d_str + ((item.payload.isnew == "true") ? " *" : "");
 			res.c2 = item.title; 
 		}
 		break;
@@ -923,27 +924,28 @@ Display.handlerHideProgress = function() {
 
 Display.handlerShowProgress = function() {
     $("#overlay").fadeIn(400);
-
+    Main.log("************************ OL width= " + $("#olProgressBarBG").width());
+    var bar_width = $("#olProgressBarBG").width();
 	if (Player.isRecording == true) {
-	    $("#olRecProgressBar").show();
-	    var now = Display.GetEpochTime();
-//thlo	    var remaining = Math.round(((Player.startTime + Player.duration) - now) * 100/ Player.duration);
-	    var remaining = Math.round(((Player.startTime + Player.getDuration()) - now) * 100/ Player.getDuration());
-    	var elm = document.getElementById("olRecProgressBar");
-	    elm.style.display="block";
-	    elm.style.width = remaining + "%";
-	    elm.style.left = (100 - remaining) + "%";
+		if ((Player.startTime + Player.getDuration())  >  now) {
+			// not done
+			$("#olRecProgressBar").show();
+			var now = Display.GetEpochTime();
+			var remaining_px = ((Player.startTime + Player.getDuration()) - now) * bar_width/ Player.getDuration();
+			var elm = document.getElementById("olRecProgressBar");
+			elm.style.display="block";
+			elm.style.width = remaining_px + "px";
+			elm.style.left = (bar_width - remaining_px) + "px";
+		} 
+
 	}
 	else
 	    $("#olRecProgressBar").hide();
     
-//thlo    var timePercent = (Player.curPlayTime *100)/ Player.totalTime;
-    var timePercent = (Player.curPlayTime *100)/ Player.getDuration();
+    var time_px = (Player.curPlayTime *bar_width)/ Player.getDuration();
     
+    document.getElementById("olProgressBar").style.width = time_px + "px";
 
-    document.getElementById("olProgressBar").style.width = timePercent + "%";
-
-//thlo	$("#olTimeInfo").text(Player.curPlayTimeStr + " / " + Player.totalTimeStr);
 	$("#olTimeInfo").text(Player.curPlayTimeStr + " / " + Player.getDurationStr());
 
     var Digital=new Date();

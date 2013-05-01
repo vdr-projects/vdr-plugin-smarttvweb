@@ -3,7 +3,7 @@ var Server = {
     errorCallback : null,
     doSort : false,
     retries : 0,
-
+    curGuid : "",
     XHRObj : null
 };
 
@@ -81,6 +81,79 @@ Server.fetchVideoList = function(url) {
 	});
 };
 
+Server.updateEntry = function(guid) {
+	
+	Server.curGuid = Data.getCurrentItem().childs[Main.selectedVideo].payload.guid;
+
+	//url is sufficed with ?guid
+	var url = Config.serverUrl + "/recordings.xml?guid="+guid;
+	Main.logToServer(" Server.updateEntry: guid= " + guid);
+	
+	$.ajax({
+		url: url,
+		type : "GET",
+		success : function(data, status, XHR ) {
+			Main.logToServer("Server.updateEntry Success Response - status= " + status + " mime= " + XHR.responseType + " data= "+ data);
+
+			$(data).find("item").each(function () {
+				var title = $(this).find('title').text();
+//				var link = $(this).find('link').text();
+				var link = $(this).find('enclosure').attr('url');
+				var guid = $(this).find('guid').text();
+				var programme = $(this).find('programme').text();
+				var description = $(this).find('description').text();
+				var startVal = parseInt($(this).find('start').text());
+				var durVal = parseInt($(this).find('duration').text());
+				var fps = parseFloat($(this).find('fps').text());
+				var ispes = $(this).find('ispes').text();
+				var isnew = $(this).find('isnew').text();
+				var num = parseInt($(this).find('number').text());
+				Main.logToServer("Server.updateEntry: title= " + title + " start= " + startVal + " dur= " + durVal + " fps= " + fps);
+				
+                var title_list = title.split("~");
+                Data.addItem( title_list, {link : link, prog: programme, desc: description, guid : guid, start: startVal, 
+                			dur: durVal, ispes : ispes, isnew : isnew, fps : fps, num : num});              	
+							
+				}); // each
+
+			Data.assets.sortPayload(Data.sortType);
+
+			// check, whether Main.selectedVideo still points to the entry with guid
+			if (Data.getCurrentItem().childs[Main.selectedVideo].payload.guid != Server.curGuid) {
+				Main.logToServer("Server.updateEntry: curGuid has changed: curGuid= " + Server.curGuid);
+				Main.logToServer("Server.updateEntry: selVid= "+ Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
+				Main.selectedVideo = Main.selectedVideo+1;
+				Main.logToServer("Server.updateEntry: curGuid has changed: selVid+1"+ Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
+			}
+
+			var first_item = Main.selectedVideo - Display.currentWindow;
+		    if (first_item < 0 )
+		    	first_item = 0;
+
+        	Display.setVideoList(Main.selectedVideo, first_item); 
+        	// Main.selectedVideo does not fit anymore!!!!!
+        	// should do a general reset (jump to 0), when a new element is added
+        	// should reset to zero
+        	// plus update notif
+			Main.logToServer(" done");
+			
+		},
+		error : function (jqXHR, status, error) {
+			Main.logToServer("Server.updateEntry Error Response - status= " + status + " error= "+ error);
+			Display.showPopup("Error with XML File: " + status);
+			Server.retries ++;
+		},
+		parsererror : function () {
+			Main.logToServer("Server.updateEntry parserError  " );
+			Display.showPopup("Error in XML File");
+			Server.retries ++;
+            if (Server.errorCallback != null) {
+            	Server.errorCallback("XmlError");
+            }
+
+		}
+	});
+};
 
 //---------------------------------------------
 
@@ -181,6 +254,33 @@ Server.deleteRecording = function(guid) {
 	});
 };
 
+Server.deleteUrls = function (guid) {
+	Main.log("Server.deleteUrls");
+	Main.logToServer("Server.deleteUrls guid=" + guid);
+	Notify.handlerShowNotify("Deleting...", false);
+
+	$.ajax({
+		url: Config.serverUrl + "/deleteYtUrl?guid=" +guid,
+		type : "POST",
+		success : function(data, status, XHR ) {
+			Notify.showNotify("Deleted", true);
+			Data.deleteElm(Main.selectedVideo);
+			if (Main.selectedVideo >= Data.getVideoCount())
+				Main.selectedVideo = Data.getVideoCount() -1;
+			Server.updateVdrStatus();
+			Display.setVideoList(Main.selectedVideo, (Main.selectedVideo - Display.currentWindow));
+			Main.logToServer("Server.deleteUrls: Success" );
+			},
+		error : function (XHR, status, error) {
+			Main.logToServer("Server.deleteUrls: Error" );
+			Notify.showNotify(status, true);
+
+			// show popup
+//			Notify.showNotify("Error", true);
+		}
+	});
+
+};
 
 Server.notifyServer = function (state) {
 	Main.log("Server.notifyServer state="+state +"&mac=" + Network.ownMac + "&ip=" + Network.ownIp);

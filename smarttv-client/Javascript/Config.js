@@ -74,8 +74,8 @@ Config.init = function () {
 			}
 			else {
 				Config.doFirstLaunch();
-//				Display.showPopup ("WARNING: Cannot create widget folder. Try Config");
-		    	Display.showPopup (Lang[Lang.sel].configInit);    	
+				Display.showPopup ("WARNING: Cannot create widget folder. Try Config");
+//		    	Display.showPopup (Lang[Lang.sel].configInit);    	
 
 //				Main.logToServer("ERROR: Cannot create widget folder curWidget.id= " +curWidget.id);
 			}
@@ -92,7 +92,7 @@ Config.init = function () {
 Config.doFirstLaunch = function () {
 	Config.firstLaunch = true;
 
-	Main.changeState(4);
+	Main.changeState(Main.eOPT);
 };
 
 
@@ -160,8 +160,8 @@ Config.fetchConfig = function () {
 		},
 		error : function (XHR, status, error) {
 	    	Main.log ("Config Server Error");  	
-//	    	Display.showPopup("Config Server Error " + XHR.status + " " + status);
-	    	Display.showPopup(Lang[Lang.sel].configNoServer + " "+ XHR.status + " " + status);
+	    	Display.showPopup("Config Server Error " + XHR.status + " " + status);
+//	    	Display.showPopup(Lang[Lang.sel].configNoServer + " "+ XHR.status + " " + status);
 	    	
 	    	Main.logToServer("Config Server Error " + XHR.status + " " + status);
 
@@ -208,8 +208,8 @@ Config.readContext = function () {
 		    	Config.serverUrl = "http://" + Config.serverAddr;
 		    }
 		    else {
-//		    	Display.showPopup ("ERROR: Error in Config File. Try widget re-install.");    	
-		    	Display.showPopup (Lang[Lang.sel].configRead1);    	
+		    	Display.showPopup ("ERROR: Error in Config File. Try widget re-install.");    	
+//		    	Display.showPopup (Lang[Lang.sel].configRead1);    	
 
 		    	// TODO: I should re-write the config file
 		    }
@@ -227,8 +227,8 @@ Config.readContext = function () {
 		else {
 			Main.log("Config.readContext: Widget Folder creation failed");
 			
-//			Display.showPopup ("WARNING: ConfigRead Error and WidgetFolder creation failed. <br> Launching Config-Menu from here");  
-	    	Display.showPopup (Lang[Lang.sel].configRead2);    	
+			Display.showPopup ("WARNING: ConfigRead Error and WidgetFolder creation failed. <br> Launching Config-Menu from here");  
+//	    	Display.showPopup (Lang[Lang.sel].configRead2);    	
 			
 //			Main.log("-------------- Error: res = false ------------------------");			
 		}

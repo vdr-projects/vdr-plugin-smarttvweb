@@ -76,26 +76,69 @@ Comm.onMessageReceived = function(message, context) {
     // context -> message context (headers and etc)
     Main.logToServer("onMessageReceived:" + message);
 	var msg = eval('(' + message + ')');
-	if (msg.type == "YT") {
-	    if (msg.payload.id == "undefined") {
-	    	Main.logToServer("ERROR: msg.payload.id is not defined");
-	    	return;	    	
-	    }
-	    Main.logToServer("Found type YT " + msg.payload.id);
+	switch (msg.type) {
+	case "YT":
+		if (msg.payload.id == "undefined") {
+			Main.logToServer("ERROR: msg.payload.id is not defined");
+			return;	    	
+		}
+		Main.logToServer("Found type YT " + msg.payload.id);
 		if (Main.state == Main.eURLS) {
 			if (msg.payload.id == "" ) {
-		    	Main.logToServer("ERROR: msg.payload.id is empty");
-		    	return;
+				Main.logToServer("ERROR: msg.payload.id is empty");
+				return;
 			}
 			Spinner.show();
 			UrlsFetcher.autoplay = msg.payload.id;
 			UrlsFetcher.removeWhenStopped = "";
 			if (msg.payload.store == false) {
 				UrlsFetcher.removeWhenStopped = msg.payload.id;
-		    	Main.logToServer("removeWhenStopped= " + msg.payload.id);				
+				Main.logToServer("removeWhenStopped= " + msg.payload.id);				
 			}
 			UrlsFetcher.appendGuid(msg.payload.id);
 		}
-	}
+		break;
+	case "CFGADD":
+		if (msg.payload.serverAddr == "undefined") {
+			Main.logToServer("ERROR: msg.payload.id is not defined");
+			return;	    	
+		}
+    	Config.updateContext(msg.payload.serverAddr); 
+    	if (Config.firstLaunch == true) 
+    		Main.state = 1; // ensure, that the cursor is on 1st position        		
+
+    	Main.enableKeys();
+    	Options.hide();
+    	Main.changeState(0);
+
+		break;
+	case "INFO":
+		Main.logToServer("INFO: type= " + msg.payload.type + " val= " + msg.payload.name);
+		switch(msg.payload.type) {
+		case "RECSTART":
+			Notify.showNotify("Recording started: '" + msg.payload.name +"'", true);
+			if (Main.state == Main.eREC) {
+				Server.updateEntry(msg.payload.name);
+			}
+			// msg.payload.name is the guid. I should now run a query, then update the database and update the screen (if needed)
+			
+			break;
+		case "RECSTOP":
+			Notify.showNotify("Recording finished: " + msg.payload.name+"'", true);
+			break;
+		case "TCADD":
+			Notify.showNotify("Timer added: '" + msg.payload.name+"'", true);
+			break;
+		case "TCMOD":
+			Notify.showNotify("Timer modified: '" + msg.payload.name+"'", true);
+			break;
+		case "TCDEL":
+			Notify.showNotify("Timer deleted: '" + msg.payload.name+"'", true);
+			break;
+
+		}
+		break;
+	}; // switch
+
 	
 };
