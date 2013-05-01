@@ -144,7 +144,7 @@ void cManageUrls::appendToFile(string s_line) {
     return;
   }
   *(mLog->log()) << " cManageUrls::appendToFile: writing  " << s_line << endl;
-  *mFile << s_line;
+  *mFile << s_line << endl;
   //  mFile->write(s_line.c_str(), s_line.size());
 
   mFile->flush();
