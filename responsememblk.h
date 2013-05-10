@@ -65,7 +65,11 @@ class cResponseMemBlk : public cResponseBase {
   int sendUrlsXml ();
   int sendMediaXml (struct stat *statbuf);
   int sendManifest (struct stat *statbuf, bool is_hls = true);
-  
+  void sendTimersXml();
+
+  void receiveAddTimerReq();
+  void receiveDelTimerReq();
+
   void receiveClientInfo();
 
   int receiveResume();

@@ -138,7 +138,7 @@ int cResponseMemBlk::receiveYtUrl() {
 
   }
 
-  sendError(400, "Bad Request", NULL, "Mandatory Line attribute not present.");
+  sendError(400, "Bad Request", NULL, "001 Mandatory Line attribute not present.");
   return OKAY;
 
 }
@@ -155,7 +155,7 @@ int cResponseMemBlk::receiveDelYtUrl() {
     *(mLog->log())<< DEBUGPREFIX
 		  << " ERROR in cResponseMemBlk::receiveDelYtUrl: guid not found in query." 
 		  << endl;
-    sendError(400, "Bad Request", NULL, "No guid in query line");
+    sendError(400, "Bad Request", NULL, "002 No guid in query line");
     return OKAY;
   }
 
@@ -163,7 +163,7 @@ int cResponseMemBlk::receiveDelYtUrl() {
     sendHeaders(200, "OK", NULL, NULL, -1, -1);
   }
   else {
-    sendError(400, "Bad Request.", NULL, "Entry not found. Deletion failed!");
+    sendError(400, "Bad Request.", NULL, "003 Entry not found. Deletion failed!");
   }
 
   return OKAY;
@@ -184,7 +184,7 @@ int cResponseMemBlk::receiveCfgServerAddrs() {
 		    << " receiveCfgServerAddrs: no server address" 
 		    << endl;
 
-      sendHeaders(400, "Bad Request", NULL, "TV address field empty", 0, -1);
+      sendHeaders(400, "Bad Request", NULL, "004 TV address field empty", 0, -1);
       return OKAY;
     }
     
@@ -195,7 +195,7 @@ int cResponseMemBlk::receiveCfgServerAddrs() {
 
   }
 
-  sendError(400, "Bad Request", NULL, "Mandatory TV address attribute not present.");
+  sendError(400, "Bad Request", NULL, "005 Mandatory TV address attribute not present.");
   return OKAY;
 
 }
@@ -339,7 +339,7 @@ int cResponseMemBlk::receiveResume() {
 		  << " resume= " << entry.mResume
 		  << endl;
 
-    sendError(400, "Bad Request", NULL, "Failed to find the recording.");
+    sendError(400, "Bad Request", NULL, "006 Failed to find the recording.");
     return OKAY;
   }
 
@@ -397,13 +397,13 @@ int cResponseMemBlk::sendResumeXml () {
     //Error 404
     *(mLog->log())<< DEBUGPREFIX
 		  << " ERROR in sendResume: recording not found - filename= " << entry.mFilename << endl;
-    sendError(400, "Bad Request", NULL, "Failed to find the recording.");
+    sendError(400, "Bad Request", NULL, "007 Failed to find the recording.");
     return OKAY;
   }
   if (rec->IsNew()) {
     *(mLog->log())<< DEBUGPREFIX
 		  << " sendResume: file is new "  << endl;
-    sendError(400, "Bad Request", NULL, "File is new.");
+    sendError(400, "Bad Request", NULL, "008 File is new.");
     return OKAY;
   }
   cResumeFile resume(entry.mFilename.c_str(), rec->IsPesRecording());
@@ -443,7 +443,7 @@ int cResponseMemBlk::receiveDelRecReq() {
     *(mLog->log())<< DEBUGPREFIX
 		  << " ERROR: id not found in query." 
 		  << endl;
-    sendError(400, "Bad Request", NULL, "no id in query line");
+    sendError(400, "Bad Request", NULL, "009 No id in query line");
     return OKAY;
   }
   mRequest->mPath = cUrlEncode::doUrlSaveDecode(id);
@@ -453,7 +453,7 @@ int cResponseMemBlk::receiveDelRecReq() {
     *(mLog->log())<< DEBUGPREFIX
 		  << " ERROR: Recording not found. Deletion failed: mPath= " << mRequest->mPath
 		  << endl;
-    sendError(404, "Not Found.", NULL, "Recording not found. Deletion failed!");
+    sendError(404, "Not Found.", NULL, "001 Recording not found. Deletion failed!");
     return OKAY;
   }
   if ( rec->Delete() ) {
@@ -464,7 +464,7 @@ int cResponseMemBlk::receiveDelRecReq() {
     *(mLog->log())<< DEBUGPREFIX
 		  << " ERROR: rec->Delete() returns false. mPath= " << mRequest->mPath
 		  << endl;
-    sendError(500, "Internal Server Error", NULL, "deletion failed!");
+    sendError(500, "Internal Server Error", NULL, "001 deletion failed!");
     return OKAY;
   }
   
@@ -498,7 +498,7 @@ int cResponseMemBlk::sendDir(struct stat *statbuf) {
 
   if (len == 0 || mRequest->mPath[len - 1] != '/') {
     snprintf(pathbuf, sizeof(pathbuf), "Location: %s/", mRequest->mPath.c_str());
-    sendError(302, "Found", pathbuf, "Directories must end with a slash.");
+    sendError(302, "Found", pathbuf, "001 Directories must end with a slash.");
     return OKAY;
   }
 
@@ -744,6 +744,203 @@ void cResponseMemBlk::writeMPD(double duration, int bitrate, float seg_dur, int 
   sendHeaders(200, "OK", NULL, "application/x-mpegURL", mResponseMessage->size(), -1);
 }
 
+void cResponseMemBlk::receiveAddTimerReq() {
+  if (isHeadRequest())
+    return ;
+
+  *(mLog->log()) << DEBUGPREFIX << " cResponseMemBlk::receiveAddTimerReq"  << endl;
+
+  vector<sQueryAVP> avps;
+  mRequest->parseQueryLine(&avps);
+
+  //guid=<guid>&wd=<weekdays>&dy=<day>&st=<start>&sp=<stop>
+  string guid = "";
+
+  string dy_str;
+  time_t day = 0;
+
+  string st_str;
+  int start = 0;
+
+  string sp_str;
+  int stop =0;
+
+  if (mRequest->getQueryAttributeValue(&avps, "guid", guid) == OKAY) {
+    *(mLog->log()) << DEBUGPREFIX
+		   << " guid= " << guid  << endl;
+  }
+
+  if (mRequest->getQueryAttributeValue(&avps, "dy", dy_str) == OKAY) {
+    day = atol(dy_str.c_str());
+    *(mLog->log()) << DEBUGPREFIX << " dy= " << day  << endl;
+  }
+
+  if (mRequest->getQueryAttributeValue(&avps, "st", st_str) == OKAY) {
+    start = atoi(st_str.c_str());
+    *(mLog->log()) << DEBUGPREFIX << " st= " << start  << endl;
+  }
+
+  if (mRequest->getQueryAttributeValue(&avps, "sp", sp_str) == OKAY) {
+    stop = atoi(sp_str.c_str());
+    *(mLog->log()) << DEBUGPREFIX << " sp= " << stop  << endl;
+  }
+
+  if (Timers.BeingEdited()) {
+    *(mLog->log()) << DEBUGPREFIX << " cResponseMemBlk::receiveAddTimerReq: Timers are being edited. returning "   << endl;
+    sendError(503, "Service Unavailable", NULL, "001 Timers are being edited.");
+    return;
+  }
+
+  // create the timer...
+  // Issue: find the event object.
+  return;
+}
+
+void cResponseMemBlk::receiveDelTimerReq() {
+  if (isHeadRequest())
+    return ;
+
+  *(mLog->log()) << DEBUGPREFIX << " cResponseMemBlk::receiveDelTimerReq"  << endl;
+
+  vector<sQueryAVP> avps;
+  mRequest->parseQueryLine(&avps);
+
+  //guid=<guid>&wd=<weekdays>&dy=<day>&st=<start>&sp=<stop>
+  string guid = "";
+  string wd_str;
+  int weekdays = 0;
+
+  string dy_str;
+  time_t day = 0;
+
+  string st_str;
+  int start = 0;
+
+  string sp_str;
+  int stop =0;
+
+  if (mRequest->getQueryAttributeValue(&avps, "guid", guid) == OKAY) {
+    *(mLog->log()) << DEBUGPREFIX
+		   << " guid= " << guid  << endl;
+  }
+
+  if (mRequest->getQueryAttributeValue(&avps, "wd", wd_str) == OKAY) {
+    weekdays = atoi(wd_str.c_str());
+    *(mLog->log()) << DEBUGPREFIX << " wd= " << weekdays  << endl;
+  }
+
+  if (mRequest->getQueryAttributeValue(&avps, "dy", dy_str) == OKAY) {
+    day = atol(dy_str.c_str());
+    *(mLog->log()) << DEBUGPREFIX << " dy= " << day  << endl;
+  }
+
+  if (mRequest->getQueryAttributeValue(&avps, "st", st_str) == OKAY) {
+    start = atoi(st_str.c_str());
+    *(mLog->log()) << DEBUGPREFIX << " st= " << start  << endl;
+  }
+
+  if (mRequest->getQueryAttributeValue(&avps, "sp", sp_str) == OKAY) {
+    stop = atoi(sp_str.c_str());
+    *(mLog->log()) << DEBUGPREFIX << " sp= " << stop  << endl;
+  }
+
+  if (Timers.BeingEdited()) {
+    *(mLog->log()) << DEBUGPREFIX << " cResponseMemBlk::receiveDelTimerReq: Timers are being edited. returning "   << endl;
+    sendError(503, "Service Unavailable", NULL, "001 Timers are being edited.");
+    return;
+  }
+
+  cTimer *to_del = NULL;
+  for (cTimer * ti = Timers.First(); ti; ti = Timers.Next(ti)){
+    ti->Matches();
+    if ((guid.compare(*(ti->Channel()->GetChannelID()).ToString()) == 0)  &&
+	(ti->WeekDays() && ti->WeekDays() == weekdays || !ti->WeekDays() && ti->Day() == day) &&
+	ti->Start() == start &&
+	ti->Stop() == stop) {
+      to_del = ti;
+      break;
+    }
+  }
+  
+  if (to_del != NULL) {
+    *(mLog->log()) << DEBUGPREFIX << " found a timer to delete"  << endl;
+    Timers.Del(to_del, true);
+
+    sendHeaders(200, "OK", NULL, NULL, 0, -1);
+  }
+  else {
+    sendError(400, "Bad Request", NULL, "010 No Timer found.");
+  }  
+}
+
+void cResponseMemBlk::sendTimersXml() {
+  char f[200];
+
+  if (isHeadRequest())
+    return;
+#ifndef STANDALONE
+  mResponseMessage = new string();
+  *mResponseMessage = "";
+  mResponseMessagePos = 0;
+
+  *mResponseMessage += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+  *mResponseMessage += "<timers>\n";
+
+  for (cTimer * ti = Timers.First(); ti; ti = Timers.Next(ti)){
+    ti->Matches();
+
+    *mResponseMessage += "<timer>\n";
+
+    //    snprintf(f, sizeof(f), "<id>%s</id>\n", cUrlEncode::doXmlSaveEncode(*(ti->ToText(true))).c_str());
+    //    *mResponseMessage += f;
+    snprintf(f, sizeof(f), "<file>%s</file>\n", cUrlEncode::doXmlSaveEncode(ti->File()).c_str());
+    *mResponseMessage += f;
+
+    snprintf(f, sizeof(f), "<channelname>%s</channelname>\n", ti->Channel()->Name());
+    *mResponseMessage += f;
+
+    snprintf(f, sizeof(f), "<issingleevent>%s</issingleevent>\n", ((ti->IsSingleEvent()) ? "true" : "false" ));
+    *mResponseMessage += f;
+    
+    snprintf(f, sizeof(f), "<printday>%s</printday>\n", *cTimer::PrintDay(ti->Day(), ti->WeekDays(), true));
+    *mResponseMessage += f;
+
+    snprintf(f, sizeof(f), "<weekdays>%d</weekdays>\n", ti->WeekDays());
+    *mResponseMessage += f;
+
+    snprintf(f, sizeof(f), "<day>%ld</day>\n", ti->Day());
+    *mResponseMessage += f;
+
+    snprintf(f, sizeof(f), "<start>%d</start>\n", ti->Start());
+    *mResponseMessage += f;
+
+    snprintf(f, sizeof(f), "<stop>%d</stop>\n", ti->Stop());
+    *mResponseMessage += f;
+
+    snprintf(f, sizeof(f), "<starttime>%ld</starttime>\n", ti->StartTime());
+    *mResponseMessage += f;
+
+    snprintf(f, sizeof(f), "<stoptime>%ld</stoptime>\n", ti->StopTime());
+    *mResponseMessage += f;
+
+    snprintf(f, sizeof(f), "<channelid>%s</channelid>\n", *(ti->Channel()->GetChannelID()).ToString());
+    *mResponseMessage += f;
+
+    snprintf(f, sizeof(f), "<flags>%d</flags>\n", ti->Flags());
+    *mResponseMessage += f;
+
+    snprintf(f, sizeof(f), "<isrec>%s</isrec>\n", ((ti->HasFlags(tfRecording) )? "true":"false"));
+    *mResponseMessage += f;
+
+    *mResponseMessage += "</timer>\n";
+
+  }
+  *mResponseMessage += "</timers>\n";
+
+  sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), -1);
+  //  sendHeaders(200, "OK", NULL, "text/plain", mResponseMessage->size(), -1);
+#endif
+}
 
 uint64_t cResponseMemBlk::getVdrFileSize() {
   // iter over all vdr files and get file size
@@ -1022,7 +1219,7 @@ int cResponseMemBlk::sendMediaXml (struct stat *statbuf) {
   vector<sFileEntry> entries;
 
   if (parseFiles(&entries, "", media_folder, "", statbuf) == ERROR) {
-    sendError(404, "Not Found", NULL, "Media Folder likely not configured.");
+    sendError(404, "Not Found", NULL, "002 Media Folder likely not configured.");
     return OKAY;
   }
     
@@ -1074,11 +1271,18 @@ int cResponseMemBlk::sendVdrStatusXml (struct stat *statbuf) {
   int free;
   int used;
   int percent;
+  char timebuf[128];
+  time_t now;
 
   percent = VideoDiskSpace(&free, &used);
 
   *mResponseMessage += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
   *mResponseMessage += "<vdrstatus>\n";
+
+  now = time(NULL);
+  strftime(timebuf, sizeof(timebuf), "%Y-%m-%dT%H:%M:%S", localtime(&now));   // ISO 8601
+  snprintf(f, sizeof(f), "<vdrTime>%s</vdrTime>\n", timebuf);
+  *mResponseMessage += f;
 
   *mResponseMessage += "<diskspace>\n";  
   snprintf(f, sizeof(f), "<free>%d</free>", free);
@@ -1386,7 +1590,7 @@ int cResponseMemBlk::sendEpgXml (struct stat *statbuf) {
 		  << endl;
     delete mResponseMessage;
     mResponseMessage = NULL;
-    sendError(400, "Bad Request", NULL, "no id in query line");
+    sendError(400, "Bad Request", NULL, "011 No id in query line");
     return OKAY;
   }
 
@@ -1406,7 +1610,7 @@ int cResponseMemBlk::sendEpgXml (struct stat *statbuf) {
 		  << endl;
     delete mResponseMessage;
     mResponseMessage = NULL; 
-    sendError(400, "Bad Request", NULL, "Invalid Channel ID.");
+    sendError(400, "Bad Request", NULL, "012 Invalid Channel ID.");
     return OKAY;
   }
 
@@ -1420,7 +1624,7 @@ int cResponseMemBlk::sendEpgXml (struct stat *statbuf) {
 		  << endl;
     delete mResponseMessage;
     mResponseMessage = NULL;
-    sendError(500, "Internal Server Error", NULL, "Schedule is zero.");
+    sendError(500, "Internal Server Error", NULL, "001 Schedule is zero.");
     return OKAY;
   }
 
@@ -1443,7 +1647,7 @@ int cResponseMemBlk::sendEpgXml (struct stat *statbuf) {
 		  << endl;
     delete mResponseMessage;
     mResponseMessage = NULL;
-    sendError(500, "Internal Server Error", NULL, "Event is zero.");
+    sendError(500, "Internal Server Error", NULL, "002 Event is zero.");
     return OKAY;
   }
   
@@ -1467,7 +1671,7 @@ int cResponseMemBlk::sendEpgXml (struct stat *statbuf) {
 
     delete mResponseMessage;
     mResponseMessage = NULL;
-    sendError(500, "Internal Server Error", NULL, "Title is zero.");
+    sendError(500, "Internal Server Error", NULL, "003 Title is zero.");
     return OKAY;
   }
 
@@ -1491,7 +1695,7 @@ int cResponseMemBlk::sendEpgXml (struct stat *statbuf) {
       
       delete mResponseMessage;
       mResponseMessage = NULL;
-      sendError(500, "Internal Server Error", NULL, "Description is zero.");
+      sendError(500, "Internal Server Error", NULL, "004 Description is zero.");
       return OKAY;
     }
     hdr += "</desc>\n";
@@ -1702,7 +1906,7 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
 		     recording->Start(), rec_dur, recording->FramesPerSecond(), 
 		     (recording->IsPesRecording() ? 0: 1), (recording->IsNew() ? 0: 1)) == ERROR) {
       *mResponseMessage = "";
-      sendError(500, "Internal Server Error", NULL, "writeXMLItem returned an error");
+      sendError(500, "Internal Server Error", NULL, "005 writeXMLItem returned an error");
       return OKAY;
     }
     item_count ++;
