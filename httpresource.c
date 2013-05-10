@@ -309,6 +309,12 @@ int cHttpResource::processRequest() {
     return OKAY;
   }
 
+  if (mPath.compare("/timers.xml") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->sendTimersXml();
+    return OKAY;
+  }
+
   if (mPath.compare("/setResume.xml") == 0) {
     mResponse = new cResponseMemBlk(this);
     ((cResponseMemBlk*)mResponse)->receiveResume();
@@ -327,6 +333,19 @@ int cHttpResource::processRequest() {
     return OKAY;
   }
 
+  //thlo for testing purpose
+  if (mPath.compare("/deleteTimer.xml") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->receiveDelTimerReq();
+    return OKAY;
+  }
+
+  //thlo for testing purpose
+  if (mPath.compare("/addTimer.xml") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->receiveAddTimerReq();
+    return OKAY;
+  }
 
 #endif
   if (mPath.compare("/yt-bookmarklet.js") == 0) {
@@ -357,7 +376,7 @@ int cHttpResource::processRequest() {
     mPath = mFactory->getConfigDir() + "/widget.conf";
 
     if (stat(mPath.c_str(), &statbuf) < 0) {
-      mResponse = new cResponseError(this, 404, "Not Found", NULL, "File not found.");
+      mResponse = new cResponseError(this, 404, "Not Found", NULL, "003 File not found.");
       //      ((cResponseError*)mResponse)->sendError(404, "Not Found", NULL, "File not found.");
       return OKAY;
     }
@@ -373,7 +392,7 @@ int cHttpResource::processRequest() {
     mPath = mFactory->getConfigDir() + "/web/favicon.ico";
 
     if (stat(mPath.c_str(), &statbuf) < 0) {
-      mResponse = new cResponseError(this, 404, "Not Found", NULL, "File not found.");
+      mResponse = new cResponseError(this, 404, "Not Found", NULL, "003 File not found.");
       //      ((cResponseError*)mResponse)->sendError(404, "Not Found", NULL, "File not found.");
       return OKAY;
     }
@@ -427,7 +446,7 @@ int cHttpResource::processRequest() {
     // checking, whether the file or directory exists 
     *(mLog->log())<< DEBUGPREFIX
                   << " File Not found " << mPath << endl;
-    mResponse = new cResponseError(this, 404, "Not Found", NULL, "File not found.");
+    mResponse = new cResponseError(this, 404, "Not Found", NULL, "003 File not found.");
     //    ((cResponseError*)mResponse)->sendError(404, "Not Found", NULL, "File not found.");
     
     return OKAY;
@@ -453,7 +472,7 @@ int cHttpResource::processRequest() {
 
     if (!((ok_to_serve) or (mPath.compare(0, (mFactory->getConfig()->getMediaFolder()).size(), mFactory->getConfig()->getMediaFolder()) == 0)))  {
       // No directory access outside of MediaFolder (and also VDRCONG/web)
-      mResponse = new cResponseError(this, 404, "Not Found", NULL, "File not found.");
+      mResponse = new cResponseError(this, 404, "Not Found", NULL, "003 File not found.");
       //      ((cResponseError*)mResponse)->sendError(404, "Not Found", NULL, "File not found.");
       return OKAY;
     }
@@ -482,7 +501,7 @@ int cHttpResource::processRequest() {
 
     // Check, if requested file is in Media Directory
     if (!((ok_to_serve) or (mPath.compare(0, (mFactory->getConfig()->getMediaFolder()).size(), mFactory->getConfig()->getMediaFolder()) == 0)))  {
-      mResponse = new cResponseError(this, 404, "Not Found", NULL, "File not found.");
+      mResponse = new cResponseError(this, 404, "Not Found", NULL, "003 File not found.");
       //      ((cResponseError*)mResponse)->sendError(404, "Not Found", NULL, "File not found.");
       return OKAY;
     }
@@ -588,11 +607,23 @@ int cHttpResource::handlePost() {
   }
 
   if (mPath.compare("/deleteRecording.xml") == 0) {
-
     mResponse = new cResponseMemBlk(this);
     ((cResponseMemBlk*)mResponse)->receiveDelRecReq();
     return OKAY;
   }
+
+  if (mPath.compare("/deleteTimer.xml") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->receiveDelTimerReq();
+    return OKAY;
+  }
+
+  if (mPath.compare("/addTimer.xml") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->receiveAddTimerReq();
+    return OKAY;
+  }
+
 
   // Should not reach the end of the function
   return ERROR;
