@@ -83,7 +83,7 @@ int cResponseFile::sendFile() {
   struct stat64 statbuf;
 
   if (stat64((mRequest->mPath).c_str(), &statbuf) < 0) {
-    sendError(404, "Not Found", NULL, "File not found.");
+    sendError(404, "Not Found", NULL, "003 File not found.");
     return OKAY;
   }
   *(mLog->log())<< DEBUGPREFIX
@@ -93,14 +93,14 @@ int cResponseFile::sendFile() {
   char f[400];
 
   if (openFile((mRequest->mPath).c_str()) == ERROR) {
-    sendError(403, "Forbidden", NULL, "Access denied.");
+    sendError(403, "Forbidden", NULL, "001 Access denied.");
     return OKAY;
   }
 
   mFile = fopen((mRequest->mPath).c_str(), "r");
 
   if (!mFile) {
-    sendError(403, "Forbidden", NULL, "Access denied.");
+    sendError(403, "Forbidden", NULL, "001 Access denied.");
     return OKAY;
   }
 

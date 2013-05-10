@@ -121,7 +121,7 @@ bool cResponseVdrDir::isTimeRequest(struct stat *statbuf) {
   if (rec == NULL) {
     *(mLog->log())<< DEBUGPREFIX
 		  << " Error: Did not find recording= " << mRequest->mPath << endl;
-    sendError(404, "Not Found", NULL, "File not found.");
+    sendError(404, "Not Found", NULL, "003 File not found.");
     return true;
   }
   
@@ -129,7 +129,7 @@ bool cResponseVdrDir::isTimeRequest(struct stat *statbuf) {
   double dur = rec->NumFrames() * fps;
   bool is_pes = rec->IsPesRecording();
   if (dur < time) {
-    sendError(400, "Bad Request", NULL, "Time to large.");
+    sendError(400, "Bad Request", NULL, "013 Time to large.");
     return true;
   }
 
@@ -150,7 +150,7 @@ bool cResponseVdrDir::isTimeRequest(struct stat *statbuf) {
     *(mLog->log()) << DEBUGPREFIX
 		   << " failed to open idx file = "<< (mRequest->mDir +"/index").c_str()
 		   << endl;
-    sendError(404, "Not Found", NULL, "Failed to open Index file");
+    sendError(404, "Not Found", NULL, "004 Failed to open Index file");
     return OKAY;
   }
 
@@ -170,7 +170,7 @@ bool cResponseVdrDir::isTimeRequest(struct stat *statbuf) {
     *(mLog->log())<<DEBUGPREFIX
 		  << " issue while reading, buffered_indexes <=0" << endl;
     delete[] index_buf;
-    sendError(404, "Not Found", NULL, "Failed to read Index file");
+    sendError(404, "Not Found", NULL, "005 Failed to read Index file");
     return OKAY;
   }
 
@@ -215,7 +215,7 @@ bool cResponseVdrDir::isTimeRequest(struct stat *statbuf) {
   
   if (!found_it) {
     delete[] index_buf;
-    sendError(404, "Not Found", NULL, "Failed to read Index file");
+    sendError(404, "Not Found", NULL, "005 Failed to read Index file");
     return OKAY;
   }
 
@@ -235,7 +235,7 @@ bool cResponseVdrDir::isTimeRequest(struct stat *statbuf) {
 		 << " Opening Path= "
 		 << pathbuf << endl;
   if (openFile(pathbuf) != OKAY) {
-    sendError(403, "Forbidden", NULL, "Access denied.");
+    sendError(403, "Forbidden", NULL, "001 Access denied.");
     return true;
   }
 
@@ -393,7 +393,7 @@ int cResponseVdrDir::sendVdrDir(struct stat *statbuf) {
     *(mLog->log())<< DEBUGPREFIX
 	 << " No video file in the directory" 
 	 << endl;
-    sendError(404, "Not Found", NULL, "File not found.");
+    sendError(404, "Not Found", NULL, "003 File not found.");
     return OKAY;
   }
 
@@ -425,7 +425,7 @@ int cResponseVdrDir::sendVdrDir(struct stat *statbuf) {
     snprintf(pathbuf, sizeof(pathbuf), mFileStructure.c_str(), (mRequest->mPath).c_str(), file_sizes[cur_idx].sIdx);
 
     if (openFile(pathbuf) != OKAY) {
-      sendError(403, "Forbidden", NULL, "Access denied.");
+      sendError(403, "Forbidden", NULL, "001 Access denied.");
       return OKAY;
     }
 
@@ -443,7 +443,7 @@ int cResponseVdrDir::sendVdrDir(struct stat *statbuf) {
     if (mIsRecording && ((mRequest->rangeHdr).begin > total_file_size)) {
       *(mLog->log()) << DEBUGPREFIX
 		     << " ERROR: Not yet available" << endl;     
-      sendError(404, "Not Found", NULL, "File not found.");
+      sendError(404, "Not Found", NULL, "003 File not found.");
       return OKAY;
     }
     cur_idx = file_sizes.size() -1;
@@ -478,7 +478,7 @@ int cResponseVdrDir::sendVdrDir(struct stat *statbuf) {
 		    << file_sizes[cur_idx].sFirstOffset << " rangeHdr.begin= " << (mRequest->rangeHdr).begin 
 		    << " vdr_no= " << file_sizes[cur_idx].sIdx << endl;
       *(mLog->log())<< "---------------" << endl;
-      sendError(403, "Forbidden", NULL, "Access denied.");
+      sendError(403, "Forbidden", NULL, "001 Access denied.");
       return OKAY;
     }
     mRequest->mDir = mRequest->mPath;
@@ -562,7 +562,7 @@ int cResponseVdrDir::sendMediaSegment (struct stat *statbuf) {
     *(mLog->log()) << DEBUGPREFIX
 		   << " failed to open idx file = "<< (mRequest->mDir +"/index").c_str()
 		   << endl;
-    sendError(404, "Not Found", NULL, "Failed to open Index file");
+    sendError(404, "Not Found", NULL, "004 Failed to open Index file");
     return OKAY;
   }
 
@@ -581,7 +581,7 @@ int cResponseVdrDir::sendMediaSegment (struct stat *statbuf) {
     *(mLog->log())<<DEBUGPREFIX
 		  << " issue while reading" << endl;
     delete[] index_buf;
-    sendError(404, "Not Found", NULL, "Failed to read Index file");
+    sendError(404, "Not Found", NULL, "005 Failed to read Index file");
     return OKAY;
   }
 
@@ -671,17 +671,17 @@ int cResponseVdrDir::sendMediaSegment (struct stat *statbuf) {
   }
 
   if (error){
-    sendError(404, "Not Found", NULL, "Not all inputs exists");
+    sendError(404, "Not Found", NULL, "006 Not all inputs exists");
     return OKAY;
   }
   
   //  mContentType = VDRDIR;
  
   if (openFile(seg_fn) != OKAY) {
-	*(mLog->log())<< DEBUGPREFIX << " Failed to open file= " << seg_fn 
-		      << " mRemLength= " << mRemLength<< endl;
-	sendError(404, "Not Found", NULL, "File not found.");
-	return OKAY;
+    *(mLog->log())<< DEBUGPREFIX << " Failed to open file= " << seg_fn 
+		  << " mRemLength= " << mRemLength<< endl;
+    sendError(404, "Not Found", NULL, "003 File not found.");
+    return OKAY;
   }
   fseek(mFile, start_offset, SEEK_SET);
 
