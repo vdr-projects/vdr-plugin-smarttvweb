@@ -132,6 +132,7 @@ void SmartTvServer::Recording(const cDevice *Device, const char *Name, const cha
   }
 };
 
+
 void SmartTvServer::TimerChange(const cTimer *Timer, eTimerChange Change) {
  #ifndef DEBUG
   *(mLog.log()) << "SmartTvServer::TimerChange" 
@@ -177,6 +178,24 @@ void SmartTvServer::TimerChange(const cTimer *Timer, eTimerChange Change) {
       if (cfd < 0) 
 	continue;
       addHttpResource(cfd, new cHttpInfoClient(cfd, mHttpClientId, serverPort, this, mConTvClients[i]->ip, msg.str()));
+    }
+  } 
+}
+
+void SmartTvServer::OsdStatusMessage(const char *Message) {
+  *(mLog.log()) << "SmartTvServer::OsdStatusMessage: Msg=  " << ((Message != NULL) ? Message : "") << endl;
+
+  if (Message == NULL)
+    return;
+
+  string msg = Message;
+
+  for (uint i = 0; i < mConTvClients.size(); i ++) {
+    if ((mConTvClients[i]->ip).compare("") != 0) {
+      int cfd=  connectToClient(mConTvClients[i]->ip);
+      if (cfd < 0) 
+	continue;
+      addHttpResource(cfd, new cHttpMesgPushClient(cfd, mHttpClientId, serverPort, this, mConTvClients[i]->ip, msg));
     }
   } 
 }
@@ -373,7 +392,7 @@ void SmartTvServer::threadLoop() {
 
 void SmartTvServer::loop() {
   socklen_t addr_size = 0;
-  int rfd;
+  unsigned int rfd;
   sockaddr_in sadr;
   int req_id = 0;
   int ret = 0;

@@ -389,3 +389,19 @@ cHttpInfoClient::~cHttpInfoClient() {
 string cHttpInfoClient::getMsgBody(int) {
   return "{\"type\":\"INFO\",payload:" + mBody +"}";;
 }
+
+
+//--------------------------------
+//----- cHttpMesgPushClient ------
+//--------------------------------
+cHttpMesgPushClient::cHttpMesgPushClient(int f, int id, int port, SmartTvServer* fac, string peer, string mesg) : cHttpClientBase(f, id, port, fac, peer), mMesg(mesg) {
+
+  createRequestMessage("");
+}
+
+cHttpMesgPushClient::~cHttpMesgPushClient() {
+}
+
+string cHttpMesgPushClient::getMsgBody(int) {
+  return "{\"type\":\"MESG\",payload:" + mMesg +"}";;
+}
