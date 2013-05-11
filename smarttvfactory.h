@@ -97,6 +97,7 @@ class SmartTvServer : public cStatus {
     // status callbacks
     void Recording(const cDevice *Device, const char *Name, const char *FileName, bool On);
     void TimerChange(const cTimer *Timer, eTimerChange Change);
+    void OsdStatusMessage(const char *Message);
 
     pthread_t mThreadId;
     int mRequestCount;

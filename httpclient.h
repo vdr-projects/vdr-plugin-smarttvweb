@@ -105,8 +105,18 @@ class cHttpInfoClient : public cHttpClientBase  {
 
  protected:
   string getMsgBody(int );
-
   string mBody;
 };
+
+class cHttpMesgPushClient : public cHttpClientBase  {
+ public:
+  cHttpMesgPushClient(int, int, int, SmartTvServer*, string peer, string mesg);
+  virtual ~cHttpMesgPushClient();
+
+ protected:
+  string getMsgBody(int );
+  string mMesg;
+};
+
 
 #endif
