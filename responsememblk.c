@@ -464,7 +464,7 @@ int cResponseMemBlk::receiveDelRecReq() {
     *(mLog->log())<< DEBUGPREFIX
 		  << " ERROR: rec->Delete() returns false. mPath= " << mRequest->mPath
 		  << endl;
-    sendError(500, "Internal Server Error", NULL, "001 deletion failed!");
+    sendError(500, "Internal Server Error", NULL, "006 deletion failed!");
     return OKAY;
   }
   
@@ -752,9 +752,17 @@ void cResponseMemBlk::receiveAddTimerReq() {
 
   vector<sQueryAVP> avps;
   mRequest->parseQueryLine(&avps);
-
-  //guid=<guid>&wd=<weekdays>&dy=<day>&st=<start>&sp=<stop>
+  
+  //guid=<guid>&evid=<event_id>
+  // later
+  //guid=<guid>&wd=<weekdays>&dy=<day>&st=<start>&sp=<stop>&f=<url_enc_filename>
+  
   string guid = "";
+  string ev_id_str = "";
+  tEventID ev_id = 0;
+
+  string wd_str;
+  int weekday = 0;
 
   string dy_str;
   time_t day = 0;
@@ -768,6 +776,17 @@ void cResponseMemBlk::receiveAddTimerReq() {
   if (mRequest->getQueryAttributeValue(&avps, "guid", guid) == OKAY) {
     *(mLog->log()) << DEBUGPREFIX
 		   << " guid= " << guid  << endl;
+  }
+
+  if (mRequest->getQueryAttributeValue(&avps, "evid", ev_id_str) == OKAY) {
+    ev_id = atol(ev_id_str.c_str());
+    *(mLog->log()) << DEBUGPREFIX
+		   << " ev_id= " << ev_id  << endl;
+  }
+
+  if (mRequest->getQueryAttributeValue(&avps, "wd", wd_str) == OKAY) {
+    weekday = atoi(wd_str.c_str());
+    *(mLog->log()) << DEBUGPREFIX << " wd= " << weekday  << endl;
   }
 
   if (mRequest->getQueryAttributeValue(&avps, "dy", dy_str) == OKAY) {
@@ -792,8 +811,108 @@ void cResponseMemBlk::receiveAddTimerReq() {
   }
 
   // create the timer...
+
   // Issue: find the event object.
+  // if ev_id is not "", then lookup the event_id
+  tChannelID chan_id = tChannelID::FromString (guid.c_str());
+  if ( chan_id  == tChannelID::InvalidID) {
+    *(mLog->log())<< DEBUGPREFIX
+		  << " ERROR: Not possible to get the ChannelId from the string" 
+		  << endl;
+    delete mResponseMessage;
+    mResponseMessage = NULL; 
+    sendError(400, "Bad Request", NULL, "012 Invalid Channel ID.");
+    return;
+  }
+
+  if (ev_id  == 0) {
+    // no event id -> not implemented
+    sendError(501, "Not Implemented", NULL, "001 Not Implemented. evid shall be present.");
+    return ;
+  }
+
+  // have an event id
+  cSchedulesLock * lock = new cSchedulesLock(false, 500);
+  const cSchedules *schedules = cSchedules::Schedules(*lock);
+    
+  const cSchedule *schedule = schedules->GetSchedule(chan_id);
+  if (schedule == NULL) {
+    *(mLog->log())<< DEBUGPREFIX
+		  << " ERROR: Schedule is zero for guid= " << guid
+		  << endl;
+    delete mResponseMessage;
+    delete lock;
+    mResponseMessage = NULL;
+    sendError(500, "Internal Server Error", NULL, "001 Schedule is zero.");
+    return;
+  }
+    
+  //    time_t now = time(NULL);
+  const cEvent *ev = schedule->GetEvent(ev_id);
+  
+  if (ev == NULL) {
+    *(mLog->log())<< DEBUGPREFIX
+		  << "ERROR: Event not found for guid= " << guid 
+		  << " and ev_id= " << ev_id
+		  << endl;
+    delete mResponseMessage;
+    delete lock;
+    mResponseMessage = NULL;
+    sendError(500, "Internal Server Error", NULL, "002 Event is zero.");
+    return;
+  }
+  
+  // now, create a new timer
+  if (ev->Title() == NULL) {
+    *(mLog->log())<< DEBUGPREFIX
+		  << " ERROR: Title not set for guid= " << guid 
+		  << " and ev_id= " << ev_id
+		  << endl;
+
+    delete mResponseMessage;
+    delete lock;
+    mResponseMessage = NULL;
+    sendError(500, "Internal Server Error", NULL, "007 Title is zero.");
+    return;
+  }
+
+  delete lock;
+  //now
+  cTimer *t = new cTimer(ev);
+  Timers.Add(t);
+  Timers.SetModified();
+
+  *(mLog->log())<< DEBUGPREFIX
+		<< " timer created for guid= " << guid 
+		<< " and ev_id= " << ev_id
+		<< " filename= " << t->File() 
+		<< endl;
+
+
+  char f[200];
+  mResponseMessage = new string();
+  *mResponseMessage = "";
+  mResponseMessagePos = 0;
+
+  *mResponseMessage += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+  *mResponseMessage += "<timer>\n";
+
+  snprintf(f, sizeof(f), "<file>%s</file>\n", cUrlEncode::doUrlSaveEncode(t->File()).c_str());
+  *mResponseMessage += f;
+
+  snprintf(f, sizeof(f), "<starttime>%ld</starttime>\n", t->StartTime());
+  *mResponseMessage += f;
+  
+  snprintf(f, sizeof(f), "<stoptime>%ld</stoptime>\n", t->StopTime());
+  *mResponseMessage += f;
+
+  *mResponseMessage += "</timer>\n";
+
+  sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), -1);
   return;
+  
+  
+
 }
 
 void cResponseMemBlk::receiveDelTimerReq() {
@@ -854,9 +973,9 @@ void cResponseMemBlk::receiveDelTimerReq() {
   for (cTimer * ti = Timers.First(); ti; ti = Timers.Next(ti)){
     ti->Matches();
     if ((guid.compare(*(ti->Channel()->GetChannelID()).ToString()) == 0)  &&
-	(ti->WeekDays() && ti->WeekDays() == weekdays || !ti->WeekDays() && ti->Day() == day) &&
-	ti->Start() == start &&
-	ti->Stop() == stop) {
+	((ti->WeekDays() && (ti->WeekDays() == weekdays)) || (!ti->WeekDays() && (ti->Day() == day))) &&
+	(ti->Start() == start) &&
+	(ti->Stop() == stop)) {
       to_del = ti;
       break;
     }
@@ -1623,6 +1742,7 @@ int cResponseMemBlk::sendEpgXml (struct stat *statbuf) {
 		  << "ERROR: Schedule is zero for guid= " << id
 		  << endl;
     delete mResponseMessage;
+    delete lock;
     mResponseMessage = NULL;
     sendError(500, "Internal Server Error", NULL, "001 Schedule is zero.");
     return OKAY;
@@ -1646,6 +1766,8 @@ int cResponseMemBlk::sendEpgXml (struct stat *statbuf) {
 		  << "ERROR: Event is zero for guid= " << id
 		  << endl;
     delete mResponseMessage;
+    delete lock;
+
     mResponseMessage = NULL;
     sendError(500, "Internal Server Error", NULL, "002 Event is zero.");
     return OKAY;
@@ -1670,6 +1792,8 @@ int cResponseMemBlk::sendEpgXml (struct stat *statbuf) {
     hdr += "<title>Empty</title>\n";
 
     delete mResponseMessage;
+    delete lock;
+
     mResponseMessage = NULL;
     sendError(500, "Internal Server Error", NULL, "003 Title is zero.");
     return OKAY;
@@ -1677,12 +1801,16 @@ int cResponseMemBlk::sendEpgXml (struct stat *statbuf) {
 
   hdr += "<guid>" + id + "</guid>\n";
 
+  snprintf(f, sizeof(f), "<eventid>%u</eventid>\n", ev->EventID());
+  hdr += f ;
+  
   *(mLog->log())<< DEBUGPREFIX
 		<< " guid= " << id
 		<< " title= " << ev->Title()
 		<< " start= " << ev->StartTime()
 		<< " end= " << ev->EndTime()
 		<< " now= " << now
+		<< " EvId= " << ev->EventID()
 		<< endl;
   if (add_desc) {
     hdr += "<desc>";
@@ -1694,6 +1822,7 @@ int cResponseMemBlk::sendEpgXml (struct stat *statbuf) {
 		    << " ERROR: description is zero for guid= " << id << endl;
       
       delete mResponseMessage;
+      delete lock;
       mResponseMessage = NULL;
       sendError(500, "Internal Server Error", NULL, "004 Description is zero.");
       return OKAY;
