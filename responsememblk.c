@@ -1408,10 +1408,15 @@ void cResponseMemBlk::sendServerNameXml () {
   char f[400];
   mResponseMessage = new string();
   *mResponseMessage = "";
-  
+
   mResponseMessagePos = 0;
 
   mRequest->mConnState = SERVING;
+
+  stringstream own_host ;
+  own_host << mRequest->getOwnIp()
+	 << ":" << mRequest->mServerPort;
+
 
   *mResponseMessage += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
   *mResponseMessage += "<servername>\n";
@@ -1421,7 +1426,7 @@ void cResponseMemBlk::sendServerNameXml () {
   *mResponseMessage += f;
   *mResponseMessage += "</hostname>\n";
 
-  *mResponseMessage += "<ipaddress>" + mRequest->getOwnIp() +"</ipaddress>\n";
+  *mResponseMessage += "<ipaddress>" + own_host.str() +"</ipaddress>\n";
 
   *mResponseMessage += "</servername>\n";
   sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), -1);
