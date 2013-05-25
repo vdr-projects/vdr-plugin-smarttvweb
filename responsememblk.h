@@ -30,6 +30,8 @@
 #include <sys/time.h>
 #include "responsebase.h"
 
+#include <vdr/config.h>
+
 using namespace std;
 
 struct sFileEntry {
@@ -58,6 +60,7 @@ class cResponseMemBlk : public cResponseBase {
   int sendChannelsXml (struct stat *statbuf);
   int sendResumeXml ();
   int sendVdrStatusXml (struct stat *statbuf);
+  void sendServerNameXml ();
   int sendYtBookmarkletJs();
   int sendBmlInstHtml();
 
@@ -66,7 +69,9 @@ class cResponseMemBlk : public cResponseBase {
   int sendMediaXml (struct stat *statbuf);
   int sendManifest (struct stat *statbuf, bool is_hls = true);
   void sendTimersXml();
+  void sendRecCmds();
 
+  string writeCommands(const char *title, cList<cNestedItem> *commands, string pref);
   void receiveAddTimerReq();
   void receiveDelTimerReq();
 

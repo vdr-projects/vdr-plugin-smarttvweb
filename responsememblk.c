@@ -1061,6 +1061,38 @@ void cResponseMemBlk::sendTimersXml() {
 #endif
 }
 
+
+void cResponseMemBlk::sendRecCmds() {
+  *(mLog->log()) << DEBUGPREFIX << " --------------- sendRecCmds ---------------"  << endl;
+  string msg = writeCommands("Recording Commands", &RecordingCommands, " ");
+  *(mLog->log()) << DEBUGPREFIX << " --------------- sendRecCmds ---------------"  << endl;
+
+  if (isHeadRequest())
+    return;
+
+  /*  mResponseMessage = new string();
+  *mResponseMessage = "";
+  mResponseMessagePos = 0;
+  */
+  sendHeaders(200, "OK", NULL, "text/plain", 0, -1);
+  
+}
+
+
+string cResponseMemBlk::writeCommands(const char *title, cList<cNestedItem> *commands, string pref) {
+  //  *(mLog->log()) << DEBUGPREFIX << " title"  << endl;
+  string res = "-\n";
+  for (cNestedItem *Cmd = commands->First(); Cmd; Cmd = commands->Next(Cmd)) {
+      const char *s = Cmd->Text();
+      if (Cmd->SubItems())
+	res += writeCommands(s, Cmd->SubItems(), (pref + "+"));
+      else 
+	*(mLog->log()) << DEBUGPREFIX << pref << "title= " << s << endl;
+      }
+  return res;
+}
+
+
 uint64_t cResponseMemBlk::getVdrFileSize() {
   // iter over all vdr files and get file size
   struct stat statbuf;
@@ -1369,8 +1401,31 @@ int cResponseMemBlk::sendMediaXml (struct stat *statbuf) {
   return OKAY;
 }
 
+void cResponseMemBlk::sendServerNameXml () {
+  if (isHeadRequest())
+    return ;
 
+  char f[400];
+  mResponseMessage = new string();
+  *mResponseMessage = "";
+  
+  mResponseMessagePos = 0;
 
+  mRequest->mConnState = SERVING;
+
+  *mResponseMessage += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+  *mResponseMessage += "<servername>\n";
+
+  *mResponseMessage += "<hostname>";
+  gethostname(f, sizeof(f));
+  *mResponseMessage += f;
+  *mResponseMessage += "</hostname>\n";
+
+  *mResponseMessage += "<ipaddress>" + mRequest->getOwnIp() +"</ipaddress>\n";
+
+  *mResponseMessage += "</servername>\n";
+  sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), -1);
+}
 
 
 int cResponseMemBlk::sendVdrStatusXml (struct stat *statbuf) {
@@ -1402,7 +1457,7 @@ int cResponseMemBlk::sendVdrStatusXml (struct stat *statbuf) {
   strftime(timebuf, sizeof(timebuf), "%Y-%m-%dT%H:%M:%S", localtime(&now));   // ISO 8601
   snprintf(f, sizeof(f), "<vdrTime>%s</vdrTime>\n", timebuf);
   *mResponseMessage += f;
-
+ 
   *mResponseMessage += "<diskspace>\n";  
   snprintf(f, sizeof(f), "<free>%d</free>", free);
   *mResponseMessage += f;

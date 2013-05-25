@@ -315,6 +315,12 @@ int cHttpResource::processRequest() {
     return OKAY;
   }
 
+  if (mPath.compare("/reccmds") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->sendRecCmds();
+    return OKAY;
+  }
+
   if (mPath.compare("/setResume.xml") == 0) {
     mResponse = new cResponseMemBlk(this);
     ((cResponseMemBlk*)mResponse)->receiveResume();
@@ -348,6 +354,13 @@ int cHttpResource::processRequest() {
   }
 
 #endif
+  if (mPath.compare("/serverName.xml") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->sendServerNameXml( );
+    return OKAY;
+  }
+
+
   if (mPath.compare("/yt-bookmarklet.js") == 0) {
     mResponse = new cResponseMemBlk(this);
     ((cResponseMemBlk*)mResponse)->sendYtBookmarkletJs();
