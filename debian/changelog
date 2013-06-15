@@ -1,0 +1,5 @@
+PACKAGE (VERSION) UNRELEASED; urgency=medium
+
+  * Initial release. (Closes: #XXXXXX)
+
+ -- thlo <thlo@teefax>  Sat, 15 Jun 2013 15:44:43 +0200
