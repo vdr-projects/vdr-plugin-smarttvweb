@@ -31,6 +31,7 @@ Buttons.init = function (){
 		this.ynButton = new ButtonHandler();
 		this.ynButton.hndlName = "ynButtons";
 		this.ynButton.enterCallback = Buttons.ynEnterCallback;
+		this.ynButton.returnCallback = Buttons.ynReturnCallback;
 		this.ynButton.btnMax = 1;
 		this.ynButton.elmName = "#yn-btn-";
 		this.ynButton.masterElm = "#yn-buttons";
@@ -40,6 +41,16 @@ Buttons.init = function (){
 		elem.setAttribute('onkeydown', 'Buttons.ynButton.onInput();');
 		//		$("#prc-buttons-anchor").attr("onkeydown", "Button.prButton.onInput();");   
 		}
+};
+Buttons.ynReturnCallback = function () {
+	switch (Main.state) {
+	case Main.eOPT:
+		Options.drawServerList();
+		break;
+	default:
+		break;
+	}
+	
 };
 
 Buttons.ynEnterCallback = function () {
@@ -58,8 +69,13 @@ Buttons.ynEnterCallback = function () {
 			case Main.eURLS:
 				Server.deleteUrls(Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
 				break;
+			case Main.eOPT:
+				Config.deletedFromContext((Options.selectedLine -1)); // 0 is reserved for the input field
+				Options.drawServerList();
+
+				break;
 			}
-			
+						
 			break;
 		}
 		Buttons.ynHide();
@@ -103,6 +119,7 @@ Buttons.show = function () {
 Buttons.hide = function () {
 	this.prButton.hide();
 //	$("#prc-buttons-anchor").blur();
+	
 	Main.enableKeys();
 };
 
@@ -126,7 +143,10 @@ Buttons.ynShow = function () {
 
 Buttons.ynHide = function () {
 	this.ynButton.hide();
-	Main.enableKeys();
+	if (Main.state == Main.eOPT)
+		$("#optionsViewAnchor").focus();
+	else
+		Main.enableKeys();
 };
 
 Buttons.createStyleSheet = function () {
@@ -219,8 +239,16 @@ Buttons.createYnButtons= function () {
 	table.append(tbody);
 
 	var row = $("<tr>", {style: "width:100%; align:center"});
+	var cell = $("<td>",  {style :"height:80%; width:100%", colspan:"3" });
+	cell.css("align","center");
+	var txt_div = $("<div>", {text: "Delete ?"});
+	cell.append(txt_div);
+	row.append(cell);
+	tbody.append(row);
 	
-	var cell = $("<td>",  {style :"height:80%; width:50%"});
+	row = $("<tr>", {style: "width:100%; align:center"});
+	cell = $("<td>",  {style :"height:80%; width:50%"});
+
 	cell.css("align","right");
 	$("<button>", {id : "yn-btn-1", text: "Yes", class: "pr-btn"}).appendTo(cell);
 	row.append(cell);

@@ -102,12 +102,12 @@ Display.GetEpochTime = function() {
 		// Samsung specific UTC time function
 //		res = Display.pluginTime.GetEpochTime();
 		var now_millis = ((new Date).getTime());
-		res =   (now_millis /1000.0);
+		res =   ((now_millis /1000.0) - (Config.tzCorrection * 60));
 
 		break;
 	default:
 		var now_millis = ((new Date).getTime());
-		res =   (now_millis /1000.0);
+		res =   ((now_millis /1000.0) - (Config.tzCorrection * 60));
 	break;
 	}
 
@@ -949,7 +949,7 @@ Display.handlerShowProgress = function() {
 	$("#olTimeInfo").text(Player.curPlayTimeStr + " / " + Player.getDurationStr());
 
     var Digital=new Date();
-    var hours=Digital.getHours();
+    var hours= (Digital.getHours()- Config.tzCorrection ) ;
     var minutes=Digital.getMinutes();
     if (minutes<=9)
     	   minutes='0'+minutes;
@@ -974,7 +974,7 @@ ClockHandler.start = function(elm){
 
 ClockHandler.update = function() {
 	var date = new Date();
-    var hours= date.getHours();
+    var hours= (date.getHours() - Config.tzCorrection);
     var minutes= date.getMinutes();
     if (minutes<=9)
     	   minutes='0'+minutes;

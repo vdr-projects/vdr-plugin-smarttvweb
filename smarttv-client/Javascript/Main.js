@@ -52,7 +52,8 @@ var Main = {
     eREC : 2, // State Recording Select Screen / Video Playing
     eMED : 3, // State Media Select Screen / Video Playing
     eURLS : 4, // State Urls
-    eOPT : 5, // Options
+    eSRVR : 5, // State Select Server
+    eOPT : 6, // Options
     
     defKeyHndl : null,
     selectMenuKeyHndl : null,
@@ -101,6 +102,7 @@ Main.onLoad = function() {
     Spinner.init();
 	Helpbar.init();
 	Options.init();
+	OverlayMenu.init();
 
     this.defKeyHndl = new cDefaulKeyHndl;
     this.playStateKeyHndl = new cPlayStateKeyHndl(this.defKeyHndl);
@@ -108,6 +110,9 @@ Main.onLoad = function() {
     this.menuKeyHndl = new cMenuKeyHndl(this.defKeyHndl);
     this.selectMenuKeyHndl = new cSelectMenuKeyHndl(this.defKeyHndl);
 
+	ClockHandler.start("#selectNow");
+	Config.getWidgetVersion();
+	
 	Config.init();
 };
 
@@ -136,6 +141,8 @@ Main.init = function () {
 		};
 	}
 
+	this.state = Main.eMAIN;
+
 	Main.log("Main.init()");
 	
 	Buttons.init();
@@ -162,25 +169,28 @@ Main.init = function () {
         	Spinner.hide();
             Display.show();
         };
-        
-        
-        // Enable key event processing
-        this.enableKeys();
 	
     }
     else {
        Main.log("Failed to initialise");
     }
 
-	ClockHandler.start("#selectNow");
+    // Enable key event processing
+    this.enableKeys();
+
+    Server.updateVdrStatus();
+
 	HeartbeatHandler.start();
 	
-	Server.updateVdrStatus();
 	
 	DirectAccess.init();
-	Config.getWidgetVersion();
+	
 	Comm.init();
 
+//	window.setTimeout(function() {Config.updateContext("192.168.1.142:8000");  }, (10*1000));
+	
+
+		
 //	DirectAccess.show();
 //	Timers.init();
 	//	Display.initOlForRecordings();
@@ -295,16 +305,16 @@ Main.changeState = function (state) {
 		Main.selectedVideo = 0;
 		Main.urlsSelected();
 
-//		window.setTimeout(function() {Main.testUrls (); }, (5*1000));
-
 		break;
-		
+	case Main.eSRVR:
+		Config.vdrServers.checkServers();
+		break;
 	case Main.eOPT:
 		// Options
 //    	Options.init();
 		$("#selectScreen").hide();
 		Options.show();
-		Main.optionsSelected();
+//		Main.optionsSelected();
 		break;
 	}
 };
@@ -515,7 +525,7 @@ Main.playItem = function (url) {
     	if ((now - (start_time + duration)) < 0) {
 			// still recording
 			Main.log("*** Still Recording! ***");
-			Main.logToServer("*** Still Recording! ***");
+			Main.logToServer("*** Still Recording!: now= " + now + " start_time= " + start_time + " dur= " + duration +" ***");
 			Player.isRecording = true; 
 			Player.startTime = start_time;
 			Player.duration = duration; // EpgDuration
@@ -678,48 +688,57 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (event) {
     {
         case tvKey.KEY_1:
         	Main.log("KEY_1 pressed");
-        	Display.showProgress();
-        	Player.jumpToVideo(10);
+//        	Display.showProgress();
+//        	Player.jumpToVideo(10);
+        	Player.numKeyJump(1);
         	break;
         case tvKey.KEY_2:
         	Main.log("KEY_2 pressed");
-        	Display.showProgress();
-        	Player.jumpToVideo(20);
+//        	Display.showProgress();
+//        	Player.jumpToVideo(20);
+        	Player.numKeyJump(2);
         	break;
         case tvKey.KEY_3:
         	Main.log("KEY_3 pressed");
-        	Display.showProgress();
-        	Player.jumpToVideo(30);
+//        	Display.showProgress();
+//        	Player.jumpToVideo(30);
+        	Player.numKeyJump(3);
         	break;
         case tvKey.KEY_4:
         	Main.log("KEY_4 pressed");
-        	Display.showProgress();
-        	Player.jumpToVideo(40);
+//        	Display.showProgress();
+//        	Player.jumpToVideo(40);
+        	Player.numKeyJump(4);
         	break;
         case tvKey.KEY_5:
         	Main.log("KEY_5 pressed");
-        	Display.showProgress();
-        	Player.jumpToVideo(50);
+//        	Display.showProgress();
+//        	Player.jumpToVideo(50);
+        	Player.numKeyJump(5);
         	break;
         case tvKey.KEY_6:
         	Main.log("KEY_6 pressed");
-        	Display.showProgress();
-        	Player.jumpToVideo(60);
+//        	Display.showProgress();
+//        	Player.jumpToVideo(60);
+        	Player.numKeyJump(6);
         	break;
         case tvKey.KEY_7:
         	Main.log("KEY_7 pressed");
-        	Display.showProgress();
-        	Player.jumpToVideo(70);
+//        	Display.showProgress();
+//        	Player.jumpToVideo(70);
+        	Player.numKeyJump(7);
         	break;
         case tvKey.KEY_8:
         	Main.log("KEY_8 pressed");
-        	Display.showProgress();
-        	Player.jumpToVideo(80);
+//        	Display.showProgress();
+//        	Player.jumpToVideo(80);
+        	Player.numKeyJump(8);
         	break;
         case tvKey.KEY_9:
         	Main.log("KEY_9 pressed");
-        	Display.showProgress();
-        	Player.jumpToVideo(90);
+//        	Display.showProgress();
+//        	Player.jumpToVideo(90);
+        	Player.numKeyJump(9);
         	break;
            
         case tvKey.KEY_RIGHT:
@@ -916,6 +935,16 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function (event) {
  		Main.playItem(); 
  		break;
 
+ 	case tvKey.KEY_RIGHT:
+        Main.log("Right: Skip Forward");
+        Display.showProgress();
+		if (Player.trickPlaySpeed != 1) {
+			Notify.showNotify("Trickplay!", true);				
+		}
+		else
+			Player.skipForwardVideo();
+        break;
+
 // 	case tvKey.KEY_4:
  	case tvKey.KEY_DOWN:
  	case tvKey.KEY_CH_DOWN:
@@ -949,6 +978,10 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function (event) {
          Main.log("ENTER");
          Display.hide();
          Display.showProgress();
+         if(Player.getState() == Player.PAUSED) {
+             Player.resumeVideo();
+         }
+
          break;
      case tvKey.KEY_LEFT:
      case tvKey.KEY_RETURN:
@@ -972,8 +1005,27 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function (event) {
 		widgetAPI.blockNavigation(event);
 
         break;           
+     case tvKey.KEY_REC:
+     case 73:
+
+    	 Main.log("KEY_REC with guid= Data.getCurrentItem().childs[Main.selectedVideo].payload.guid");
+    	 var timer_req = new addTimer(Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
+    	 // use the guid and request the epg.
+         // use the event id then issue the rec command
+//         Data.getCurrentItem().childs[Main.selectedVideo].payload.guid
+    	 
      case tvKey.KEY_PAUSE:
-         Main.log("PAUSE");
+         Main.log("REC / PAUSE");
+         if(Player.getState() == Player.PAUSED) {
+             Player.resumeVideo();
+         }
+         else {
+             Player.pauseVideo();            	
+         }
+
+         // use the guid and request the epg.
+         // use the event id then issue the rec command
+//         Data.getCurrentItem().childs[Main.selectedVideo].payload.
          break;
      case tvKey.KEY_INFO: 
 			Display.showInfo(Main.selectedVideo);
@@ -1167,7 +1219,7 @@ function cSelectMenuKeyHndl (def_hndl) {
 	Main.log(this.handlerName + " created");
 
 	this.select = 1;
-	this.selectMax = 5; // Highest Select Entry
+	this.selectMax = 6; // Highest Select Entry
 };
 
 cSelectMenuKeyHndl.prototype.handleKeyDown = function (event) {
@@ -1201,6 +1253,12 @@ cSelectMenuKeyHndl.prototype.handleKeyDown = function (event) {
     case tvKey.KEY_5:
     	Main.log("KEY_5 pressed");
     	this.select = 5;
+        Main.changeState (this.select);
+    	break;
+
+    case tvKey.KEY_6:
+    	Main.log("KEY_6 pressed");
+    	this.select = 6;
         Main.changeState (this.select);
     	break;
 

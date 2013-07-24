@@ -38,6 +38,7 @@
         <script language="javascript" type="text/javascript" src="Javascript/Lang.js"></script>
         <script language="javascript" type="text/javascript" src="Javascript/Urls.js"></script>
         <script language="javascript" type="text/javascript" src="Javascript/Comm.js"></script>
+        <script language="javascript" type="text/javascript" src="Javascript/OverlayMenu.js"></script>
                 
         <!-- Style sheets -->
         <link rel="stylesheet" href="CSS/Main.css" type="text/css">
@@ -77,8 +78,9 @@
 			<div id="widgetVersion" style="font-size:10px"></div>
 			<div id="selectView">
 				<table id="selectStatus" width="100%" padding-bottom="15px">
-				<tr align="justify">
+				<tr align="center">
 				<td id="selectNow">0:0</td>
+				<td id="selectTitle"> </td>
 				<td id="selectDisk">Free: 1Gb</td>
 				</tr>
 				</table>
@@ -86,14 +88,18 @@
 				<div id="selectItem2">2: Recordings</div>
 				<div id="selectItem3">3: Media</div>
 				<div id="selectItem4">4: YouTube</div>				
-				<div id="selectItem5">5: Options</div>
+				<div id="selectItem5">5: Select Server</div>
+				<div id="selectItem6">6: Options</div>
 			</div>
 		</div>
 		<div id="optionsScreen">
 			<div id="optionsView">
+				<a href='javascript:void(0);' id='optionsViewAnchor' onkeydown='Options.onInput();' ></a>
+			
 			<b>Server Configurations</b><br><br>
 			Address (host:port) http://<input type="text" id="widgetServerAddr" onkeydown='Options.onInput();' maxlength="25">
-			
+			<br><br>
+			<div id="optionsList"></div>
 		</div>
 		</div>
 		
@@ -103,7 +109,7 @@
 			<tr >
 			<td id="logoNow" >0:0</td>
 			<td id="logoTitle">VDR on SmartTV</td>
-			<td id="logoDisk">Free 1Gb</td>
+			<td id="logoDisk">Free 0Gb</td>
 			</tr>
 			</table>
 			</center>
@@ -205,6 +211,9 @@
 				<!--		 	<input type="text" id="directAccessAnchor" onkeydown='DirectAccess.onInput();' maxlength="4" size="4">-->
 		</td></tr>
 		</table>
+		</div>
+		<div id="overlayMenu">
+			<a href='javascript:void(0);' id='overlayMenu-anchor' ></a>
 		</div>
 	</body>
 </html>

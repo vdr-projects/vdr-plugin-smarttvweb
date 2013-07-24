@@ -4,7 +4,8 @@ var Data =
 	folderList : [],
 	createAccessMap : false,
 	directAccessMap : {},
-	sortType : 0
+	sortType : 0,
+	maxSort : 3
 };
 
 Array.prototype.remove = function(from, to) {
@@ -18,7 +19,7 @@ Data.reset = function() {
 	this.assets = new Item;
 	this.folderList = [];		
 	this.createAccessMap = false;
-	this.sortType = 0;
+	this.sortType = Config.sortType;
 //	this.folderList.push({item : this.assets, id: 0});
 	Main.log("Data.reset: folderList.push. this.folderList.length= " + this.folderList.length);
 };
@@ -38,7 +39,7 @@ Data.completed= function(sort) {
 };
 
 Data.nextSortType = function () {
-	Data.sortType = (Data.sortType +1) %3;
+	Data.sortType = (Data.sortType +1) % Data.maxSort;
 	this.assets.sortPayload(Data.sortType);	
 };
 
@@ -252,23 +253,6 @@ Item.prototype.print = function(level) {
     }
 };
 
-/*
-Item.prototype.sortPayload = function() {
-    for (var i = 0; i < this.childs.length; i++) {
-    	if (this.childs[i].isFolder == true) {
-        	this.childs[i].sortPayload();
-    	}
-    }
-    this.childs.sort(function(a,b) { 
-    	if (a.title == b.title) {
-    		return (b.payload.start - a.payload.start);
-    	}
-    	else {
-    		return ((a.title < b.title) ? -1 : 1);
-    	}		
-    });
-};
-*/
 Item.prototype.sortPayload = function(sel) {
 	for (var i = 0; i < this.childs.length; i++) {
 		if (this.childs[i].isFolder == true) {
@@ -299,6 +283,17 @@ Item.prototype.sortPayload = function(sel) {
 			}
 		});
 		break;
+	case 3:
+	    this.childs.sort(function(a,b) { 
+	    	if (a.title == b.title) {
+	    		return (b.payload.start -a.payload.start);
+	    	}
+	    	else {
+	    		return ((a.title < b.title) ? -1 : 1);
+
+	    	}		
+	    });
+	    break;
 	case 0:
 	default:
 	    this.childs.sort(function(a,b) { 

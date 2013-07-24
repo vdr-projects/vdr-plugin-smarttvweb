@@ -1,10 +1,16 @@
 
 var Comm = {
+	created: false,
 	customMgr : {},
 	deviceInstance : []
 };
 
 Comm.init = function () {
+	if (this.created == true) {
+		return;
+	}
+
+	this.created = true;
 	// >> Register custom manager callback to receive device connect and disconnect events
 	Comm.customMgr = webapis.customdevice || {};
 	
@@ -15,6 +21,8 @@ Comm.init = function () {
 	Main.log("curWidget.id= " + curWidget.id);
 	Main.logToServer("curWidget.id= (" + curWidget.id+")");
 };
+
+//TODO: I should ensure that I take only events from the selected VDR server
 
 Comm.onDeviceStatusChange = function (sParam) {
 	switch( Number(sParam.eventType) ) {
@@ -32,10 +40,10 @@ Comm.onDeviceStatusChange = function (sParam) {
 };
 
 Comm.onCustomObtained = function (customs) {
-	Main.logToServer("onCustomObtained - found " + customs.length + " custom device(s)");
+//	Main.logToServer("onCustomObtained - found " + customs.length + " custom device(s)");
 	for(var i=0; i<customs.length; i++) {
         if(customs[i]!=null && customs[i].getType() == Comm.customMgr.DEV_SMART_DEVICE) {
-			Main.logToServer("onCustomObtained - is Comm.custom.DEV_SMART_DEVICE: i=" + i);
+//			Main.logToServer("onCustomObtained - is Comm.custom.DEV_SMART_DEVICE: i=" + i);
 			Comm.deviceInstance[i] = customs[i];
 			Comm.deviceInstance[i].registerDeviceCallback(Comm.onDeviceEvent);
         }
@@ -137,6 +145,9 @@ Comm.onMessageReceived = function(message, context) {
 			break;
 
 		}
+		break;
+	case "MESG":
+		Notify.showNotify(msg.payload, true);
 		break;
 	}; // switch
 

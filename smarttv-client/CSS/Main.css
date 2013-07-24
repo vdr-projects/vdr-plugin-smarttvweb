@@ -72,6 +72,11 @@ body {
 #selectNow{
 	text-align: left;
 }
+
+#selectTitle{
+	text-align: right;
+}
+
 #selectDisk{
 	text-align: right;
 }
@@ -245,19 +250,19 @@ body {
 #logoNow {
 	text-align: left;
 	font-size:18px;
-	width: 35%;
+	width: 25%;
 }
 
 #logoTitle {
 	text-align: center;
 	font-size:25px;
-	width: 30%;
+	width: 50%;
 }
 
 #logoDisk {
 	text-align: right;
 	font-size:18px;
-	width: 35%;
+	width: 25%;
 }
 /* Right Half */
 #rightHalf {
