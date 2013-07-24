@@ -6,6 +6,7 @@ Helpbar.init = function () {
 	if (this.isInited == false)	{
 		Helpbar.createHelpbar();	
 		Helpbar.hide();
+		Helpbar.hideOptSrv();
 	}
 };
 
@@ -17,35 +18,52 @@ Helpbar.hide = function () {
 	$("#helpbar").hide();
 };
 
+Helpbar.showOptSrv = function () {
+	$("#helpbarOptSrv").show();
+};
+
+Helpbar.hideOptSrv = function () {
+	$("#helpbarOptSrv").hide();
+};
+
 Helpbar.createHelpbar = function() {
 	this.isInited = true;
 	var sheet = $("<style>");
 	sheet.attr({type : 'text/css',
 		innerHTML : '\
-		.hb-bg {left:0px; top:480px; width:960px; height:40px; position: absolute; font-size:18px; background: darkblue;background: -webkit-linear-gradient(top, #1e5799 0%,#7db9e8 50%,#1e5799 100%);}\
+		.hb-bg {left:0px; top:480px; width:960px; height:40px; position: absolute; z-index:40; font-size:18px; background: darkblue;background: -webkit-linear-gradient(top, #1e5799 0%,#7db9e8 50%,#1e5799 100%);}\
 		}'});
 	$('body').append(sheet);
 
-//	$('<div>', { id: "helpbar", class: "hb-bg"}).appendTo ($("body"));
-//	$('<div>', {id: "hb-row"}).appendTo("#helpbar");
 	$("<table>", {id:"helpbar", class: "hb-bg"}).appendTo ($("body"));
-	$("<tr>", {id: "hb-row", align:"center", valign:"middle"}).appendTo("#helpbar");
+	var row = $("<tr>", {id: "hb-row", align:"center", valign:"middle"});
+	row.appendTo("#helpbar");
 
-	Helpbar.addItem("Images/helpbar/help_lr.png", "Move Cursor");
-	Helpbar.addItem("Images/helpbar/help_back.png", "Cancel");
+	Helpbar.addItem("Images/helpbar/help_joy.png", "Move Cursor", row);
+	Helpbar.addItem("Images/helpbar/help_back.png", "Cancel", row);
 	
-	Helpbar.addItem("Images/helpbar/help_enter.png", "Done");
-	Helpbar.addItem("Images/helpbar/help_red.png", "Clear all");
-	Helpbar.addItem("Images/helpbar/help_green.png", "Clear Char");
-	Helpbar.addItem("Images/helpbar/help_yellow.png", "Dot (.)");
-	Helpbar.addItem("Images/helpbar/help_blue.png", "Colon (:)");
+	Helpbar.addItem("Images/helpbar/help_enter.png", "Done", row);
+	Helpbar.addItem("Images/helpbar/help_red.png", "Clear all", row);
+	Helpbar.addItem("Images/helpbar/help_green.png", "Clear Char", row);
+	Helpbar.addItem("Images/helpbar/help_yellow.png", "Dot (.)", row);
+	Helpbar.addItem("Images/helpbar/help_blue.png", "Colon (:)", row);
+
+	//--------------------------------------------
+	
+	$("<table>", {id:"helpbarOptSrv", class: "hb-bg"}).appendTo ($("body"));
+	row = $("<tr>", {id: "hb-row-opt-srv", align:"center", valign:"middle"});
+	row.appendTo("#helpbarOptSrv");
+
+	Helpbar.addItem("Images/helpbar/help_ud.png", "Move Cursor", row);
+	Helpbar.addItem("Images/helpbar/help_back.png", "Cancel", row);	
+	Helpbar.addItem("Images/helpbar/help_yellow.png", "Delete", row);
 };
 
-Helpbar.addItem = function(url, msg) {
+Helpbar.addItem = function(url, msg, row) {
 	var hb_elm = $("<td>");
-//	var hb_elm = $("<div>");
-//	hb_elm.css({"display":"inline-block"});
-	hb_elm.appendTo("#hb-row");
+
+	//hb_elm.appendTo("#hb-row");
+	hb_elm.appendTo(row);
 	
 	var tab = $("<table>");
 	tab.appendTo(hb_elm);

@@ -4,6 +4,7 @@ var Server = {
     doSort : false,
     retries : 0,
     curGuid : "",
+    tzCorrection : 0,
     XHRObj : null
 };
 
@@ -163,6 +164,27 @@ Server.updateVdrStatus = function (){
 		url: Config.serverUrl + "/vdrstatus.xml",
 		type : "GET",
 		success : function(data, status, XHR){
+			var ts_vdr = $(data).find('vdrTime').text();
+			
+			try {
+				var ts = ts_vdr.split("T")[1];
+				var s = ts.split(":");
+				if (s.length == 3) {
+					var now = ((new Date).getHours());
+					Config.tzCorrection = now - s[0];	
+					// if Config.tzCorrection larger zero, then TV is ahead
+					// thus, I need to substract Config.tzCorrection from the TV time
+//					Config.tzCorrection = 1;	
+					Main.logToServer("Server.updateVdrStatu: tzCor= " + Config.tzCorrection);
+				}
+				else
+					Main.logToServer("tzCor WARNING");
+
+			}
+			catch (e) {
+				Main.log ("ERROR in tzCor (Old plugin?): " + e);
+			}
+
 			var free = $(data).find('free').text() / 1024.0;
 //			var used = $(data).find('used').text() / 1024.0;
 //			var percent = $(data).find('percent').text();
@@ -176,7 +198,8 @@ Server.updateVdrStatus = function (){
 			}
 			$("#logoDisk").text("Free: " +free_str + unit);
 			$("#selectDisk").text("Free: " +free_str + unit);
-			},
+			
+		},
 		error: function(jqXHR, status, error){
 			Main.log("VdrStatus: Error");
 			}
@@ -296,6 +319,7 @@ Server.notifyServer = function (state) {
 	});	
 };
 
+
 var HeartbeatHandler = {
 	timeoutObj : null,
 	isActive : false
@@ -322,3 +346,38 @@ HeartbeatHandler.stop = function(){
 	window.clearTimeout(this.timeoutObj);
 	this.isActive = false;
 };
+
+function addTimer(guid) {
+	this.successCallback = null;
+	this.errorCallback = null;
+	this.guid = guid;
+	this.request();
+};
+
+addTimer.prototype.request = function () {
+	var url =Config.serverUrl + "/addTimer.xml?guid="+this.guid;
+	Main.log("addTimer request url= " + url);
+
+	$.ajax({
+		url: url,
+		type : "GET",
+		context : this,
+		timeout : 400,
+		success : function(data, status, XHR ) {
+			Main.log ("addTimer for Inst= " + this.guid +" status: " + ((status != null) ? status : "null"));  	
+		},
+		error : function (XHR, status, error) {
+	    	Main.log ("addTimer for Error Inst= " + this.guid+" status: " + ((status != null) ? status : "null")); 
+	    	if (XHR.status == 400) {
+	    		
+	    		Display.showPopup("Timer creation failed channel= "+this.guid + " Text= " + XHR.responseText, true);	    		
+	    	}
+	    	else
+	    		Display.showPopup("Timer creation failed channel= "+this.guid + " code= " + XHR.status, true);	    		
+    		
+		}
+	});
+
+};
+
+

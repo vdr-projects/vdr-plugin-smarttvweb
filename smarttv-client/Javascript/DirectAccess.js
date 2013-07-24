@@ -15,6 +15,13 @@ Main.selectedVideo needs to point to the selected video of that current folder
 
 
 */
+DirectAccess.init = function (){
+	if (this.created == false) {
+		DirectAccess.createStyleSheet();
+		$("#directChanAccess").hide();
+		this.created = true;
+	}
+};
 
 DirectAccess.selectNewChannel = function (num) {
 	Main.log("DirectAccess.selectNewChannel: val= (" + num + ")");
@@ -74,13 +81,6 @@ DirectAccess.selectNewChannel = function (num) {
 		//
 };
 
-DirectAccess.init = function (){
-	if (this.created == false) {
-		DirectAccess.createStyleSheet();
-		$("#directChanAccess").hide();
-		this.created = true;
-	}
-};
 
 DirectAccess.show = function (val) {
 	Main.log("DirectAccess.show " + val);

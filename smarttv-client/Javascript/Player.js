@@ -58,6 +58,31 @@ var Player =
 	requestStartTime :0
 };
 
+Player.init = function() {
+	
+	if (this.AVPlayerObj != null)
+		return false; // that prevents Main.init to overwrite the callbacks. 
+	
+	var success = true;
+          Main.log("success vale :  " + success);    
+    this.state = this.STOPPED;
+
+	try {
+		var custom = webapis.avplay;
+		Main.logToServer("webapis.ver= " + webapis.ver);
+		custom.getAVPlay(Player.onAVPlayObtained, Player.onGetAVPlayError);
+	}
+	catch(exp) {
+		Main.log('Player.init: getAVplay Exception :[' +exp.code + '] ' + exp.message);
+	}             
+
+    
+    this.skipDuration = Config.skipDuration; // Use Config default also here
+       
+    Main.log("success= " + success);       
+    return success;
+};
+
 // This function is called when Stop was pressed
 Player.resetAtStop = function () {
 	// the default is for plain on-demand recording
@@ -202,26 +227,6 @@ Player.onGetAVPlayError = function (error) {
 };
 
 
-Player.init = function() {
-    var success = true;
-          Main.log("success vale :  " + success);    
-    this.state = this.STOPPED;
-
-	try {
-		var custom = webapis.avplay;
-		Main.logToServer("webapis.ver= " + webapis.ver);
-		custom.getAVPlay(Player.onAVPlayObtained, Player.onGetAVPlayError);
-	}
-	catch(exp) {
-		Main.log('Player.init: getAVplay Exception :[' +exp.code + '] ' + exp.message);
-	}             
-
-    
-    this.skipDuration = Config.skipDuration; // Use Config default also here
-       
-    Main.log("success= " + success);       
-    return success;
-};
 
 Player.deinit = function() {
 	Main.log("Player deinit !!! " );       
@@ -242,14 +247,17 @@ Player.getNumOfSubtitleTracks = function () {
 
 Player.nextAudioTrack = function () {
 
-	Player.curAudioTrack = (Player.curAudioTrack +1 ) % Player.AVPlayerObj.totalNumOfAudio;
+	var new_track = (Player.curAudioTrack +1 ) % Player.AVPlayerObj.totalNumOfAudio;
+//	Player.curAudioTrack = (Player.curAudioTrack +1 ) % Player.AVPlayerObj.totalNumOfAudio;
 	
 	try {
-		if (Player.AVPlayerObj.setAudioStreamID(Player.curAudioTrack) == false) {
-			Main.logToServer("Player.nextAudioTrack: Failed to set audio track to " + Player.curAudioTrack);
-			Display.showPopup("Player.nextAudioTrack: Failed to set audio track to " + Player.curAudioTrack);
+//		if (Player.AVPlayerObj.setAudioStreamID(Player.curAudioTrack) == false) {
+		if (Player.AVPlayerObj.setAudioStreamID(new_track) == false) {
+			Main.logToServer("Player.nextAudioTrack: Failed to set audio track to " + new_track);
+			Display.showPopup("Player.nextAudioTrack: Failed to set audio track to " + new_track);
 		}
 		else {
+			Player.curAudioTrack = new_track;
 			Main.logToServer("Player.nextAudioTrack: Track= " + Player.curAudioTrack);
 			Notify.showNotify("Audio Track " + Player.curAudioTrack, true);
 		}
@@ -461,6 +469,22 @@ Player.resumeVideo = function() {
 	if (res == false)
 		Display.showPopup("resume ret= " +  ((res == true) ? "True" : "False"));  
 //	pluginObj.setOffScreenSaver();
+};
+
+Player.numKeyJump = function (key) {
+	Display.showProgress();
+
+	switch (Config.playKeyBehavior) {
+	case 1:
+		var cur_skip_duration = this.skipDuration;
+		this.skipDuration = key * 60;
+		this.skipForwardVideo();
+		this.skipDuration = cur_skip_duration;
+		break;
+	default:
+		Player.jumpToVideo(key * 10);
+	break;
+	}
 };
 
 Player.jumpToVideo = function(percent) {

@@ -4,8 +4,14 @@ var Options = {
 	jqInputElm : "#widgetServerAddr",
 	cursor : "_",
 	cursorPos : 0,
-	isCreated : false	
+	isCreated : false,
 
+	selectedLine : 0,
+	maxSelect : -1,
+	state : 0,
+
+	sEnter : 0,
+	sSelect : 1
 };
 
 Options.init = function() {
@@ -24,8 +30,9 @@ Options.init = function() {
 };
 
 Options.show = function() {
-//	document.getElementById("optionsScreen").style.display="block";
+	Main.log("Options.show");
 	$("#optionsScreen").show();
+	this.selectedLine = 0;
 	
 	if (Config.firstLaunch == true)
 		document.getElementById(Options.inputElm).value = Config.serverAddrDefault ;
@@ -34,8 +41,9 @@ Options.show = function() {
 
 	Options.cursorPos = document.getElementById(Options.inputElm).value.length;
 
-	$(this.jqInputElm).focus();
 //	document.getElementById(Options.inputElm).focus();
+
+	Options.drawServerList();
 
 	Helpbar.init();
 	Helpbar.show();
@@ -45,9 +53,38 @@ Options.hide = function() {
 	$("#optionsScreen").hide();
 //	document.getElementById("optionsScreen").style.display="none";
 	Helpbar.hide();
+	Helpbar.hideSrv();
+	
 	Main.enableKeys();
 };
 
+Options.drawServerList = function () {
+	//delete all chiilds below optionsList
+	$("#optionsList").children().remove();
+	
+	for (var i = 0; i < Config.vdrServers.serverUrlList.length; i++) {
+		var line = $("<div>", {id: ("optl-" + (i+1))}).text("Server "+ i + ":   " + Config.vdrServers.serverUrlList[i]);
+		$("#optionsList").append(line);	
+	}
+
+	this.maxSelect = Config.vdrServers.serverUrlList.length;
+	Main.log("Options.show - this.maxSelect= " + this.maxSelect);
+
+	if (this.selectedLine > this.maxSelect)
+		this.selectedLine = this.maxSelect;
+	
+	if (this.selectedLine == 0) {
+		$(this.jqInputElm).focus();
+		this.state = Options.sEnter;
+	}
+	else {
+		this.state = Options.sSelect;
+		$("#optionsViewAnchor").focus();
+		var elm = document.getElementById("optl-"+this.selectedLine);
+		Display.selectItem(elm);        			
+	}
+
+};
 
 Options.createKeypad = function () {
 	var sheet = $("<style>");
@@ -96,7 +133,6 @@ Options.insertChar = function(char) {
 	var res = "";
 	if (Options.cursorPos == 0) {
 		res = char;
-//		document.getElementById(Options.inputElm).value = char + Options.cursor;
 	}
 	else {
 		if (Options.cursorPos == txt.length) {
@@ -104,7 +140,6 @@ Options.insertChar = function(char) {
 		}
 		else {
 			res = txt.slice(0, Options.cursorPos) + char + txt.slice(Options.cursorPos);	
-//			document.getElementById(Options.inputElm).value = txt.slice(0, Options.cursorPos) + char + txt.slice(Options.cursorPos);			
 		}
 	}
 	document.getElementById(Options.inputElm).value = res;
@@ -117,13 +152,10 @@ Options.deleteAll = function () {
 	document.getElementById(Options.inputElm).value = '';
 	Options.cursorPos = 0;
 	Options.setCursor(Options.cursorPos);
-//	document.getElementById(Options.inputElm).value = "" +Options.cursor;
 };
 
 Options.deleteChar = function() {
 	var txt = document.getElementById(Options.inputElm).value;
-//	alert("Options.cursorPos= " +Options.cursorPos);
-//	alert("txt.length= " +txt.length);
 	document.getElementById(Options.inputElm).value = txt.slice(0, (Options.cursorPos-1))  + txt.slice(Options.cursorPos);
 	Options.cursorPos = Options.cursorPos -1;
 	Options.setCursor(Options.cursorPos);
@@ -135,45 +167,27 @@ Options.moveCursorLeft = function() {
 		return;
 	Options.cursorPos = Options.cursorPos -1;
 	Options.setCursor(Options.cursorPos);
-//	document.getElementById(Options.inputElm).setSelectionRange(Options.cursorPos, Options.cursorPos);
-	/*
-	if (Options.cursorPos == 0)
-		return;
-	var txt = document.getElementById(Options.inputElm).value;
-	var tgt = txt.slice(0, (Options.cursorPos-1)) + Options.cursor +txt.slice((Options.cursorPos-1), Options.cursorPos) + txt.slice(Options.cursorPos+1);
-	
-	document.getElementById(Options.inputElm).value = tgt;
-	Options.cursorPos = Options.cursorPos -1;
-	*/
 };
 
 Options.moveCursorRight = function() {
 	if (Options.cursorPos == document.getElementById(Options.inputElm).value.length)
 		return;
 	Options.cursorPos = Options.cursorPos +1;
-//	document.getElementById(Options.inputElm).setSelectionRange(Options.cursorPos, Options.cursorPos);
 	Options.setCursor(Options.cursorPos);
 
 
-	/*
-	var txt = document.getElementById(Options.inputElm).value;
-	if (Options.cursorPos == txt.length-1)
-		return;
-	
-	var tgt = txt.slice(0, Options.cursorPos) +txt.slice((Options.cursorPos+1), (Options.cursorPos+2)) + Options.cursor + txt.slice(Options.cursorPos+2);
-	
-	document.getElementById(Options.inputElm).value = tgt;
-	Options.cursorPos = Options.cursorPos +1;
-	*/
 };
 
 
 Options.onInput = function () {
     var keyCode = event.keyCode;
 
+    Main.log("Options.onInput Key= " + keyCode);
     switch(keyCode) {
         case tvKey.KEY_1:
         	Main.log("KEY_1 pressed");
+        	if (Options.state != Options.sEnter )
+        		return;
         	Options.insertChar("1");
 
         	$("#kb-btn-1").removeClass('ui-btn').addClass('ui-btn-pressed');
@@ -184,6 +198,8 @@ Options.onInput = function () {
         	break;
         case tvKey.KEY_2:
         	Main.log("KEY_2 pressed");
+        	if (Options.state != Options.sEnter )
+        		return;
         	Options.insertChar("2");
         	$("#kb-btn-2").removeClass('ui-btn').addClass('ui-btn-pressed');
         	setTimeout(function() {
@@ -193,6 +209,8 @@ Options.onInput = function () {
         	break;
         case tvKey.KEY_3:
         	Main.log("KEY_3 pressed");
+        	if (Options.state != Options.sEnter )
+        		return;
         	Options.insertChar("3");
 
         	$("#kb-btn-3").removeClass('ui-btn').addClass('ui-btn-pressed');
@@ -202,6 +220,8 @@ Options.onInput = function () {
         	break;
         case tvKey.KEY_4:
         	Main.log("KEY_4 pressed");
+        	if (Options.state != Options.sEnter )
+        		return;
         	Options.insertChar("4");
 
         	document.getElementById("kb-btn-4").click();
@@ -214,6 +234,8 @@ Options.onInput = function () {
         	break;
         case tvKey.KEY_5:
         	Main.log("KEY_5 pressed");
+        	if (Options.state != Options.sEnter )
+        		return;
         	Options.insertChar("5");
 
         	$("#kb-btn-5").removeClass('ui-btn').addClass('ui-btn-pressed');
@@ -224,6 +246,8 @@ Options.onInput = function () {
         	break;
         case tvKey.KEY_6:
         	Main.log("KEY_6 pressed");
+        	if (Options.state != Options.sEnter )
+        		return;
         	Options.insertChar("6");
 
         	$("#kb-btn-6").removeClass('ui-btn').addClass('ui-btn-pressed');
@@ -234,6 +258,8 @@ Options.onInput = function () {
         	break;
         case tvKey.KEY_7:
         	Main.log("KEY_7 pressed");
+        	if (Options.state != Options.sEnter )
+        		return;
         	Options.insertChar("7");
 
         	$("#kb-btn-7").removeClass('ui-btn').addClass('ui-btn-pressed');
@@ -244,6 +270,8 @@ Options.onInput = function () {
         	break;
         case tvKey.KEY_8:
         	Main.log("KEY_8 pressed");
+        	if (Options.state != Options.sEnter )
+        		return;
         	Options.insertChar("8");
         	$("#kb-btn-8").removeClass('ui-btn').addClass('ui-btn-pressed');
         	setTimeout(function() {
@@ -253,6 +281,8 @@ Options.onInput = function () {
         	break;
         case tvKey.KEY_9:
         	Main.log("KEY_9 pressed");
+        	if (Options.state != Options.sEnter )
+        		return;
         	Options.insertChar("9");
 
         	$("#kb-btn-9").removeClass('ui-btn').addClass('ui-btn-pressed');
@@ -263,6 +293,10 @@ Options.onInput = function () {
         	break;
         case tvKey.KEY_0:
         	Main.log("KEY_0 pressed");
+
+        	if (Options.state != Options.sEnter )
+        		return;
+
         	Options.insertChar("0");
         	$("#kb-btn-0").removeClass('ui-btn').addClass('ui-btn-pressed');
         	setTimeout(function() {
@@ -271,12 +305,75 @@ Options.onInput = function () {
 
         	break;
         case tvKey.KEY_LEFT:
+        	if (Options.state != Options.sEnter )
+        		return;
+
         	Options.moveCursorLeft();
         	break;
         case tvKey.KEY_RIGHT:
+        	if (Options.state != Options.sEnter )
+        		return;
         	Options.moveCursorRight();
         	break;
 
+        case tvKey.KEY_UP:
+        	if (this.selectedLine != 0) {
+        		var elm = document.getElementById("optl-"+this.selectedLine);
+        		Display.unselectItem(elm);        			
+        	}
+        	this.selectedLine --;
+        	if (this.selectedLine < 0) {
+        		this.selectedLine = this.maxSelect;
+            	$("#optionsViewAnchor").focus();        		
+        		Options.state = Options.sSelect;
+        		Helpbar.showOptSrv();
+        		Helpbar.hide();
+        		$("#ime_keypad").hide();
+        		
+        	}
+        	if (this.selectedLine == 0) {
+        		$(this.jqInputElm).focus();
+        		Options.state = Options.sEnter;        		
+        		Helpbar.show();
+        		Helpbar.hideOptSrv();
+        		$("#ime_keypad").show();
+        	}
+        	Main.log("Up: this.selectedLine= " + this.selectedLine);
+
+        	if (Options.state == Options.sSelect) {
+        		var elm = document.getElementById("optl-"+this.selectedLine);
+        		Display.selectItem(elm);        			
+        	}
+
+        	break;
+        case tvKey.KEY_DOWN:
+        	if (this.selectedLine != 0) {
+        		var elm = document.getElementById("optl-"+this.selectedLine);
+        		Display.unselectItem(elm);        			
+        	}
+        	this.selectedLine ++ ;
+        	if (this.selectedLine > this.maxSelect) {
+        		this.selectedLine = 0;
+        		$(this.jqInputElm).focus();
+        		Options.state = Options.sEnter;
+        		Helpbar.show();
+        		Helpbar.hideOptSrv();
+        		$("#ime_keypad").show();
+        	}
+        	if (this.selectedLine == 1) {
+        		$("#optionsViewAnchor").focus();
+        		Options.state = Options.sSelect;
+        		Helpbar.showOptSrv();
+        		Helpbar.hide();
+        		$("#ime_keypad").hide();
+        	}
+        	Main.log("Down: this.selectedLine= " + this.selectedLine);
+        	if (Options.state == Options.sSelect) {
+        		var elm = document.getElementById("optl-"+this.selectedLine);
+        		Display.selectItem(elm);        			
+        	}
+
+        	break;
         case tvKey.KEY_RETURN:
         	Main.log("Return pressed");
         	Options.hide();
@@ -288,6 +385,11 @@ Options.onInput = function () {
         	// Done
 //        	Options.cursorPos = Options.cursorPos +1;
 //        	Options.deleteChar(); //
+        	if (Options.state == Options.sSelect) {
+        		Buttons.ynShow();
+        		return;
+        	}
+ 			
         	Main.log("Enter pressed -> Done Val= ("+ document.getElementById(Options.inputElm).value+")");
         	
         	Config.updateContext(document.getElementById(Options.inputElm).value); 
@@ -304,12 +406,16 @@ Options.onInput = function () {
         case tvKey.KEY_RED:
         	// Clear All
         	Main.log("Red pressed");
+        	if (Options.state != Options.sEnter )
+        		return;
         	Options.deleteAll();
         	break;
 
         case tvKey.KEY_GREEN:
         	// Clear Char
         	Main.log("Green pressed");
+        	if (Options.state != Options.sEnter )
+        		return;
         	Options.deleteChar();
         	break;
 
@@ -317,13 +423,22 @@ Options.onInput = function () {
         case tvKey.KEY_YELLOW:
         	// Dot
         	Main.log("Yellow pressed");
+        	if (Options.state == Options.sSelect) {
+        		Buttons.ynShow();
+        		return;
+        	}
 
-        	Options.insertChar(".");
+        	if (Options.state == Options.sEnter ) {
+            	Options.insertChar(".");        		
+        	}
+
         	break;
 
         case tvKey.KEY_PRECH:
         case tvKey.KEY_BLUE:
         	Main.log("Blue pressed");
+        	if (Options.state != Options.sEnter )
+        		return;
         	// Colon
         	Options.insertChar(":");
         	break;

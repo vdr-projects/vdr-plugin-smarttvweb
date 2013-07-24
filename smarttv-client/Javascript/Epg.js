@@ -161,6 +161,7 @@ Epg.parseResponse = function (message,text, XHR) {
 		entry.prog = $(this).find("title").text();
 		entry.desc = $(this).find("desc").text();
 		entry.start = parseInt($(this).find("start").text());
+		entry.eventid= parseInt($(this).find("eventid").text());
 		entry.dur = (parseInt($(this).find("end").text()) - parseInt($(this).find("start").text()));
 
 		Main.log("Epg.parseResponse : Guid= "+ guid + " title= " + entry.prog+ " start= " +entry.start + " dur= " + entry.dur);
@@ -188,4 +189,39 @@ Epg.parseResponse = function (message,text, XHR) {
 	});
 };
 
+Epg.getCurrentEvent4Rec = function (guid) {
+	var url = Config.serverUrl + "/epg.xml?id=" + guid;
+	
+	Main.log("Epg.getCurrentEpg: guid= " + guid + " and url= " + url);
+	$.ajax({
+        type: "GET",
+        async: true,
+        url: url,
+        success: function(data, status, XHR ) {
+        	$(message).find("programme").each(function(){
+        		var guid = $(this).find("guid").text();
+        		if (guid != Epg.curGuid) {
+        			Main.logToServer("ERROR in Epg.parseResponse : Guid (="+ guid + ") != Epg.curGuid (=" + Epg.curGuid+ ") " );
+        		}
+        		
+        		entry={};
+        		entry.prog = $(this).find("title").text();
+        		entry.desc = $(this).find("desc").text();
+        		entry.start = parseInt($(this).find("start").text());
+        		entry.eventid= parseInt($(this).find("eventid").text());
+        		entry.dur = (parseInt($(this).find("end").text()) - parseInt($(this).find("start").text()));
+
+        		Main.log("Epg.getCurrentEpg : Guid= "+ guid + " title= " + entry.prog+ " start= " +entry.start + " dur= " + entry.dur);
+
+        		// thlo: here I should invoke the rec command
+        		// then I should switch to recording playback (new state?).
+        		
+        	});
+        	
+        },
+		error: function (jqXHR, status, error) {
+			
+		}
+    });	
+};
 
