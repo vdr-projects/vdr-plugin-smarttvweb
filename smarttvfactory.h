@@ -86,11 +86,14 @@ class SmartTvServer : public cStatus {
     cManageUrls* getUrlsObj();
 
     void pushYtVideoId(string, bool);
-    void pushYtVideoIdToClient(string vid_id, string peer, bool);
+    //    void pushYtVideoIdToClient(string vid_id, string peer, bool);
 
     void pushCfgServerAddressToTv( string tv_addr);
+
  private:
     void addHttpResource(int fd, cHttpResourceBase* resource);
+    void pushToClients(cHttpResourceBase* resource);
+    
     int connectToClient(string peer);
     void setNonBlocking(int fd);
     

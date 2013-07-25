@@ -121,6 +121,7 @@ void SmartTvServer::Recording(const cDevice *Device, const char *Name, const cha
 		<< " Msg=  " << msg.str() 
 		<< endl;
 
+  
   for (uint i = 0; i < mConTvClients.size(); i ++) {
     if ((mConTvClients[i]->ip).compare("") != 0) {
 
@@ -131,6 +132,19 @@ void SmartTvServer::Recording(const cDevice *Device, const char *Name, const cha
     }
   }
 };
+
+//thlo: Try to clean up
+void SmartTvServer::pushToClients(cHttpResourceBase* resource) {
+  for (uint i = 0; i < mConTvClients.size(); i ++) {
+    if ((mConTvClients[i]->ip).compare("") != 0) {
+      
+      int cfd=  connectToClient(mConTvClients[i]->ip);
+      if (cfd < 0) 
+	continue;
+      addHttpResource(cfd, resource);
+    }
+  }
+}
 
 
 void SmartTvServer::TimerChange(const cTimer *Timer, eTimerChange Change) {
@@ -291,11 +305,19 @@ bool SmartTvServer::deleteYtVideoId(string guid) {
 
 
 void SmartTvServer::pushYtVideoId(string vid_id, bool store) {
+  time_t now =  time(NULL);
   for (uint i = 0; i < mConTvClients.size(); i ++) {
-    if ((mConTvClients[i]->ip).compare("") != 0)
-      pushYtVideoIdToClient(vid_id, mConTvClients[i]->ip, store);
+    if ((mConTvClients[i]->ip).compare("") != 0) {
+      //      pushYtVideoIdToClient(vid_id, mConTvClients[i]->ip, store);
+      int cfd=  connectToClient(mConTvClients[i]->ip);
+      if (cfd < 0)
+	return;
+      addHttpResource(cfd, new cHttpYtPushClient(cfd, mHttpClientId, serverPort, this, mConTvClients[i]->ip, vid_id, store));
+    }
   }
 }
+
+
 
 int SmartTvServer::connectToClient(string peer) {
   *(mLog.log()) << " SmartTvServer::connectToClient: client= " << peer << endl;
@@ -350,6 +372,7 @@ void SmartTvServer::addHttpResource(int rfd, cHttpResourceBase* resource) {
   }
 }
 
+/* // obsolete
 void SmartTvServer::pushYtVideoIdToClient(string vid_id, string peer, bool store) {
   *(mLog.log()) << " SmartTvServer::pushYtVideoIdToClient vid_id= " << vid_id 
 		<< " client= " << peer << endl;
@@ -360,7 +383,7 @@ void SmartTvServer::pushYtVideoIdToClient(string vid_id, string peer, bool store
   addHttpResource(cfd, new cHttpYtPushClient(cfd, mHttpClientId, serverPort, this, peer, vid_id, store));
 
 }
-
+*/
 void SmartTvServer::pushCfgServerAddressToTv( string tv_addr) {
   *(mLog.log()) << " SmartTvServer::pushCfgServerAddressToTv TV= " << tv_addr 
 		<< endl;
@@ -588,7 +611,17 @@ void SmartTvServer::loop() {
 } // org bracket
 
 int SmartTvServer::isServing() {
-  return (mActiveSessions != 0 ? true : false);
+  *(mLog.log()) << "SmartTvServer::isServing" << endl;
+  time_t now = time(NULL);
+  bool connected_tv = false;
+  for (uint i = 0; i < mConTvClients.size(); i++) {
+    if ( (now - mConTvClients[i]->lastKeepAlive) < 60) {
+      *(mLog.log()) << "SmartTvServer::isServing: Found a connected TV" << endl;
+      connected_tv = true;
+      break;
+    } 
+  }
+  return (mActiveSessions != 0 ? true : false) or connected_tv;
 }
 
 void SmartTvServer::initServer(string dir) {

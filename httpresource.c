@@ -455,6 +455,12 @@ int cHttpResource::processRequest() {
     ok_to_serve = true;    
   }
 
+  if (mPath.compare(0, strlen(VideoDirectory), VideoDirectory) == 0) {
+    *(mLog->log())<< DEBUGPREFIX
+		  << " Found video dir request. serving " << mPath << endl;
+    ok_to_serve = true;    
+  }
+
   if (stat(mPath.c_str(), &statbuf) < 0) {
     // checking, whether the file or directory exists 
     *(mLog->log())<< DEBUGPREFIX
