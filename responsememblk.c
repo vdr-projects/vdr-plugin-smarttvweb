@@ -744,6 +744,7 @@ void cResponseMemBlk::writeMPD(double duration, int bitrate, float seg_dur, int 
   sendHeaders(200, "OK", NULL, "application/x-mpegURL", mResponseMessage->size(), -1);
 }
 
+
 void cResponseMemBlk::receiveAddTimerReq() {
   if (isHeadRequest())
     return ;
@@ -754,6 +755,7 @@ void cResponseMemBlk::receiveAddTimerReq() {
   mRequest->parseQueryLine(&avps);
   
   //guid=<guid>&evid=<event_id>
+  // evid is optional. If not present, the plugin looks up the current event id for the channel
   // later
   //guid=<guid>&wd=<weekdays>&dy=<day>&st=<start>&sp=<stop>&f=<url_enc_filename>
   
@@ -825,20 +827,15 @@ void cResponseMemBlk::receiveAddTimerReq() {
     return;
   }
 
-  if (ev_id  == 0) {
-    // no event id -> not implemented
-    sendError(501, "Not Implemented", NULL, "001 Not Implemented. evid shall be present.");
-    return ;
-  }
+  const cEvent *ev = NULL;
 
-  // have an event id
   cSchedulesLock * lock = new cSchedulesLock(false, 500);
   const cSchedules *schedules = cSchedules::Schedules(*lock);
-    
+  
   const cSchedule *schedule = schedules->GetSchedule(chan_id);
   if (schedule == NULL) {
     *(mLog->log())<< DEBUGPREFIX
-		  << " ERROR: Schedule is zero for guid= " << guid
+		  << "ERROR: Schedule is zero for guid= " << guid
 		  << endl;
     delete mResponseMessage;
     delete lock;
@@ -846,22 +843,64 @@ void cResponseMemBlk::receiveAddTimerReq() {
     sendError(500, "Internal Server Error", NULL, "001 Schedule is zero.");
     return;
   }
+
+  if (ev_id  == 0) {
+    // no event id: Use the current running event
+
+    time_t now = time(NULL);
+    for(cEvent* e = schedule->Events()->First(); e; e = schedule->Events()->Next(e)) {
+      if ( (e->StartTime() <= now) && (e->EndTime() > now)) {
+	ev = e;
+	
+      } else if (e->StartTime() > now + 3600) {
+	break;
+      }
+    }
+
+    if (ev == NULL) {
+      *(mLog->log())<< DEBUGPREFIX
+		    << "ERROR: Event is zero for guid= " << guid
+		    << endl;
+      delete mResponseMessage;
+      delete lock;
+
+      mResponseMessage = NULL;
+      sendError(500, "Internal Server Error", NULL, "002 Event is zero.");
+      return;
+    }
+  }
+
+  else {
+    // have an event id
     
-  //    time_t now = time(NULL);
-  const cEvent *ev = schedule->GetEvent(ev_id);
-  
-  if (ev == NULL) {
+    ev = schedule->GetEvent(ev_id);
+    
+    if (ev == NULL) {
+      *(mLog->log())<< DEBUGPREFIX
+		    << " ERROR: Event not found for guid= " << guid 
+		    << " and ev_id= " << ev_id
+		    << endl;
+      delete mResponseMessage;
+      delete lock;
+      mResponseMessage = NULL;
+      sendError(500, "Internal Server Error", NULL, "002 Event is zero.");
+      return;
+    }
+  }
+
+  if (Timers.GetMatch(ev) != NULL) {
     *(mLog->log())<< DEBUGPREFIX
-		  << "ERROR: Event not found for guid= " << guid 
+		  << " WARING: Timer already created guid= " << guid  
 		  << " and ev_id= " << ev_id
 		  << endl;
-    delete mResponseMessage;
-    delete lock;
-    mResponseMessage = NULL;
-    sendError(500, "Internal Server Error", NULL, "002 Event is zero.");
-    return;
+
+      delete mResponseMessage;
+      delete lock;
+      mResponseMessage = NULL;
+      sendError(400, "Bad Request", NULL, "014 Timer already defined.");
+      return;
   }
-  
+
   // now, create a new timer
   if (ev->Title() == NULL) {
     *(mLog->log())<< DEBUGPREFIX
@@ -910,9 +949,6 @@ void cResponseMemBlk::receiveAddTimerReq() {
 
   sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), -1);
   return;
-  
-  
-
 }
 
 void cResponseMemBlk::receiveDelTimerReq() {
@@ -2025,6 +2061,7 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
 		     << " Active Timer: " << ti->File() 
 		     << " Start= " << ti->StartTime() 
 		     << " Duration= " << (ti->StopTime() - ti->StartTime())
+		     << " Now= " << now
 		     << endl;
       act_rec.push_back(sTimerEntry(ti->File(), ti->StartTime(), (ti->StopTime() - ti->StartTime())));
     }

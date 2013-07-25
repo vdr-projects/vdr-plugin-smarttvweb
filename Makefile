@@ -31,7 +31,7 @@ TMPDIR = /tmp
 
 ### Allow user defined options to overwrite defaults:
 
-#-include $(VDRDIR)/Make.config
+-include $(VDRDIR)/Make.config
 
 ### read standlone settings if there
 -include .standalone
