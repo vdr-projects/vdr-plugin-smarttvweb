@@ -287,7 +287,6 @@ body {
     font-size:10px;
 }
 
-
 #description
 {
     position:absolute;
@@ -300,17 +299,17 @@ body {
 	border-width:1px;
     text-align:left;
     font-size:16px;
-    overflow:hidden;
     -webkit-border-radius: 7px;
-    
-    text-overflow : ellipsis;
 	-webkit-box-shadow:3px 3px 7px 4px rgba(0,0,0, 0.5);
-
 	background: url("../Images/description-bg.png");
     background-size: 100%;
 	background: -webkit-linear-gradient(-45deg, #1e5799 0%,#2989d8 41%,#7db9e8 100%);
 }
+/*    
+    text-overflow : ellipsis;
+    overflow:hidden;
 
+*/
 /* Left Half */
 #leftHalf {
     position:absolute;
