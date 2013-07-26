@@ -405,6 +405,7 @@ Display.resetVideoList = function () {
 
 //Video Select Screen
 Display.handleDescription =function (selected) {
+	Main.log("Display.handleDescription selected= " + selected);
 	
 	if (Data.getCurrentItem().childs[selected].isFolder == true) {
 		$("#descTitle").text("Dir: " +Data.getCurrentItem().childs[selected].title);
@@ -414,6 +415,7 @@ Display.handleDescription =function (selected) {
 		$("#descDuration").text("");
 		$("#descRemaining").text("");
 		$("#descDesc").text("");
+		$("#descImg").hide();
     }
     else {
     	var itm = Data.getCurrentItem().childs[selected];
@@ -465,7 +467,12 @@ Display.handleDescription =function (selected) {
 			$("#descTitle").text(title);
 			$("#descStart").text("Start: " + d_str);			
 			$("#descDuration").text("Duration: " + Display.durationString(length) + "h");
-			$("#descDesc").text(desc);
+			$("#descDesc").html(desc);
+
+			$("#descImg").show();
+			$("#descImg")
+				.error(function() { $("#descImg").hide();})
+				.attr('src', Data.getCurrentItem().childs[selected].payload.link + "/preview_vdr.png");
 
 			break;
 		case Main.eMED:
@@ -497,6 +504,7 @@ Display.resetDescription = function () {
 
 	$("#descProg").hide();
 	$("#descRemaining").hide();
+	$("#descImg").hide();
 };
 /*
  * this.currentWindow: Cursor (selected item)
