@@ -299,6 +299,7 @@ body {
 	border-width:1px;
     text-align:left;
     font-size:16px;
+	overflow:hidden;
     -webkit-border-radius: 7px;
 	-webkit-box-shadow:3px 3px 7px 4px rgba(0,0,0, 0.5);
 	background: url("../Images/description-bg.png");
