@@ -340,14 +340,14 @@ int cHttpResource::processRequest() {
   }
 
   //thlo for testing purpose
-  if (mPath.compare("/deleteTimer.xml") == 0) {
+  if (mPath.compare("/deleteTimer") == 0) {
     mResponse = new cResponseMemBlk(this);
     ((cResponseMemBlk*)mResponse)->receiveDelTimerReq();
     return OKAY;
   }
 
   //thlo for testing purpose
-  if (mPath.compare("/addTimer.xml") == 0) {
+  if (mPath.compare("/addTimer") == 0) {
     mResponse = new cResponseMemBlk(this);
     ((cResponseMemBlk*)mResponse)->receiveAddTimerReq();
     return OKAY;
