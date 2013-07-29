@@ -128,7 +128,7 @@ bool cPluginSmartTvWeb::SetupParse(const char *Name, const char *Value)
 #if VDRVERSNUM > 10300
 
 cString cPluginSmartTvWeb::Active(void) {
-  esyslog("SmartTvWeb: Active called Checkme");
+  //  esyslog("SmartTvWeb: Active called Checkme");
   if (mServer.isServing())
     return tr("SmartTV client(s) serving");
   else
