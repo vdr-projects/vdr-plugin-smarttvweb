@@ -33,7 +33,7 @@
 #include <vdr/timers.h>
 #include <vdr/videodir.h>
 #include <vdr/epg.h>
-
+#include <vdr/menu.h>
 #else
 //standalone
 #include <netinet/in.h>
@@ -960,7 +960,10 @@ void cResponseMemBlk::receiveDelTimerReq() {
   vector<sQueryAVP> avps;
   mRequest->parseQueryLine(&avps);
 
+  //index=<no> (first timer has index 0). the use of index has precedence 
   //guid=<guid>&wd=<weekdays>&dy=<day>&st=<start>&sp=<stop>
+  string index_str = "";
+  int index =-1;
   string guid = "";
   string wd_str;
   int weekdays = 0;
@@ -973,6 +976,11 @@ void cResponseMemBlk::receiveDelTimerReq() {
 
   string sp_str;
   int stop =0;
+
+  if (mRequest->getQueryAttributeValue(&avps, "index", index_str) == OKAY) {
+    index = atoi(index_str.c_str());
+    *(mLog->log()) << DEBUGPREFIX << " index= " << index  << endl;
+  }
 
   if (mRequest->getQueryAttributeValue(&avps, "guid", guid) == OKAY) {
     *(mLog->log()) << DEBUGPREFIX
@@ -1005,23 +1013,32 @@ void cResponseMemBlk::receiveDelTimerReq() {
     return;
   }
 
-  cTimer *to_del = NULL;
-  for (cTimer * ti = Timers.First(); ti; ti = Timers.Next(ti)){
-    ti->Matches();
-    if ((guid.compare(*(ti->Channel()->GetChannelID()).ToString()) == 0)  &&
-	((ti->WeekDays() && (ti->WeekDays() == weekdays)) || (!ti->WeekDays() && (ti->Day() == day))) &&
-	(ti->Start() == start) &&
-	(ti->Stop() == stop)) {
-      to_del = ti;
-      break;
+  cTimer *to_del = Timers.Get(index);
+  if (to_del == NULL) {
+    for (cTimer * ti = Timers.First(); ti; ti = Timers.Next(ti)){
+      ti->Matches();
+      if ((guid.compare(*(ti->Channel()->GetChannelID()).ToString()) == 0)  &&
+	  ((ti->WeekDays() && (ti->WeekDays() == weekdays)) || (!ti->WeekDays() && (ti->Day() == day))) &&
+	  (ti->Start() == start) &&
+	  (ti->Stop() == stop)) {
+	to_del = ti;
+	break;
+      }
     }
   }
-  
-  if (to_del != NULL) {
-    *(mLog->log()) << DEBUGPREFIX << " found a timer to delete"  << endl;
-    Timers.Del(to_del, true);
 
+  if (to_del != NULL) {
+    char f[80];
+    snprintf(f, sizeof(f), "%s", *to_del->ToText(true));
+
+    if (to_del->Recording()) {
+      to_del->Skip();
+      cRecordControls::Process(time(NULL));
+    }
+    Timers.Del(to_del);
+    Timers.SetModified();
     sendHeaders(200, "OK", NULL, NULL, 0, -1);
+    *(mLog->log()) << DEBUGPREFIX << " found a timer to delete: " << f << " - done" <<  endl;
   }
   else {
     sendError(400, "Bad Request", NULL, "010 No Timer found.");
@@ -1082,6 +1099,9 @@ void cResponseMemBlk::sendTimersXml() {
     *mResponseMessage += f;
 
     snprintf(f, sizeof(f), "<flags>%d</flags>\n", ti->Flags());
+    *mResponseMessage += f;
+
+    snprintf(f, sizeof(f), "<index>%d</index>\n", ti->Index());
     *mResponseMessage += f;
 
     snprintf(f, sizeof(f), "<isrec>%s</isrec>\n", ((ti->HasFlags(tfRecording) )? "true":"false"));
