@@ -42,6 +42,9 @@ string cUrlEncode::doUrlSaveEncode(string in) {
     case '&':
       res += "%26";
       break;
+    case '?':
+      res+= "%3f";
+      break;
     case '%':
       res += "%25";
       break;
@@ -104,8 +107,8 @@ string cUrlEncode::doUrlSaveDecode(string input) {
       case 0x3a: // ':'
 	res += "#3A";
 	break;
-      case 63: // '?'
-	res += "#3F";
+      case 0x3f: // '?'
+	res += "?";
 	break;
       default:
 	res += char(x);
