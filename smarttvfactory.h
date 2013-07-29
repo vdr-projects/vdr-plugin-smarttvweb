@@ -47,8 +47,8 @@ class cStatus {
 
 using namespace std;
 
-#define PLG_VERSION "0.9.9"
-#define SERVER "SmartTvWeb/0.9.9" 
+#define PLG_VERSION "0.9.9-pre"
+#define SERVER "SmartTvWeb/0.9.9-pre" 
 
 struct sClientEntry {
   string mac;
@@ -94,7 +94,7 @@ class SmartTvServer : public cStatus {
     void addHttpResource(int fd, cHttpResourceBase* resource);
     void pushToClients(cHttpResourceBase* resource);
     
-    int connectToClient(string peer);
+    int connectToClient(string peer, time_t last_update);
     void setNonBlocking(int fd);
     
     // status callbacks
