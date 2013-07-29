@@ -125,7 +125,7 @@ void SmartTvServer::Recording(const cDevice *Device, const char *Name, const cha
   for (uint i = 0; i < mConTvClients.size(); i ++) {
     if ((mConTvClients[i]->ip).compare("") != 0) {
 
-      int cfd=  connectToClient(mConTvClients[i]->ip);
+      int cfd=  connectToClient(mConTvClients[i]->ip, mConTvClients[i]->lastKeepAlive);
       if (cfd < 0) 
 	continue;
       addHttpResource(cfd, new cHttpInfoClient(cfd, mHttpClientId, serverPort, this, mConTvClients[i]->ip, msg.str()));
@@ -138,7 +138,7 @@ void SmartTvServer::pushToClients(cHttpResourceBase* resource) {
   for (uint i = 0; i < mConTvClients.size(); i ++) {
     if ((mConTvClients[i]->ip).compare("") != 0) {
       
-      int cfd=  connectToClient(mConTvClients[i]->ip);
+      int cfd=  connectToClient(mConTvClients[i]->ip, mConTvClients[i]->lastKeepAlive);
       if (cfd < 0) 
 	continue;
       addHttpResource(cfd, resource);
@@ -188,7 +188,7 @@ void SmartTvServer::TimerChange(const cTimer *Timer, eTimerChange Change) {
 
   for (uint i = 0; i < mConTvClients.size(); i ++) {
     if ((mConTvClients[i]->ip).compare("") != 0) {
-      int cfd=  connectToClient(mConTvClients[i]->ip);
+      int cfd=  connectToClient(mConTvClients[i]->ip, mConTvClients[i]->lastKeepAlive);
       if (cfd < 0) 
 	continue;
       addHttpResource(cfd, new cHttpInfoClient(cfd, mHttpClientId, serverPort, this, mConTvClients[i]->ip, msg.str()));
@@ -206,7 +206,7 @@ void SmartTvServer::OsdStatusMessage(const char *Message) {
 
   for (uint i = 0; i < mConTvClients.size(); i ++) {
     if ((mConTvClients[i]->ip).compare("") != 0) {
-      int cfd=  connectToClient(mConTvClients[i]->ip);
+      int cfd=  connectToClient(mConTvClients[i]->ip, mConTvClients[i]->lastKeepAlive);
       if (cfd < 0) 
 	continue;
       addHttpResource(cfd, new cHttpMesgPushClient(cfd, mHttpClientId, serverPort, this, mConTvClients[i]->ip, msg));
@@ -309,7 +309,7 @@ void SmartTvServer::pushYtVideoId(string vid_id, bool store) {
   for (uint i = 0; i < mConTvClients.size(); i ++) {
     if ((mConTvClients[i]->ip).compare("") != 0) {
       //      pushYtVideoIdToClient(vid_id, mConTvClients[i]->ip, store);
-      int cfd=  connectToClient(mConTvClients[i]->ip);
+      int cfd=  connectToClient(mConTvClients[i]->ip, mConTvClients[i]->lastKeepAlive);
       if (cfd < 0)
 	return;
       addHttpResource(cfd, new cHttpYtPushClient(cfd, mHttpClientId, serverPort, this, mConTvClients[i]->ip, vid_id, store));
@@ -319,7 +319,11 @@ void SmartTvServer::pushYtVideoId(string vid_id, bool store) {
 
 
 
-int SmartTvServer::connectToClient(string peer) {
+int SmartTvServer::connectToClient(string peer, time_t last_update) {
+  if ((time(NULL) - last_update) > 60) {
+    *(mLog.log()) << " SmartTvServer::connectToClient: expired client= " << peer << endl;
+    return -1;
+  }
   *(mLog.log()) << " SmartTvServer::connectToClient: client= " << peer << endl;
 
   int cfd; 
@@ -388,7 +392,7 @@ void SmartTvServer::pushCfgServerAddressToTv( string tv_addr) {
   *(mLog.log()) << " SmartTvServer::pushCfgServerAddressToTv TV= " << tv_addr 
 		<< endl;
   
-  int cfd=  connectToClient(tv_addr);
+  int cfd=  connectToClient(tv_addr, time(NULL));
   if (cfd < 0)
     return;
   addHttpResource(cfd, new cHttpCfgPushClient(cfd, mHttpClientId, serverPort, this, tv_addr));
@@ -491,7 +495,7 @@ void SmartTvServer::loop() {
     } // timeout
 
     if (ret < 0){
-      *(mLog.log()) << "ERROR: select error " <<  errno << endl;
+      *(mLog.log()) << "ERROR: select error errno= " <<  errno << endl;
       continue;
     } // Error
 
@@ -611,12 +615,12 @@ void SmartTvServer::loop() {
 } // org bracket
 
 int SmartTvServer::isServing() {
-  *(mLog.log()) << "SmartTvServer::isServing" << endl;
+  *(mLog.log()) << "SmartTvServer::isServing: mActiveSessions= " << mActiveSessions << endl;
   time_t now = time(NULL);
   bool connected_tv = false;
   for (uint i = 0; i < mConTvClients.size(); i++) {
     if ( (now - mConTvClients[i]->lastKeepAlive) < 60) {
-      *(mLog.log()) << "SmartTvServer::isServing: Found a connected TV" << endl;
+      *(mLog.log()) << "SmartTvServer::isServing: Found a connected TV: mac= " << mConTvClients[i]->mac << " ip=" << mConTvClients[i]->ip  << endl;
       connected_tv = true;
       break;
     } 
