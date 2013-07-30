@@ -59,7 +59,7 @@ Display.init = function()
     	$(elm).append($("<div>").css({ "display": "inline-block", "width":"70%", 
 			"overflow": "hidden", "text-overflow":"ellipsis", "white-space": "nowrap", "height": "14px"})); 
     	$(elm).append($("<div>").css({ "display": "inline-block", "width":"5%", 
-			 "height": "14px"})); 
+    		"overflow": "hidden", "text-overflow":"ellipsis", "white-space": "nowrap", "height": "14px"})); 
     }  
 	
     var done = false;
@@ -272,9 +272,9 @@ Display.tuneLeftSide = function() {
 	res.w3 = "5%";
 	switch (Main.state) {
 		case Main.eLIVE:
-			res.w1 = "10%";
-			res.w2 = "80%";
-			res.w3 = "5%";
+			res.w1 = "5%";
+			res.w2 = "25%";
+			res.w3 = "65%";
 		break;
 		case Main.eREC:
 			res.w1 = "20%";
@@ -582,7 +582,25 @@ Display.getDisplayTitle = function(item) {
 		else {
 			res.c1 = item.payload.num;
 			res.c2 = item.title;
-		}
+			if(item.payload.start>0) 
+			{
+				var epg_start_time=new Date(item.payload.start*1000);
+				var epg_start_hour=epg_start_time.getHours();
+				if(epg_start_hour<10)
+				{
+					epg_start_hour = "0"+epg_start_hour;
+				}
+				var epg_start_minute=epg_start_time.getMinutes();
+				if(epg_start_minute<10)
+				{
+					epg_start_minute = "0"+epg_start_minute;
+				}
+				res.c3 = epg_start_hour + ":" + epg_start_minute +" "+item.payload.prog;				
+			}
+			else {
+				res.c3 =  "NA:NA" +" "+item.payload.prog;				
+			}
+		} // else
 		break;
 	case Main.eREC:
 		// Recordings
