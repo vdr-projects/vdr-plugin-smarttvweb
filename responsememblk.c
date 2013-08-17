@@ -73,6 +73,11 @@ struct sTimerEntry {
 sTimerEntry(string t, time_t s, int d) :  name(t), startTime(s), duration(d) {};
 };
 
+#if VDRVERSNUM < 10728
+int timerCompare(const void* i, const void *j) {
+  return (((cTimer*)i)->StartTime() < ((cTimer*)j)->StartTime());
+}
+#endif
 
 cResponseMemBlk::cResponseMemBlk(cHttpResource* req) : cResponseBase(req), mResponseMessage(NULL), mResponseMessagePos(0) {
 
@@ -1063,9 +1068,24 @@ void cResponseMemBlk::sendTimersXml() {
   *mResponseMessage += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
   *mResponseMessage += "<timers>\n";
 
-  for (cTimer * ti = Timers.First(); ti; ti = Timers.Next(ti)){
-    ti->Matches();
-
+#if VDRVERSNUM < 10728
+  cVector<cTimer*> s_timers;
+  for (cTimer * t = Timers.First(); t; t = Timers.Next(t)) {
+    //    s_timers.push_back(t);
+    s_timers.Append(t);
+  }
+  s_timers.Sort(timerCompare);
+#else
+  cSortedTimers s_timers;
+#endif
+  
+  for (uint i =0; i< s_timers.Size(); i++) {
+    //  for (cTimer * ti = Timers.First(); ti; ti = Timers.Next(ti)){
+    //    ti->Matches();
+    cTimer *ti = s_timers[i];
+    if (!ti ) {
+      continue;
+      }
     *mResponseMessage += "<timer>\n";
 
     //    snprintf(f, sizeof(f), "<id>%s</id>\n", cUrlEncode::doXmlSaveEncode(*(ti->ToText(true))).c_str());
