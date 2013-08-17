@@ -1131,14 +1131,13 @@ void cResponseMemBlk::sendTimersXml() {
 
     snprintf(f, sizeof(f), "<isrec>%s</isrec>\n", ((ti->HasFlags(tfRecording) )? "true":"false"));
     *mResponseMessage += f;
-
-    if (ti->Event() != NULL) {
-      snprintf(f, sizeof(f), "<eventid>%u</eventid>\n", ti->Event()->EventID());
-      *mResponseMessage += f;
+    const cEvent* ev = ti->Event();
+    if (ev != NULL) {
+      snprintf(f, sizeof(f), "<eventid>%u</eventid>\n", ev->EventID());
     }
     else 
-      *mResponseMessage += "<eventid></eventid>\n";
-    
+      snprintf(f, sizeof(f), "<eventid>undefined</eventid>\n");
+    *mResponseMessage += f;
 
     *mResponseMessage += "</timer>\n";
 
