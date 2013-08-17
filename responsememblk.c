@@ -888,9 +888,13 @@ void cResponseMemBlk::receiveAddTimerReq() {
     }
   }
 
-  if (Timers.GetMatch(ev) != NULL) {
+  //  eTimerMatch ma ;
+  int ma;
+  if (Timers.GetMatch(ev, &ma) != NULL) {
+    if(ma == tmFull) {
+
     *(mLog->log())<< DEBUGPREFIX
-		  << " WARING: Timer already created guid= " << guid  
+		  << " WARNING: Timer already created guid= " << guid  
 		  << " and ev_id= " << ev_id
 		  << endl;
 
@@ -899,6 +903,7 @@ void cResponseMemBlk::receiveAddTimerReq() {
       mResponseMessage = NULL;
       sendError(400, "Bad Request", NULL, "014 Timer already defined.");
       return;
+    }
   }
 
   // now, create a new timer
@@ -1106,6 +1111,14 @@ void cResponseMemBlk::sendTimersXml() {
 
     snprintf(f, sizeof(f), "<isrec>%s</isrec>\n", ((ti->HasFlags(tfRecording) )? "true":"false"));
     *mResponseMessage += f;
+
+    if (ti->Event() != NULL) {
+      snprintf(f, sizeof(f), "<eventid>%u</eventid>\n", ti->Event()->EventID());
+      *mResponseMessage += f;
+    }
+    else 
+      *mResponseMessage += "<eventid></eventid>\n";
+    
 
     *mResponseMessage += "</timer>\n";
 
