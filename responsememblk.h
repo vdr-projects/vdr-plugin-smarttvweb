@@ -70,8 +70,8 @@ class cResponseMemBlk : public cResponseBase {
   int sendManifest (struct stat *statbuf, bool is_hls = true);
   void sendTimersXml();
   void sendRecCmds();
+  void receiveExecRecCmdReq();
 
-  string writeCommands(const char *title, cList<cNestedItem> *commands, string pref);
   void receiveAddTimerReq();
   void receiveDelTimerReq();
 

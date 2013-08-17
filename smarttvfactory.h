@@ -38,6 +38,7 @@
 
 #ifndef STANDALONE
 #include <vdr/recording.h>
+#include <vdr/config.h>
 #include <vdr/status.h>
 
 #else
@@ -55,6 +56,16 @@ struct sClientEntry {
   string ip;
   time_t lastKeepAlive;
 sClientEntry(string m, string i, time_t t ): mac(m), ip(i), lastKeepAlive(t) {};
+};
+
+class cCmd {
+ public:
+  cCmd(string t);
+  void trim(string& t);
+
+  string mTitle;
+  string mCommand;
+  bool mConfirm;
 };
 
 class SmartTvServer : public cStatus {
@@ -90,17 +101,24 @@ class SmartTvServer : public cStatus {
 
     void pushCfgServerAddressToTv( string tv_addr);
 
+    string getRecCmdsMsg() { return mRecMsg; };
+    vector<cCmd*>* getRecCmds() { return &mRecCmds; };
+
+    void OsdStatusMessage(const char *Message);
+
  private:
     void addHttpResource(int fd, cHttpResourceBase* resource);
     void pushToClients(cHttpResourceBase* resource);
     
     int connectToClient(string peer, time_t last_update);
     void setNonBlocking(int fd);
-    
+
+    void initRecCmds();
     // status callbacks
     void Recording(const cDevice *Device, const char *Name, const char *FileName, bool On);
     void TimerChange(const cTimer *Timer, eTimerChange Change);
-    void OsdStatusMessage(const char *Message);
+
+    string processNestedItemList(string, cList<cNestedItem> *, vector<cCmd*>*);
 
     pthread_t mThreadId;
     int mRequestCount;
@@ -114,6 +132,9 @@ class SmartTvServer : public cStatus {
     vector<cHttpResourceBase*> clientList;
     vector<sClientEntry*> mConTvClients;
 
+    vector<cCmd*> mRecCmds;
+    string mRecMsg;
+
     int mActiveSessions;
     int mHttpClientId;
 
@@ -125,6 +146,9 @@ class SmartTvServer : public cStatus {
     fd_set mWriteState;
 
     cManageUrls* mManagedUrls;
+
+    string mRecCmdMsg;
+    vector<string> mRecCmdList;
 };
 
 
