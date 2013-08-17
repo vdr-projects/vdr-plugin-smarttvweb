@@ -34,6 +34,7 @@
 #include <vdr/videodir.h>
 #include <vdr/epg.h>
 #include <vdr/menu.h>
+#include <vdr/thread.h>
 #else
 //standalone
 #include <netinet/in.h>
@@ -1131,6 +1132,7 @@ void cResponseMemBlk::sendTimersXml() {
 
     snprintf(f, sizeof(f), "<isrec>%s</isrec>\n", ((ti->HasFlags(tfRecording) )? "true":"false"));
     *mResponseMessage += f;
+
     const cEvent* ev = ti->Event();
     if (ev != NULL) {
       snprintf(f, sizeof(f), "<eventid>%u</eventid>\n", ev->EventID());
@@ -1151,35 +1153,84 @@ void cResponseMemBlk::sendTimersXml() {
 
 
 void cResponseMemBlk::sendRecCmds() {
-  *(mLog->log()) << DEBUGPREFIX << " --------------- sendRecCmds ---------------"  << endl;
-  string msg = writeCommands("Recording Commands", &RecordingCommands, " ");
-  *(mLog->log()) << DEBUGPREFIX << " --------------- sendRecCmds ---------------"  << endl;
+  *(mLog->log()) << DEBUGPREFIX << "  sendRecCmds"  << endl;
 
   if (isHeadRequest())
     return;
 
-  /*  mResponseMessage = new string();
-  *mResponseMessage = "";
+  mResponseMessage = new string();
+  *mResponseMessage = mRequest->mFactory->getRecCmdsMsg();
   mResponseMessagePos = 0;
-  */
-  sendHeaders(200, "OK", NULL, "text/plain", 0, -1);
-  
+  mRequest->mConnState = SERVING;
+
+  sendHeaders(200, "OK", NULL, "text/plain", mResponseMessage->size(), -1);
 }
 
+void cResponseMemBlk::receiveExecRecCmdReq() {
+  vector<sQueryAVP> avps;
+  mRequest->parseQueryLine(&avps);
+  string guid; 
+  string cmd_str;
+  uint cmdid;
 
-string cResponseMemBlk::writeCommands(const char *title, cList<cNestedItem> *commands, string pref) {
-  //  *(mLog->log()) << DEBUGPREFIX << " title"  << endl;
-  string res = "-\n";
-  for (cNestedItem *Cmd = commands->First(); Cmd; Cmd = commands->Next(Cmd)) {
-      const char *s = Cmd->Text();
-      if (Cmd->SubItems())
-	res += writeCommands(s, Cmd->SubItems(), (pref + "+"));
-      else 
-	*(mLog->log()) << DEBUGPREFIX << pref << "title= " << s << endl;
-      }
-  return res;
+  if (isHeadRequest())
+    return;
+
+  if (mRequest->getQueryAttributeValue(&avps, "guid", guid) != OKAY){
+    sendError(400, "Bad Request", NULL, "002 No guid in query line");
+    return;
+  }
+  guid =cUrlEncode::doUrlSaveDecode(guid);
+  if (mRequest->getQueryAttributeValue(&avps, "cmd", cmd_str) != OKAY){
+      sendError(400, "Bad Request", NULL, "00? Mandatory cmd attribute not present.");
+      return ;
+  }
+  cmdid = atoi(cmd_str.c_str());
+
+  *(mLog->log())<< DEBUGPREFIX
+		<< " receiveExecRecCmd cmd= " << cmdid 
+		<< " guid= " << guid
+		<< endl;
+  vector<cCmd*>* r_cmds =  mRequest->mFactory->getRecCmds();
+  if ((cmdid <0 ) || ( cmdid > r_cmds->size())) {
+    *(mLog->log())<< DEBUGPREFIX
+		  << " ERROR: cmd value out of range." << endl;
+      sendError(400, "Bad Request", NULL, "00? cmd value out of range..");
+      return ;
+  }
+  *(mLog->log())<< DEBUGPREFIX
+		<< " cmdid= " << cmdid
+		<< " t= " << ((*r_cmds)[cmdid])->mTitle
+		<< " c= " << ((*r_cmds)[cmdid])->mCommand
+		<< endl;
+
+  string cmd = ((*r_cmds)[cmdid])->mCommand + " " + guid;
+
+//  dsyslog("executing command '%s'", cmd.c_str());
+  *(mLog->log())<< DEBUGPREFIX
+		<< " exec cmd: " << cmd << endl;
+  cPipe p;
+  string result ="";
+  if (p.Open(cmd.c_str(), "r")) {
+    int c;
+    while ((c = fgetc(p)) != EOF) {
+      result += c;
+    } // while
+    p.Close();
+  } // if (p.open
+  else {
+    //  esyslog("ERROR: can't open pipe for command '%s'", cmd);
+   *(mLog->log())<< DEBUGPREFIX
+		 << " ERROR: cannot open pipe for cmd " << cmd << endl;
+ }
+  *(mLog->log())<< DEBUGPREFIX
+		<< " Exec cmd result: " << result << endl;
+  //report result to widget
+  mRequest->mFactory->OsdStatusMessage(result.c_str());
+ 
+  sendHeaders(200, "OK", NULL, NULL, 0, -1);
+  return;
 }
-
 
 uint64_t cResponseMemBlk::getVdrFileSize() {
   // iter over all vdr files and get file size

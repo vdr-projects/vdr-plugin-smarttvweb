@@ -315,9 +315,14 @@ int cHttpResource::processRequest() {
     return OKAY;
   }
 
-  if (mPath.compare("/reccmds") == 0) {
+  if (mPath.compare("/reccmds.xml") == 0) {
     mResponse = new cResponseMemBlk(this);
     ((cResponseMemBlk*)mResponse)->sendRecCmds();
+    return OKAY;
+  }
+  if (mPath.compare("/execreccmd") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->receiveExecRecCmdReq();
     return OKAY;
   }
 
@@ -628,6 +633,11 @@ int cHttpResource::handlePost() {
   if (mPath.compare("/deleteRecording.xml") == 0) {
     mResponse = new cResponseMemBlk(this);
     ((cResponseMemBlk*)mResponse)->receiveDelRecReq();
+    return OKAY;
+  }
+  if (mPath.compare("/execreccmd") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->receiveExecRecCmdReq();
     return OKAY;
   }
 

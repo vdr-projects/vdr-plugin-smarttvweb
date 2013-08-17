@@ -1,7 +1,7 @@
 /*
- * smarttvfactory.h: VDR on Smart TV plugin
+ * smarttvfactory.c: VDR on Smart TV plugin
  *
- * Copyright (C) 2012 T. Lohmar
+ * Copyright (C) 2012, 2013 T. Lohmar
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -73,9 +73,42 @@ void SmartTvServerStartThread(void* arg) {
   pthread_exit(NULL);
 }
 
+cCmd::cCmd(string t) :mTitle(), mCommand(), mConfirm(false) {
+  // find column
+ 
+  mTitle = t.substr(0, t.find(':'));
+  trim(mTitle);
+  if (mTitle[mTitle.size()-1] == '?') {
+    mConfirm =true;
+    mTitle.erase(mTitle.end());
+  }
+  mTitle = cUrlEncode::doXmlSaveEncode(mTitle);
+
+  mCommand = t.substr(t.find(':')+1);
+  trim(mCommand);
+};
+
+void cCmd::trim(string &t) {
+  int m=0;
+  for (int i=0; i<t.size(); i++) 
+    if (t[i] != 32) {
+      m =i;
+      break;
+    }
+  t.erase(0, m);
+  
+  m = t.size() -1;
+  for (int i= t.size()-1; i >=0; i--)
+    if(t[i] !=32) {
+      m= i;
+      break;
+    }
+  t.erase(m+1);
+}
+
 SmartTvServer::SmartTvServer(): cStatus(), mRequestCount(0), isInited(false), serverPort(PORT), mServerFd(-1),
   mSegmentDuration(10), mHasMinBufferTime(40),  mLiveChannels(20), 
-  clientList(), mConTvClients(), mActiveSessions(0), mHttpClientId(0), mConfig(NULL), mMaxFd(0),
+  clientList(), mConTvClients(), mRecCmds(), mRecMsg(), mActiveSessions(0), mHttpClientId(0), mConfig(NULL), mMaxFd(0),
   mManagedUrls(NULL){
 }
 
@@ -84,6 +117,9 @@ SmartTvServer::~SmartTvServer() {
 
   if (mConfig != NULL)
     delete mConfig;
+
+  for (uint i =0; i < mRecCmds.size(); i++)
+    delete mRecCmds[i];
 }
 
 // Status methods
@@ -628,6 +664,50 @@ int SmartTvServer::isServing() {
   return (mActiveSessions != 0 ? true : false) or connected_tv;
 }
 
+string SmartTvServer::processNestedItemList(string pref, cList<cNestedItem> *cmd, vector<cCmd*> *cmd_list) {
+  char f[80];
+ 
+  string msg ="";
+  //  *(mLog.log()) << " pnil: cmd_list->size= " << cmd_list->size() << endl;
+
+  for (cNestedItem *c = cmd->First(); c; c = cmd->Next(c)) {
+    if (c->SubItems()) {
+      //      *(mLog.log()) << "Sub: " << c->Text() << endl;
+      cCmd *itm = new cCmd(c->Text());
+
+      msg += processNestedItemList( pref+itm->mTitle+"~", c->SubItems(), cmd_list);
+      delete itm;
+    }
+    else {
+      //      *(mLog.log())  << "c->Text= " << c->Text() << endl;
+
+      cCmd *itm = new cCmd(c->Text());
+      cmd_list->push_back(itm);
+
+      snprintf(f, sizeof(f), "<item cmd=\"%d\" confirm=\"%s\">%s</item>\n", cmd_list->size()-1, ((itm->mConfirm)?"true":"false"), 
+	       (pref + itm->mTitle).c_str());
+      msg += f;
+    }
+ }
+  return msg;
+}
+void SmartTvServer::initRecCmds() {
+  *(mLog.log()) << " Init rec cmds" << endl;
+  mRecMsg = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+  mRecMsg += "<reccmds>\n";
+  mRecMsg += processNestedItemList("", &RecordingCommands, &mRecCmds);
+  mRecMsg += "</reccmds>\n";
+  //  *(mLog.log()) << mRecMsg << endl;
+  for (int i=0; i< mRecCmds.size(); i++){
+    *(mLog.log()) << i 
+		  << " t= " << mRecCmds[i]->mTitle
+		  << " c= " << mRecCmds[i]->mCommand
+		  << endl;
+  }
+
+  *(mLog.log()) << " done" << endl;
+}
+
 void SmartTvServer::initServer(string dir) {
   /* This function initialtes the listening socket for the server
    * and sets isInited to true
@@ -637,7 +717,6 @@ void SmartTvServer::initServer(string dir) {
   struct sockaddr_in sock;
   int yes = 1;
 
-
 #ifndef STANDALONE
   mConfig = new cSmartTvConfig(dir); 
   mLog.init(mConfig->getLogFile());
@@ -645,6 +724,8 @@ void SmartTvServer::initServer(string dir) {
   
   *(mLog.log()) << mConfig->getLogFile() << endl;
 
+  initRecCmds();
+ 
 #else
   mConfig = new cSmartTvConfig("."); 
   mLog.init(mConfig->getLogFile());
