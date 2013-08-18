@@ -894,8 +894,12 @@ void cResponseMemBlk::receiveAddTimerReq() {
     }
   }
 
-  //  eTimerMatch ma ;
+#if VDRVERSNUM < 10733
   int ma;
+#else
+  eTimerMatch ma ;
+#endif
+
   if (Timers.GetMatch(ev, &ma) != NULL) {
     if(ma == tmFull) {
 
@@ -1083,7 +1087,7 @@ void cResponseMemBlk::sendTimersXml() {
   for (uint i =0; i< s_timers.Size(); i++) {
     //  for (cTimer * ti = Timers.First(); ti; ti = Timers.Next(ti)){
     //    ti->Matches();
-    cTimer *ti = s_timers[i];
+    const cTimer *ti = s_timers[i];
     if (!ti ) {
       continue;
       }
