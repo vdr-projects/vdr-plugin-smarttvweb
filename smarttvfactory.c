@@ -666,21 +666,16 @@ int SmartTvServer::isServing() {
 
 string SmartTvServer::processNestedItemList(string pref, cList<cNestedItem> *cmd, vector<cCmd*> *cmd_list) {
   char f[80];
- 
   string msg ="";
-  //  *(mLog.log()) << " pnil: cmd_list->size= " << cmd_list->size() << endl;
 
   for (cNestedItem *c = cmd->First(); c; c = cmd->Next(c)) {
     if (c->SubItems()) {
-      //      *(mLog.log()) << "Sub: " << c->Text() << endl;
       cCmd *itm = new cCmd(c->Text());
-
+      
       msg += processNestedItemList( pref+itm->mTitle+"~", c->SubItems(), cmd_list);
       delete itm;
     }
     else {
-      //      *(mLog.log())  << "c->Text= " << c->Text() << endl;
-
       cCmd *itm = new cCmd(c->Text());
       cmd_list->push_back(itm);
 
@@ -688,16 +683,18 @@ string SmartTvServer::processNestedItemList(string pref, cList<cNestedItem> *cmd
 	       (pref + itm->mTitle).c_str());
       msg += f;
     }
- }
+  }
   return msg;
 }
+
 void SmartTvServer::initRecCmds() {
-  *(mLog.log()) << " Init rec cmds" << endl;
   mRecMsg = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
   mRecMsg += "<reccmds>\n";
   mRecMsg += processNestedItemList("", &RecordingCommands, &mRecCmds);
   mRecMsg += "</reccmds>\n";
   //  *(mLog.log()) << mRecMsg << endl;
+
+  /*
   for (int i=0; i< mRecCmds.size(); i++){
     *(mLog.log()) << i 
 		  << " t= " << mRecCmds[i]->mTitle
@@ -706,6 +703,7 @@ void SmartTvServer::initRecCmds() {
   }
 
   *(mLog.log()) << " done" << endl;
+*/
 }
 
 void SmartTvServer::initServer(string dir) {

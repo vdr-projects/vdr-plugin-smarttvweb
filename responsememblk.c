@@ -1163,7 +1163,7 @@ void cResponseMemBlk::sendRecCmds() {
   mResponseMessagePos = 0;
   mRequest->mConnState = SERVING;
 
-  sendHeaders(200, "OK", NULL, "text/plain", mResponseMessage->size(), -1);
+  sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), -1);
 }
 
 void cResponseMemBlk::receiveExecRecCmdReq() {
@@ -1182,7 +1182,7 @@ void cResponseMemBlk::receiveExecRecCmdReq() {
   }
   guid =cUrlEncode::doUrlSaveDecode(guid);
   if (mRequest->getQueryAttributeValue(&avps, "cmd", cmd_str) != OKAY){
-      sendError(400, "Bad Request", NULL, "00? Mandatory cmd attribute not present.");
+      sendError(400, "Bad Request", NULL, "015 Mandatory cmd attribute not present.");
       return ;
   }
   cmdid = atoi(cmd_str.c_str());
@@ -1195,7 +1195,7 @@ void cResponseMemBlk::receiveExecRecCmdReq() {
   if ((cmdid <0 ) || ( cmdid > r_cmds->size())) {
     *(mLog->log())<< DEBUGPREFIX
 		  << " ERROR: cmd value out of range." << endl;
-      sendError(400, "Bad Request", NULL, "00? cmd value out of range..");
+      sendError(400, "Bad Request", NULL, "016 Command (cmd) value out of range.");
       return ;
   }
   *(mLog->log())<< DEBUGPREFIX
