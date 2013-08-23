@@ -80,7 +80,8 @@ cCmd::cCmd(string t) :mTitle(), mCommand(), mConfirm(false) {
   trim(mTitle);
   if (mTitle[mTitle.size()-1] == '?') {
     mConfirm =true;
-    mTitle.erase(mTitle.end());
+    mTitle.erase(mTitle.end()-1);
+    trim(mTitle);
   }
   mTitle = cUrlEncode::doXmlSaveEncode(mTitle);
 
@@ -91,7 +92,7 @@ cCmd::cCmd(string t) :mTitle(), mCommand(), mConfirm(false) {
 void cCmd::trim(string &t) {
   int m=0;
   for (int i=0; i<t.size(); i++) 
-    if (t[i] != 32) {
+    if (!((t[i] == 32) || (t[i] == 9)) ) {
       m =i;
       break;
     }
@@ -99,7 +100,7 @@ void cCmd::trim(string &t) {
   
   m = t.size() -1;
   for (int i= t.size()-1; i >=0; i--)
-    if(t[i] !=32) {
+    if (!((t[i] == 32) || (t[i] == 9)) ) {
       m= i;
       break;
     }
@@ -656,7 +657,8 @@ int SmartTvServer::isServing() {
   bool connected_tv = false;
   for (uint i = 0; i < mConTvClients.size(); i++) {
     if ( (now - mConTvClients[i]->lastKeepAlive) < 60) {
-      *(mLog.log()) << "SmartTvServer::isServing: Found a connected TV: mac= " << mConTvClients[i]->mac << " ip=" << mConTvClients[i]->ip  << endl;
+      *(mLog.log()) << "SmartTvServer::isServing: Found a connected TV: mac= " << mConTvClients[i]->mac 
+		    << " ip=" << mConTvClients[i]->ip  << endl;
       connected_tv = true;
       break;
     } 
@@ -665,25 +667,28 @@ int SmartTvServer::isServing() {
 }
 
 string SmartTvServer::processNestedItemList(string pref, cList<cNestedItem> *cmd, vector<cCmd*> *cmd_list) {
-  char f[80];
+  char f[400];
   string msg ="";
 
   for (cNestedItem *c = cmd->First(); c; c = cmd->Next(c)) {
     if (c->SubItems()) {
       cCmd *itm = new cCmd(c->Text());
-      
       msg += processNestedItemList( pref+itm->mTitle+"~", c->SubItems(), cmd_list);
       delete itm;
     }
     else {
       cCmd *itm = new cCmd(c->Text());
-      cmd_list->push_back(itm);
+      //            *(mLog.log()) << "  Parsed RecCmd: t= " << itm->mTitle << " c= " << itm->mCommand 
+      //			  << " ?= " << ((itm->mConfirm)?"true":"false") << endl; 
 
+      cmd_list->push_back(itm);
       snprintf(f, sizeof(f), "<item cmd=\"%d\" confirm=\"%s\">%s</item>\n", cmd_list->size()-1, ((itm->mConfirm)?"true":"false"), 
 	       (pref + itm->mTitle).c_str());
       msg += f;
+      //      *(mLog.log()) << "Line= " << f << endl;
     }
   }
+
   return msg;
 }
 
@@ -692,18 +697,9 @@ void SmartTvServer::initRecCmds() {
   mRecMsg += "<reccmds>\n";
   mRecMsg += processNestedItemList("", &RecordingCommands, &mRecCmds);
   mRecMsg += "</reccmds>\n";
-  //  *(mLog.log()) << mRecMsg << endl;
 
-  /*
-  for (int i=0; i< mRecCmds.size(); i++){
-    *(mLog.log()) << i 
-		  << " t= " << mRecCmds[i]->mTitle
-		  << " c= " << mRecCmds[i]->mCommand
-		  << endl;
-  }
+  *(mLog.log()) << "reccmds.conf parsed" << endl;
 
-  *(mLog.log()) << " done" << endl;
-*/
 }
 
 void SmartTvServer::initServer(string dir) {
@@ -720,7 +716,7 @@ void SmartTvServer::initServer(string dir) {
   mLog.init(mConfig->getLogFile());
   esyslog("SmartTvWeb: Logfile created");
   
-  *(mLog.log()) << mConfig->getLogFile() << endl;
+  *(mLog.log()) << "LogFile= " << mConfig->getLogFile() << endl;
 
   initRecCmds();
  
