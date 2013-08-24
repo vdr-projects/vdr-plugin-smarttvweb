@@ -97,8 +97,6 @@ int cResponseFile::sendFile() {
     return OKAY;
   }
 
-  mFile = fopen((mRequest->mPath).c_str(), "r");
-
   if (!mFile) {
     sendError(403, "Forbidden", NULL, "001 Access denied.");
     return OKAY;
