@@ -112,6 +112,66 @@ Data.getVideoCount = function() {
 Data.deleteElm = function (pos) {
 	Data.getCurrentItem().childs.remove(pos);
 };
+
+//--------------------------------------------------
+//--------------------- RecCmds --------------------
+//--------------------------------------------------
+
+var RecCmds = {	
+	cmds : new Item,
+	folderList : [],
+};
+
+RecCmds.reset = function() {
+	this.cmds = null;
+	this.cmds = new Item;
+	this.folderList = [];		
+	Main.log("RecCmds.reset: folderList.push. this.folderList.length= " + this.folderList.length);
+};
+
+RecCmds.completed= function() {
+	this.folderList.push({item : this.cmds, id: 0});
+	Main.log("---------- completed ------------");    
+	Main.log("RecCmds.completed: Data.folderList.length= " + this.folderList.length);
+};
+
+RecCmds.selectFolder = function (idx, first_idx) {
+	this.folderList.push({item : this.getCurrentItem().childs[idx], id: idx, first:first_idx});
+	Main.log("RecCmds.selectFolder: folderList.push. this.folderList.length= " + this.folderList.length);
+};
+
+RecCmds.folderUp = function () {
+	itm = this.folderList.pop();
+	Main.log("RecCmds.folderUp: folderList.pop. this.folderList.length= " + this.folderList.length);
+	return itm;
+};
+
+RecCmds.isRootFolder = function() {
+	Main.log("RecCmds.isRootFolder: this.folderList.length= " + this.folderList.length);
+	if (this.folderList.length == 1)
+		return true;
+	else
+		return false;
+};
+
+RecCmds.addItem = function(t_list, pyld) {
+    this.cmds.addChild(t_list, pyld, 0);
+};
+
+RecCmds.dumpFolderStruct = function(){
+    Main.log("---------- RecCmds.dumpFolderStruct ------------");    
+    this.cmds.print(0);
+    Main.log("---------- RecCmds.dumpFolderStruct Done -------");    
+};
+
+RecCmds.getCurrentItem = function () {
+	return this.folderList[this.folderList.length-1].item;
+};
+
+RecCmds.getVideoCount = function() {
+	return this.folderList[this.folderList.length-1].item.childs.length;
+};
+
 //-----------------------------------------
 function Item() {
     this.title = "root";

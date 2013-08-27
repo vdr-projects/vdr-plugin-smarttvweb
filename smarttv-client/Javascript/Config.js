@@ -340,6 +340,7 @@ function VdrServers() {
 	this.serverUrlList = [];
 	this.activeServers = [];
 	this.responses = 0;
+	this.retries = 0;
 	this.instanceName = "";
 };
 
@@ -362,7 +363,13 @@ VdrServers.prototype.handleResponse = function () {
 		Main.log ("handle responses: Done. Active Servers= " + this.activeServers.length);  
 		switch (this.activeServers.length) {
 		case 0:
-			Display.showPopup("Please start your VDR server");
+			this.retries ++;
+			if (this.retries <2) {
+				this.checkServers();
+			}
+			else
+				Display.showPopup("Please start your VDR server");
+
 			break;
 		case 1:
 	    	Config.serverAddr = this.activeServers[0].addr;

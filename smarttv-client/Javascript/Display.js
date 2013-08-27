@@ -62,6 +62,7 @@ Display.init = function()
     		"overflow": "hidden", "text-overflow":"ellipsis", "white-space": "nowrap", "height": "14px"})); 
     }  
 	
+    /*
     var done = false;
     var i = 0;
 
@@ -77,6 +78,7 @@ Display.init = function()
     	elm.style.marginBottom= " 5px";
     	elm.style.textAlign = "center";
     }    
+    */
 	Display.resetDescription();   
     Main.log("Display initialized" );
     return success;
@@ -438,13 +440,6 @@ Display.handleDescription =function (selected) {
 
         	d_str = hour + ":" + min;
 
-/*        	msg += title + "<br>";
-        	msg += "<b>"+ prog + "</b><br>";
-        	msg += "<br>Start: " + d_str + "<br>";
-        	msg += "Duration: " + Display.durationString(length) + "h<br>";
-        	msg += "Remaining: " + Display.durationString((itm.payload.start + length - now));
-			msg += "<br><br>"+ desc;
-	*/
 			$("#descProg").show();
 			$("#descRemaining").show();
 
@@ -458,12 +453,6 @@ Display.handleDescription =function (selected) {
 			break;
 		case Main.eREC:
         	d_str = mon + "/" + day + " " + hour + ":" + min;
-/*
-        	msg += "<b>" + title + "</b>";
-        	msg += "<br><br>" + d_str;
-        	msg += " Duration: " + Display.durationString(length) + "h";
-			msg += "<br><br>"+ desc;
-*/
 			$("#descTitle").text(title);
 			$("#descStart").text("Start: " + d_str);			
 			$("#descDuration").text("Duration: " + Display.durationString(length) + "h");
@@ -472,7 +461,7 @@ Display.handleDescription =function (selected) {
 			$("#descImg").show();
 			$("#descImg")
 				.error(function() { $("#descImg").hide();})
-				.attr('src', Data.getCurrentItem().childs[selected].payload.link + "/preview_vdr.png");
+				.attr('src', Data.getCurrentItem().childs[selected].payload.link + "/preview_vdr.png?"+Math.random());
 
 			break;
 		case Main.eMED:
@@ -563,13 +552,6 @@ Display.setVideoListPosition = function(position, move) {
     }
 };
 
-/*
-Display.setDescription = function(description) {
-    var descriptionElement = document.getElementById("description");
-    
-    Display.putInnerHTML(descriptionElement, description);
-};
-*/
 Display.getDisplayTitle = function(item) {
 	var res = {c1:"", c2:"", c3:""};
 	switch (Main.state) {

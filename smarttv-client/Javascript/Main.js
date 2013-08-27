@@ -6,6 +6,7 @@ try {
 	widgetAPI = new Common.API.Widget();
 	tvKey = new Common.API.TVKeyValue();
 	pluginObj = new Common.API.Plugin();
+	
 }
 catch (e) {
 }
@@ -96,8 +97,9 @@ Main.onLoad = function() {
 	$.ajaxSetup ({  
         cache: false  
     });  
+	
 	Display.init();
-    Display.selectItem(document.getElementById("selectItem1"));
+//    Display.selectItem(document.getElementById("selectItem1"));
 	Notify.init();
     Spinner.init();
 	Helpbar.init();
@@ -130,6 +132,8 @@ showHandler = function() {
 
 // Called by Config, when done
 Main.init = function () {
+	Main.log("Main.init()");
+
 	if (Config.debug == true) {
 		Main.logToServer = function (msg) {
 			if (Config.serverUrl == "" )
@@ -142,9 +146,8 @@ Main.init = function () {
 	}
 
 	this.state = Main.eMAIN;
+	SelectScreen.init();
 
-	Main.log("Main.init()");
-	
 	Buttons.init();
     if ( Player.init() && Server.init() ) {
 
@@ -187,9 +190,14 @@ Main.init = function () {
 	
 	Comm.init();
 
-//	window.setTimeout(function() {Config.updateContext("192.168.1.142:8000");  }, (10*1000));
-	
+	Main.log("ProductInfo= " + deviceapis.tv.info.getProduct());
+	Main.logToServer("ProductInfo= " + deviceapis.tv.info.getProduct());
+	Main.logToServer("isBdPlayer= " + Main.isBdPlayer());
+	Main.logToServer("TimeZone= " + deviceapis.tv.info.getTimeZone());
 
+//	TestHandler.showMenu(20);
+	
+	//	window.setTimeout(function() {Config.updateContext("192.168.1.142:8000");  }, (10*1000));
 		
 //	DirectAccess.show();
 //	Timers.init();
@@ -246,6 +254,13 @@ Main.testUrls = function () {
 	UrlsFetcher.autoplay = "6927QNxye6k";
 	UrlsFetcher.appendGuid("6927QNxye6k");
 
+};
+
+Main.isBdPlayer = function () {
+	if (deviceapis.tv.info.getProduct() == 2) //deviceapis.tv.info.PRODUCT_TYPE_BD
+		return true;
+	else
+		return false;
 };
 
 Main.changeState = function (state) {
@@ -843,6 +858,11 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (event) {
         case tvKey.KEY_YELLOW:
 			Player.nextSubtitleTrack();
         	break;
+        case 1089:
+        case tvKey.KEY_3D: 
+        case tvKey.KEY_GREEN:
+        	Player.toggle3DEffectMode();
+        	break;
 		break;
         default:
             Main.log("Calling Default Key Hanlder");
@@ -1121,7 +1141,9 @@ cMenuKeyHndl.prototype.handleKeyDown = function (event) {
 			}
 		break;
  
-		
+ 	case tvKey.KEY_RED:
+ 		RecCmdHandler.showMenu(Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
+ 		break;		
  	case tvKey.KEY_YELLOW:
  		if (Main.state == Main.eURLS) {
  			Buttons.ynShow();
@@ -1209,7 +1231,7 @@ cMenuKeyHndl.prototype.handleKeyDown = function (event) {
  }
 };
 
-
+/*
 //---------------------------------------------------
 // Select Menu Key Handler
 //---------------------------------------------------
@@ -1293,7 +1315,7 @@ cSelectMenuKeyHndl.prototype.handleKeyDown = function (event) {
     break;
     }
 };
-
+*/
 
 //---------------------------------------------------
 // Default Key Handler
