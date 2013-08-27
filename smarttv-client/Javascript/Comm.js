@@ -147,7 +147,8 @@ Comm.onMessageReceived = function(message, context) {
 		}
 		break;
 	case "MESG":
-		Notify.showNotify(msg.payload, true);
+		if (msg.payload != "")
+			Notify.showNotify(msg.payload, true);
 		break;
 	}; // switch
 

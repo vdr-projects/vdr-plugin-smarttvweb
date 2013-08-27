@@ -175,7 +175,7 @@ Server.updateVdrStatus = function (){
 					// if Config.tzCorrection larger zero, then TV is ahead
 					// thus, I need to substract Config.tzCorrection from the TV time
 //					Config.tzCorrection = 1;	
-					Main.logToServer("Server.updateVdrStatu: tzCor= " + Config.tzCorrection);
+					Main.logToServer("Server.updateVdrStatus: tzCor= " + Config.tzCorrection);
 				}
 				else
 					Main.logToServer("tzCor WARNING");
@@ -319,6 +319,62 @@ Server.notifyServer = function (state) {
 	});	
 };
 
+Server.fetchRecCmdsList = function() {
+	var url = Config.serverUrl + "/reccmds.xml";
+	$.ajax({
+		url: url,
+		type : "GET",
+		success : function(data, status, XHR ) {
+			Main.logToServer("Server.fetchRecCmdsList Success Response - status= " + status + " mime= " + XHR.responseType + " data= "+ data);
+
+			$(data).find("item").each(function () {
+				var title = $(this).text();
+				var confirm = (($(this).attr("confirm") == "true") ? true : false);
+				var cmd = parseInt($(this).attr("cmd"));
+
+				var title_list = title.split("~");
+                RecCmds.addItem( title_list, {cmd : cmd, confirm: confirm });              	
+				}); // each
+
+/*            if (Server.dataReceivedCallback) {
+                Server.dataReceivedCallback();
+            }
+*/			
+//			RecCmds.dumpFolderStruct();
+			RecCmds.completed();
+			RecCmdHandler.createRecCmdOverlay();
+		},
+		error : function (jqXHR, status, error) {
+			Main.logToServer("Server.fetchRecCmdsList Error Response - status= " + status + " error= "+ error);
+			Display.showPopup("Error with XML File: " + status);
+		},
+		parsererror : function () {
+			Main.logToServer("Server.fetchRecCmdsList parserError  " );
+			Display.showPopup("Error in XML File");
+/*            if (Server.errorCallback != null) {
+            	Server.errorCallback("XmlError");
+            }
+*/
+		}
+	});
+};
+
+Server.execRecCmd = function (cmd, guid) {
+	var url = Config.serverUrl + "/execreccmd?cmd="+cmd+"&guid=" + guid;
+
+	Main.logToServer("Server.execRecCmd cmd="+cmd+" guid=" + guid + " url= " + url);
+	$.ajax({
+		url: url,
+		type : "GET",
+		success : function(data, status, XHR ) {
+			Main.logToServer("Server.execRecCmd OK" ) ;
+			Display.handleDescription(Main.selectedVideo);
+		},
+		error : function (XHR, status, error) {
+			Main.logToServer("Server.execRecCmd failed" ) ;
+		}
+	});	
+};
 
 var HeartbeatHandler = {
 	timeoutObj : null,

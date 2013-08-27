@@ -6,6 +6,7 @@ var mainPlayer;
 var Player =
 {
 	AVPlayerObj : null,
+	screenObj : null,
     isLive : false,
     isRecording : false,
     mFormat : 0,
@@ -48,6 +49,7 @@ var Player =
     FORWARD : 3,
     REWIND : 4,
 	
+    effectMode : 0, // 3DEffect Mode value (range from 0 to 7)
 	aspectRatio :0,
 	
 	eASP16to9 :0,
@@ -59,7 +61,7 @@ var Player =
 };
 
 Player.init = function() {
-	
+	this.screenObj = document.getElementById('pluginObjectScreen');
 	if (this.AVPlayerObj != null)
 		return false; // that prevents Main.init to overwrite the callbacks. 
 	
@@ -93,6 +95,8 @@ Player.resetAtStop = function () {
 		return;
 	}
 	this.aspectRatio = this.eASP16to9;
+	this.effectMode = 0;
+
 	this.bufferState = 0;
 	
 	Player.ResetTrickPlay(); // is the GUI resetted as well?
@@ -138,6 +142,84 @@ Player.toggleAspectRatio = function () {
 	Player.setFullscreen();
 };
 
+Player.toggle3DEffectMode = function () {
+	Main.logToServer("Player.toggle3DEffectMode");
+	if (Main.isBdPlayer() == true) {
+		if( 1 == Player.screenObj.Flag3DTVConnect() ) {
+			Main.logToServer("BDPlayer connected to 3D TV");
+			Player.setNew3DEffectMode();
+		
+		}
+		else {
+			Main.logToServer("BDPlayer connected to 2D TV");
+			Notify.showNotify("No 3DTV connected, sorry", true);
+			
+		}
+	}
+	else {
+		if( 1 == Player.screenObj.Flag3DEffectSupport() ) {
+			Main.logToServer("3D TV!");
+			Player.setNew3DEffectMode();
+		}
+		else {
+			Main.logToServer("2D TV..;-(");
+			Notify.showNotify("No 3DTV, sorry", true);
+		}		
+	}
+};
+
+Player.setNew3DEffectMode = function () {
+	this.effectMode ++;
+	if (this.effectMode > 7)
+		this.effectMode = 0;
+
+	Main.logToServer("New 3D Effect effectMode= " + this.effectMode );
+	Player.screenObj.Set3DEffectMode(this.effectMode);
+
+/*	if( 2 == Player.screenObj.Get3DEffectMode() ) {
+		Player.screenObj.Set3DEffectMode(0);
+	}
+	else {
+		Player.screenObj.Set3DEffectMode(2);
+	};
+	*/
+
+	var mode = Player.screenObj.Get3DEffectMode();
+	
+	Main.logToServer("New 3D Effect effectMode= " + this.effectMode + " plgMode= " + mode);
+//	switch (Player.screenObj.Get3DEffectMode()) {
+	if (this.effectMode == mode ) {
+		switch (this.effectMode) {
+		case 0:
+			Notify.showNotify("3D Off", true);
+			break;
+		case 1:
+			Notify.showNotify("3D Top Bottom", true);
+			break;
+		case 2:
+			Notify.showNotify("3D Side-By-Side", true);
+			break;
+		case 3:
+			Notify.showNotify("3D Line-by-Line", true);
+			break;
+		case 4:
+			Notify.showNotify("3D Vertical Stripe", true);
+			break;
+		case 5:
+			Notify.showNotify("3D Mode frame sequence", true);
+			break;
+		case 6:
+			Notify.showNotify("3D Checker BD", true);
+			break;
+		case 7:
+			Notify.showNotify("3D: 2D to 3D", true);
+			break;
+		}
+	}
+	else {
+		Notify.showNotify("3D Issue Wanted= " + this.effectMode + " but got= " + mode +"!!!!", true);		
+	}
+};
 
 Player.setWindow = function() {
 //  this.plugin.SetDisplayArea(458, 58, 472, 270);
