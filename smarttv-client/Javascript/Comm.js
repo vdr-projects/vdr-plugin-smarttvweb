@@ -12,6 +12,9 @@ Comm.init = function () {
 
 	this.created = true;
 	// >> Register custom manager callback to receive device connect and disconnect events
+	if (Config.deviceType != 0)
+		return;
+	
 	Comm.customMgr = webapis.customdevice || {};
 	
 	Comm.customMgr.registerManagerCallback(Comm.onDeviceStatusChange);

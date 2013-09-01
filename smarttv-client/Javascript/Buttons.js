@@ -47,6 +47,10 @@ Buttons.ynReturnCallback = function () {
 	case Main.eOPT:
 		Options.drawServerList();
 		break;
+	case Main.eTMR:
+		Buttons.ynHide();
+		Timers.focus();
+		break;
 	default:
 		break;
 	}
@@ -74,9 +78,14 @@ Buttons.ynEnterCallback = function () {
 				Options.drawServerList();
 
 				break;
+			case Main.eTMR:
+				Timers.deleteTimer();
+				break;
+
 			}
 						
 			break;
+
 		}
 		Buttons.ynHide();
 	};
@@ -143,10 +152,17 @@ Buttons.ynShow = function () {
 
 Buttons.ynHide = function () {
 	this.ynButton.hide();
-	if (Main.state == Main.eOPT)
+	switch (Main.state) {
+	case Main.eOPT:
 		$("#optionsViewAnchor").focus();
-	else
+		break;
+	case Main.eTMR:
+		Timers.focus();
+	break;
+	default:
 		Main.enableKeys();
+		break;
+	};
 };
 
 Buttons.createStyleSheet = function () {
@@ -382,6 +398,10 @@ ButtonHandler.prototype.onInput = function () {
 			break;
 
 	}
-	widgetAPI.blockNavigation(event);
+	try {
+		widgetAPI.blockNavigation(event);
+	}
+	catch (e) {
+	}
 	};
 	

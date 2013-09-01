@@ -8,27 +8,31 @@ SelectScreen.init = function() {
     Main.logToServer("Config.getWidgetVersion= " + Config.widgetVersion) ;
 	var parent = $("#selectView");
 	var idx = 0;
-
-	this.keyToStateMap[idx] = Main.eMAIN;
+	$("#selectScreen").show();
+	
+	this.keyToStateMap[idx] = Main.eMAIN; // State of this view
 	this.keyToStateMap[++idx] = Main.eLIVE;
-	parent.append($("<div>", {id : "selectItem"+idx, text:idx+": Live", style : "padding-bottom:3px; margin-top:5px; margin-bottom : 5px; text-align: center"}));
-		
+	parent.append($("<div>", {id : "selectItem"+idx, text:idx+": Live", class : "style_menuItem"}));
+	
 	this.keyToStateMap[++idx] = Main.eREC;
-	parent.append($("<div>", {id : "selectItem"+idx, text:idx+": Recordings", style : "padding-bottom:3px; margin-top:5px; margin-bottom : 5px; text-align: center"}));
+	parent.append($("<div>", {id : "selectItem"+idx, text:idx+": Recordings", class : "style_menuItem"}));
 
 	this.keyToStateMap[++idx] = Main.eMED;
-	parent.append($("<div>", {id : "selectItem"+idx, text:idx+": Media", style : "padding-bottom:3px; margin-top:5px; margin-bottom : 5px; text-align: center"}));
+	parent.append($("<div>", {id : "selectItem"+idx, text:idx+": Media", class : "style_menuItem"}));
+
+	this.keyToStateMap[++idx] = Main.eTMR;
+	parent.append($("<div>", {id : "selectItem"+idx, text:idx+": Timers", class : "style_menuItem"}));
 
 	if (Config.haveYouTube) {
 		this.keyToStateMap[++idx] = Main.eURLS;
-		parent.append($("<div>", {id : "selectItem"+idx, text:idx+": You Tube", style : "padding-bottom:3px; margin-top:5px; margin-bottom : 5px; text-align: center"}));
-		selectMenuKeyHndl.selectMax++;
+		parent.append($("<div>", {id : "selectItem"+idx, text:idx+": You Tube", class : "style_menuItem"}));
+//		Main.selectMenuKeyHndl.selectMax++;
 	}
 	
 	this.keyToStateMap[++idx] = Main.eSRVR;
-	parent.append($("<div>", {id : "selectItem"+idx, text:idx+": Select Server", style : "padding-bottom:3px; margin-top:5px; margin-bottom : 5px; text-align: center"}));
+	parent.append($("<div>", {id : "selectItem"+idx, text:idx+": Select Server", class : "style_menuItem"}));
 	this.keyToStateMap[++idx] = Main.eOPT;
-	parent.append($("<div>", {id : "selectItem"+idx, text:idx+": Options", style : "padding-bottom:3px; margin-top:5px; margin-bottom : 5px; text-align: center"}));
+	parent.append($("<div>", {id : "selectItem"+idx, text:idx+": Options", class : "style_menuItem"}));
 
 /*
 	var done = false;
@@ -50,10 +54,20 @@ SelectScreen.init = function() {
     	
     }
 */
+	Main.selectMenuKeyHndl.selectMax = idx;
     Display.selectItem(document.getElementById("selectItem1"));
 //    Display.jqSelectItem($("#selectItem1"));
     Main.log("SelectScreen.init - done");
 
+};
+
+SelectScreen.resetElements = function () {
+	$('.style_menuItem').remove();
+	this.keyToStateMap = [];
+//	Main.selectMenuKeyHndl.selectMax = 5;
+	Main.selectMenuKeyHndl.select =1;
+//	Main.selectedVideo = 0;
+	
 };
 
 SelectScreen.keyToState = function (key) {
@@ -72,9 +86,9 @@ function cSelectMenuKeyHndl (def_hndl) {
 //	this.selectMax = 6; // Highest Select Entry
 };
 
-cSelectMenuKeyHndl.prototype.handleKeyDown = function (event) {
- var keyCode = event.keyCode;
- Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
+cSelectMenuKeyHndl.prototype.handleKeyDown = function (keyCode) {
+// var keyCode = event.keyCode;
+// Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
  
  switch(keyCode) {
  case tvKey.KEY_1:
