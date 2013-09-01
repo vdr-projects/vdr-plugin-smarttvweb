@@ -364,7 +364,6 @@ string cHttpYtPushClient::getMsgBody(int) {
 //------------------------------
 
 cHttpCfgPushClient::cHttpCfgPushClient(int f, int id, int port, SmartTvServer* fac, string peer) : cHttpClientBase(f, id, port, fac, peer) {
-
   createRequestMessage("");
 }
 
@@ -403,5 +402,5 @@ cHttpMesgPushClient::~cHttpMesgPushClient() {
 }
 
 string cHttpMesgPushClient::getMsgBody(int) {
-  return "{\"type\":\"MESG\",payload:" + mMesg +"}";;
+  return "{\"type\":\"MESG\",payload:\"" + mMesg +"\"}";;
 }

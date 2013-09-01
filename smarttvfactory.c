@@ -713,9 +713,14 @@ void SmartTvServer::initServer(string dir) {
 
 #ifndef STANDALONE
   mConfig = new cSmartTvConfig(dir); 
+  serverPort = mConfig->getServerPort();
   mLog.init(mConfig->getLogFile());
-  esyslog("SmartTvWeb: Logfile created");
-  
+
+  if (mConfig->getLogFile() != "") {
+    string msg = "SmartTvWeb: Logfile created File= " + mConfig->getLogFile();
+  //  esyslog("SmartTvWeb: Logfile created");
+    esyslog(msg.c_str());
+  }
   *(mLog.log()) << "LogFile= " << mConfig->getLogFile() << endl;
 
   initRecCmds();

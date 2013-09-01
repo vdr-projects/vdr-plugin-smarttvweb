@@ -1172,13 +1172,20 @@ void cResponseMemBlk::sendRecCmds() {
 
 void cResponseMemBlk::receiveExecRecCmdReq() {
   vector<sQueryAVP> avps;
-  mRequest->parseQueryLine(&avps);
   string guid; 
   string cmd_str;
   uint cmdid;
 
   if (isHeadRequest())
     return;
+
+  if (! mRequest->mFactory->getConfig()->getRecCmds()) {
+    sendError(400, "Bad Request", NULL, "017 execreccmd disabled.");
+    return;
+
+  }
+  mRequest->parseQueryLine(&avps);
+
 
   if (mRequest->getQueryAttributeValue(&avps, "guid", guid) != OKAY){
     sendError(400, "Bad Request", NULL, "002 No guid in query line");
