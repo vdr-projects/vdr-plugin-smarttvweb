@@ -20,11 +20,13 @@ var Config = {
 	usePdlForRecordings : true,
 	uploadJsFile : "",
 	directAcessTimeout : 1500,
+	infoTimeout : 3000,
 	preferredQuality : 2,
 	widgetVersion : "unknown",
 	tzCorrection : 0,
 	recSortType : 0,
 	playKeyBehavior : 0,
+	haveYouTube : false,
 	deviceType : 0   // Used to differentiate between browsers and platforms
 	// 0: Samsung
 
@@ -148,6 +150,10 @@ Config.fetchConfig = function () {
         	Config.usePdlForRecordings = ($(data).find('usePdlForRecordings').text() == "false") ? false : true;
         	Config.uploadJsFile = $(data).find('uploadJsFile').text();
         	Config.directAcessTimeout = $(data).find('directAcessTimeout').text();
+
+        	Config.infoTimeout = parseInt( $(data).find('infoTimeout').text());
+        	Config.infoTimeout = isNaN(Config.infoTimeout) ? 3000 : Config.infoTimeout;
+        	
         	Config.preferredQuality = $(data).find('preferredQuality').text();
         	Config.sortType= parseInt($(data).find('sortType').text());
         	if ((Config.sortType < 0) || (Config.sortType > Data.maxSort) || isNaN(Config.sortType)) {
@@ -155,7 +161,8 @@ Config.fetchConfig = function () {
         	}
         	Config.playKeyBehavior = parseInt($(data).find('playKeyBehavior').text());
         	Config.playKeyBehavior = isNaN(Config.playKeyBehavior) ? 0 : Config.playKeyBehavior;
-        	
+			Config.haveYouTube = ($(data).find('youtubemenu').text() == "true") ? true : false
+			
         	Player.skipDuration = Config.skipDuration;
         	if (Config.directAcessTimeout != "") {
         		DirectAccess.delay = Config.directAcessTimeout;
@@ -360,7 +367,10 @@ VdrServers.prototype.handleResponse = function () {
 	Main.log ("handle responses: Response " + this.responses + " of " + this.serverUrlList.length);  	
 	this.responses ++;
 	if (this.responses == this.serverUrlList.length) {
-		Main.log ("handle responses: Done. Active Servers= " + this.activeServers.length);  
+		Main.log ("handle responses: Done. Active Servers= " + this.activeServers.length); 
+		
+		SelectScreen.resetElements();
+
 		switch (this.activeServers.length) {
 		case 0:
 			this.retries ++;

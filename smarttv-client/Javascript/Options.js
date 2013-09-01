@@ -53,7 +53,7 @@ Options.hide = function() {
 	$("#optionsScreen").hide();
 //	document.getElementById("optionsScreen").style.display="none";
 	Helpbar.hide();
-	Helpbar.hideSrv();
+//	Helpbar.hideSrv();
 	
 	Main.enableKeys();
 };

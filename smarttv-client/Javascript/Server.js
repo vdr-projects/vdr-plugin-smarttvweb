@@ -376,6 +376,38 @@ Server.execRecCmd = function (cmd, guid) {
 	});	
 };
 
+Server.getErrorText = function (status, input) {
+	var errno = parseInt(input.slice(0, 3));
+
+	var res = "";
+	switch (status) {
+	case 400: // Bad Request
+		switch (errno) {
+			case 10:
+			res = "No Timer found.";
+			break;
+			default:
+			res = "Unhandled Errno - Status= " + status + " Errno= "+ errno; 
+			break;
+		}
+		break;
+	case 503: // Service unavailable	
+		switch (errno) {
+			case 1:
+				res = "Timers are being edited.";
+			break;
+			default:
+			res = "Unhandled Errno - Status= " + status + " Errno= "+ errno; 
+			break;
+		}
+		break;
+	default:
+		res = "Unhandled Status - Status= " + status + " Errno= "+ errno; 
+		break;
+	};
+	return res;
+};
+
 var HeartbeatHandler = {
 	timeoutObj : null,
 	isActive : false

@@ -52,9 +52,10 @@ var Main = {
     eLIVE : 1, // State Live Select Screen / Video Playing 
     eREC : 2, // State Recording Select Screen / Video Playing
     eMED : 3, // State Media Select Screen / Video Playing
-    eURLS : 4, // State Urls
-    eSRVR : 5, // State Select Server
-    eOPT : 6, // Options
+	eTMR : 4, // State Timer Screen
+    eURLS : 5, // State Urls
+    eSRVR : 6, // State Select Server
+    eOPT : 7, // Options
     
     defKeyHndl : null,
     selectMenuKeyHndl : null,
@@ -90,6 +91,7 @@ Main.onLoad = function() {
 		Config.deviceType = 1;
 		tvKey = Main.tvKeys; 
 
+		Config.serverUrl = "http://" + Config.serverAddrDefault;
 		Main.log("Not a Samsung Smart TV" );
 //		Display.showPopup("Not a Samsung Smart TV. Lets see, how far we come");
 	}
@@ -183,18 +185,21 @@ Main.init = function () {
 
     Server.updateVdrStatus();
 
-	HeartbeatHandler.start();
+	HeartbeatHandler.start();	
 	
-	
-	DirectAccess.init();
-	
+	DirectAccess.init();	
 	Comm.init();
 
+	Timers.init();
+//	Timers.show();
+
+	
+	if (Config.deviceType == 0){
 	Main.log("ProductInfo= " + deviceapis.tv.info.getProduct());
 	Main.logToServer("ProductInfo= " + deviceapis.tv.info.getProduct());
 	Main.logToServer("isBdPlayer= " + Main.isBdPlayer());
 	Main.logToServer("TimeZone= " + deviceapis.tv.info.getTimeZone());
-
+	}
 //	TestHandler.showMenu(20);
 	
 	//	window.setTimeout(function() {Config.updateContext("192.168.1.142:8000");  }, (10*1000));
@@ -321,6 +326,11 @@ Main.changeState = function (state) {
 		Main.urlsSelected();
 
 		break;
+	case Main.eTMR:
+		$("#selectScreen").hide();
+		ClockHandler.start("#logoNow");
+		Timers.show();
+	break;
 	case Main.eSRVR:
 		Config.vdrServers.checkServers();
 		break;
@@ -437,23 +447,28 @@ Main.enableKeys = function() {
     document.getElementById("anchor").focus();
 };
 
-Main.keyDown = function(event) {
-event = event || window.event;
+Main.keyDown = function() {
+	var ev = event || window.event;
+	var keyCode = ev.keyCode;
+
+	Main.logToServer("State= " + this.state + ": Key pressed: " + Main.getKeyCode(keyCode));
+	Main.log("State= " + this.state + ": Key pressed: " + Main.getKeyCode(keyCode));
+
 	switch (this.state) {
 	case 0: 
 		// selectView
-        this.selectMenuKeyHndl.handleKeyDown(event);
+        this.selectMenuKeyHndl.handleKeyDown(keyCode);
 		break;
 	case Main.eLIVE: 
 		// Live
 		Main.log("Live - Main.keyDown PlayerState= " + Player.getState());
 	    if(Player.getState() == Player.STOPPED) {
 	    	// Menu Key
-	        this.menuKeyHndl.handleKeyDown(event);
+	        this.menuKeyHndl.handleKeyDown(keyCode);
 	    }
 	    else {
 	    	// Live State Keys
-	    	this.livePlayStateKeyHndl.handleKeyDown(event);
+	    	this.livePlayStateKeyHndl.handleKeyDown(keyCode);
 	    };
 
 		break;
@@ -464,11 +479,11 @@ event = event || window.event;
 //		Main.log("Recordings - Main.keyDown PlayerState= " + Player.getState());
 	    if(Player.getState() == Player.STOPPED) {
 	    	// Menu Key
-	        this.menuKeyHndl.handleKeyDown(event);
+	        this.menuKeyHndl.handleKeyDown(keyCode);
 	    }
 	    else {
 	    	// Play State Keys
-	        this.playStateKeyHndl.handleKeyDown(event);
+	        this.playStateKeyHndl.handleKeyDown(keyCode);
 	    };
 
 		break;
@@ -688,16 +703,16 @@ function cPlayStateKeyHndl(def_hndl) {
 };
 
 
-cPlayStateKeyHndl.prototype.handleKeyDown = function (event) {
-    var keyCode = event.keyCode;
+cPlayStateKeyHndl.prototype.handleKeyDown = function (keyCode) {
+//    var keyCode = event.keyCode;
 
     if(Player.getState() == Player.STOPPED) {
     	Main.log("ERROR: Wrong state - STOPPED");
     	return;
     }
 
-    Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
-    Main.logToServer(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
+//    Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
+//    Main.logToServer(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
     
     switch(keyCode)
     {
@@ -884,15 +899,15 @@ function cLivePlayStateKeyHndl(def_hndl) {
 };
 
 
-cLivePlayStateKeyHndl.prototype.handleKeyDown = function (event) {
- var keyCode = event.keyCode;
+cLivePlayStateKeyHndl.prototype.handleKeyDown = function (keyCode) {
+// var keyCode = event.keyCode;
 
  if(Player.getState() == Player.STOPPED) {
  	Main.log("ERROR: Wrong state - STOPPED");
  	return;
  }
 
- Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
+// Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
  
  switch(keyCode) {
 	case tvKey.KEY_ASPECT:
@@ -1076,8 +1091,8 @@ function cMenuKeyHndl (def_hndl) {
 
 };
 
-cMenuKeyHndl.prototype.handleKeyDown = function (event) {
- var keyCode = event.keyCode;
+cMenuKeyHndl.prototype.handleKeyDown = function (keyCode) {
+// var keyCode = event.keyCode;
  
  switch(keyCode) {
  	case tvKey.KEY_0:
@@ -1589,8 +1604,11 @@ Main.tvKeys = {
 		KEY_RIGHT :39,
 		KEY_ENTER :13,
 
+		KEY_RETURN :27,
 		KEY_STOP :27, // ESC
 //		KEY_MUTE :27,
+		KEY_RED :82,
+
 		KEY_1 :49,
 		KEY_2 :50,
 		KEY_3 :51,

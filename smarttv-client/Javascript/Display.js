@@ -46,6 +46,7 @@ Display.init = function()
     this.volOlHandler.init(Display.handlerShowVolume, Display.handlerHideVolume);
     this.popupOlHandler.init(Display.handlerShowPopup, Display.handlerHidePopup);
     this.infoOlHandler.init(Display.handlerShowInfo, Display.handlerHideInfo);
+    this.infoOlHandler.olDelay = Config.infoTimeout;
     
     if (!this.statusDiv) {
         success = false;
@@ -173,15 +174,16 @@ Display.selectItem = function (item) {
 	item.style.background = "-webkit-linear-gradient(top, rgba(246,248,249,1) 0%,rgba(229,235,238,1) 50%,rgba(215,222,227,1) 51%,rgba(245,247,249,1) 100%)";
 	item.style.borderRadius= "3px";
 	item.style["-webkit-box-shadow"] = "2px 2px 1px 2px rgba(0,0,0, 0.5)";
-	//	item.style.backgroundColor = "white";
+	
 };
 
 Display.unselectItem = function (item) {
 	item.style.color = "white";
-	item.style.backgroundColor = "transparent";
+//	item.style.backgroundColor = "transparent";
 	item.style.background = "transparent";
 	item.style.borderRadius= "0px";
 	item.style["-webkit-box-shadow"] = "";
+
 };
 
 Display.jqSelectItem = function (item) {

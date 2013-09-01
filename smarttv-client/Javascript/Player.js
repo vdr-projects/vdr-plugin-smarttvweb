@@ -95,8 +95,10 @@ Player.resetAtStop = function () {
 		return;
 	}
 	this.aspectRatio = this.eASP16to9;
+	if (this.effectMode != 0) {
+		Player.screenObj.Set3DEffectMode(0);
+	}
 	this.effectMode = 0;
-
 	this.bufferState = 0;
 	
 	Player.ResetTrickPlay(); // is the GUI resetted as well?
