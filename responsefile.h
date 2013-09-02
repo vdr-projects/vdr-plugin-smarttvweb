@@ -40,8 +40,6 @@ class cResponseFile : public cResponseBase {
   int sendFile();
 
  private:
-  const char *getMimeType(const char *name) ;
-
   int openFile(const char *name);
 
   FILE *mFile;

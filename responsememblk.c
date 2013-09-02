@@ -1275,7 +1275,7 @@ uint64_t cResponseMemBlk::getVdrFileSize() {
 
 
 // common for all create xml file modules
-int cResponseMemBlk::writeXmlItem(string name, string link, string programme, string desc, string guid, int no, time_t start, int dur, double fps, int is_pes, int is_new) {
+int cResponseMemBlk::writeXmlItem(string name, string link, string programme, string desc, string guid, int no, time_t start, int dur, double fps, int is_pes, int is_new, string mime) {
   string hdr = "";
   char f[400];
 
@@ -1283,7 +1283,8 @@ int cResponseMemBlk::writeXmlItem(string name, string link, string programme, st
   //  snprintf(f, sizeof(f), "%s - %s", );
   hdr += "<title>" + name +"</title>\n";
   hdr += "<link>" +link + "</link>\n";
-  hdr += "<enclosure url=\"" +link + "\" type=\"video/mpeg\" />\n";
+  //  hdr += "<enclosure url=\"" +link + "\" type=\"video/mpeg\" />\n";
+  hdr += "<enclosure url=\"" +link + "\" type=\""+mime+"\" />\n";
   
   hdr += "<guid>" + guid + "</guid>\n";
 
@@ -1478,7 +1479,7 @@ int cResponseMemBlk::parseFiles(vector<sFileEntry> *entries, string prefix, stri
 		       << " Vdr Folder Found: " << pathbuf << " start= " << start << endl;
 #endif
 
-	entries->push_back(sFileEntry(dir_name, pathbuf, start));
+	entries->push_back(sFileEntry(dir_name, pathbuf, start, "video/mpeg"));
       }
       else {
 	// regular file
@@ -1486,8 +1487,9 @@ int cResponseMemBlk::parseFiles(vector<sFileEntry> *entries, string prefix, stri
       }
     }
     else {
-      if ((de->d_name)[0] != '.' )
-	entries->push_back(sFileEntry(prefix+de->d_name, pathbuf, 1));
+      if ((de->d_name)[0] != '.' ) {
+	entries->push_back(sFileEntry(prefix+de->d_name, pathbuf, 1, getMimeType(de->d_name)));
+      }
     }
   }
   closedir(dir);
@@ -1538,7 +1540,7 @@ int cResponseMemBlk::sendMediaXml (struct stat *statbuf) {
     snprintf(pathbuf, sizeof(pathbuf), "http://%s:%d%s", own_ip.c_str(), mRequest->mServerPort, 
     	     cUrlEncode::doUrlSaveEncode(entries[i].sPath).c_str());
     if (writeXmlItem(cUrlEncode::doXmlSaveEncode(entries[i].sName), pathbuf, "NA", "NA", "-", 
-		     -1, entries[i].sStart, -1, -1, -1, -1) == ERROR) 
+		     -1, entries[i].sStart, -1, -1, -1, -1, entries[i].sMime) == ERROR) 
       return ERROR;
 
   }
@@ -1872,7 +1874,7 @@ int cResponseMemBlk::sendChannelsXml (struct stat *statbuf) {
     string c_name = (group_sep != "") ? (group_sep + "~" + cUrlEncode::doXmlSaveEncode(channel->Name())) 
       : cUrlEncode::doXmlSaveEncode(channel->Name()); 
     //    if (writeXmlItem(channel->Name(), link, title, desc, *(channel->GetChannelID()).ToString(), start_time, duration) == ERROR) 
-    if (writeXmlItem(c_name, link, title, desc, *(channel->GetChannelID()).ToString(), channel->Number(), start_time, duration, -1, -1, -1) == ERROR) 
+    if (writeXmlItem(c_name, link, title, desc, *(channel->GetChannelID()).ToString(), channel->Number(), start_time, duration, -1, -1, -1, "video/mpeg") == ERROR) 
       return ERROR;
 
   }
@@ -2244,7 +2246,7 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
 		     cUrlEncode::doUrlSaveEncode(recording->FileName()).c_str(),
 		     -1, 
 		     recording->Start(), rec_dur, recording->FramesPerSecond(), 
-		     (recording->IsPesRecording() ? 0: 1), (recording->IsNew() ? 0: 1)) == ERROR) {
+		     (recording->IsPesRecording() ? 0: 1), (recording->IsNew() ? 0: 1), "video/mpeg") == ERROR) {
       *mResponseMessage = "";
       sendError(500, "Internal Server Error", NULL, "005 writeXMLItem returned an error");
       return OKAY;

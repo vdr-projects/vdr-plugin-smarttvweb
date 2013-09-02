@@ -50,6 +50,8 @@ class cResponseBase {
   void sendHeaders(int status, const char *title, const char *extra, const char *mime,
 		   long long int length, time_t date);
 
+  const char *getMimeType(const char *name) ;
+
   Log* mLog;
   cHttpResource* mRequest;
   uint64_t mRemLength;
