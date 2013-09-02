@@ -106,6 +106,7 @@ void cSmartTvConfig::readConfig() {
       //      cout << " Found mMediaFolder= " << mMediaFolder << endl;
       continue;
     }
+
     if (strcmp(attr, "SegmentDuration") == 0)  {
       mSegmentDuration = atoi(value);
       //      cout << " Found mSegmentDuration= " << mSegmentDuration << endl;
