@@ -86,7 +86,7 @@ Timers.readTimers = function () {
 			Main.log ("Timers: Got response");
 			$(data).find("timer").each(function () {
 				var title = $(this).find('file').text();
-				var isSingleEvent = ($(data).find('issingleevent').text() == "true") ? true : false;
+				var isSingleEvent = ($(this).find('issingleevent').text() == "true") ? true : false;
 				
 				var printday = $(this).find('printday').text();
 				var weekdays = parseInt($(this).find('weekdays').text());
@@ -119,12 +119,22 @@ Timers.createMenu= function () {
 	var p_width = $("body").outerWidth();
 	var p_height = $("body").outerHeight();
 
-	var table = $("<div>", {id : "timerTable", style :"overflow-y: scroll;margin-top:3px;margin-bottom:3px;height:100%;"});
+	var table = $("<div>", {id : "timerTable", style :"overflow-y: scroll;margin-top:3px;margin-bottom:3px; padding-right:3px; height:100%;"});
 	$("#timerView").append(table);
 	
 	$("#timerScreen").show();
+	var cur_date = 0;
 	for (var i = 0; i < Timers.timerList.length; i++) {
 		Main.log("Timers: " + Timers.timerList[i].title);
+		
+		if (Timers.timerList[i].isSingleEvent == false) {
+			cur_date = 0; 
+			table.append( $("<div>", { text : ((Timers.timerList[i].day != 0) ? (Timers.getPrintDate(Timers.timerList[i].day) + " - ") : "") +Timers.getWeekdays(Timers.timerList[i].weekdays), class : "style_menuItem style_headline", style : "text-align:left;overflow-x: hidden;white-space : nowrap;"}));			
+
+		}else if (cur_date != Timers.timerList[i].day) {
+			cur_date = Timers.timerList[i].day; 
+			table.append( $("<div>", { text : Timers.getPrintDate(Timers.timerList[i].day) , class : "style_menuItem style_headline", style : "text-align:left;overflow-x: hidden;white-space : nowrap;"}));			
+		}
 		table.append(Timers.createEntry(i, $("#timerTable").width()));
 	}
 
@@ -134,17 +144,41 @@ Timers.createMenu= function () {
 
 };
 
+Timers.getPrintDate = function (day) {
+	var day = new Date (day * 1000);
+	return day.getDate() + "." + (day.getMonth() +1) + "." + day.getFullYear()	 
+};
+
+Timers.getWeekdays = function (wd) {
+	var map = wd.toString(2);
+	var res = "";
+
+	res += ((map[0] == "1") ? "M" : "-");
+	res += ((map[1] == "1") ? "D" : "-");
+	res += ((map[2] == "1") ? "M" : "-");
+	res += ((map[3] == "1") ? "D" : "-");
+	res += ((map[4] == "1") ? "F" : "-");
+	res += ((map[5] == "1") ? "S" : "-");
+	res += ((map[6] == "1") ? "S" : "-");
+
+	return res;	 
+};
+
 Timers.createEntry= function (i, w) {
 	Main.log("width= " +w);
+	
 	var row = $("<div>", {id: "tmr-"+i, class : "style_menuItem", style : "text-align:left;overflow-x: hidden;white-space : nowrap;"}); //, style : "text-overflow: ellipsis;white-space : nowrap;" 
 
 //	row.append($("<div>", {class : ((Timers.timerList[i].isrec ==true) ? "style_timerRec" : ""), style : "display: inline-block;"}));
-	row.append($("<div>", {class : ((Timers.timerList[i].isrec ==true) ? "style_timerRec" : "style_timerNone"), style : "display: inline-block;"})); // 
+	row.append($("<div>", {class : ((Timers.timerList[i].isrec ==true) ? "style_timerRec" : "style_timerNone"), style : "display: inline-block;"})); 
+	if (	Timers.timerList[i].isSingleEvent == true) {
+	}
+	else {
+	}
 	row.append($("<div>", {text : Timers.timerList[i].channelname, style : "padding-left:5px;width:12%; display: inline-block;", class : "style_overflow"}));
 	row.append($("<div>", {text : Timers.timerList[i].start, style : "padding-left:5px; width:9%; display: inline-block;", class : "style_overflow"}));
 	row.append($("<div>", {text : Timers.timerList[i].stop, style : "padding-left:5px; width:9%; display: inline-block;", class : "style_overflow"}));	
 	row.append($("<div>", {text : Timers.timerList[i].title, style : "padding-left:5px; width:68%;display: inline-block;", class : "style_overflow"}));
-	
 	return row;
 };
 
