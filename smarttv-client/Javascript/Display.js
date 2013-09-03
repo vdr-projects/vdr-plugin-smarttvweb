@@ -168,7 +168,7 @@ Display.getNumString =function(num, fmt) {
 };
 
 Display.selectItem = function (item) {
-
+//	item.setAttribute("class", "style_menuItemSelected");
 	item.style.color = "black";
 	item.style.background = "white";
 	item.style.background = "-webkit-linear-gradient(top, rgba(246,248,249,1) 0%,rgba(229,235,238,1) 50%,rgba(215,222,227,1) 51%,rgba(245,247,249,1) 100%)";
@@ -178,6 +178,7 @@ Display.selectItem = function (item) {
 };
 
 Display.unselectItem = function (item) {
+//	item.setAttribute("class", "style_menuItem");
 	item.style.color = "white";
 //	item.style.backgroundColor = "transparent";
 	item.style.background = "transparent";
@@ -1035,7 +1036,7 @@ OverlayHandler.prototype.checkHideCallback = function () {
 	var now = Display.GetEpochTime();
 	if (now >= this.hideTime) {
 
-		this.olDelay = 3000;
+//		this.olDelay = 3000;
 		if (this.hideCallback) {
 			this.hideCallback();			
 		}

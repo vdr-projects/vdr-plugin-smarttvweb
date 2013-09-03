@@ -37,6 +37,7 @@ Server.fetchVideoList = function(url) {
 				var title = $(this).find('title').text();
 //				var link = $(this).find('link').text();
 				var link = $(this).find('enclosure').attr('url');
+				var mime = $(this).find('enclosure').attr('type');
 				var guid = $(this).find('guid').text();
 				var programme = $(this).find('programme').text();
 				var description = $(this).find('description').text();
@@ -54,7 +55,7 @@ Server.fetchVideoList = function(url) {
 
                 var title_list = title.split("~");
                 Data.addItem( title_list, {link : link, prog: programme, desc: description, guid : guid, start: startVal, 
-                			dur: durVal, ispes : ispes, isnew : isnew, fps : fps, num : num});              	
+                			dur: durVal, ispes : ispes, isnew : isnew, fps : fps, num : num, mime : mime});              	
 							
 				}); // each
 
