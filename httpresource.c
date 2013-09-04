@@ -367,6 +367,14 @@ int cHttpResource::processRequest() {
   }
 
 #endif
+
+  if (mPath.compare("/deleteFile") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->receiveDelFileReq();
+    return OKAY;
+  }
+
+
   if (mPath.compare("/serverName.xml") == 0) {
     mResponse = new cResponseMemBlk(this);
     ((cResponseMemBlk*)mResponse)->sendServerNameXml( );
@@ -641,9 +649,14 @@ int cHttpResource::handlePost() {
   }
 
   if (mPath.compare("/deleteYtUrl") == 0) {
-
     mResponse = new cResponseMemBlk(this);
     ((cResponseMemBlk*)mResponse)->receiveDelYtUrl();
+    return OKAY;
+  }
+
+  if (mPath.compare("/deleteFile") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->receiveDelFileReq();
     return OKAY;
   }
 

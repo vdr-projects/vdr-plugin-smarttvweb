@@ -26,6 +26,7 @@
 #include "smarttvfactory.h"
 
 #include <sstream>
+#include <cstdio>
 
 #ifndef STANDALONE
 #include <vdr/recording.h>
@@ -44,7 +45,6 @@
 //#include <stdio.h>
 //#include <sys/stat.h>
 #include <dirent.h>
-
 #endif
 
 
@@ -1060,6 +1060,58 @@ void cResponseMemBlk::receiveDelTimerReq() {
   }  
 }
 
+void cResponseMemBlk::receiveDelFileReq() {
+  if (isHeadRequest())
+    return ;
+
+  *(mLog->log()) << DEBUGPREFIX << " cResponseMemBlk::receiveDelFileReq"  << endl;
+
+  vector<sQueryAVP> avps;
+  mRequest->parseQueryLine(&avps);
+
+  //guid=<guid>
+  string guid = "";
+
+  if (mRequest->getQueryAttributeValue(&avps, "guid", guid) == OKAY) {
+    guid = cUrlEncode::doUrlSaveDecode(guid);
+    *(mLog->log()) << DEBUGPREFIX
+		   << " guid= " << guid  << endl;
+  }
+
+  if (guid.size() == 0) {
+      sendError(404, "Not Found", NULL, "003 File not found.");
+      return;
+  }
+  if (guid.compare(0, (mRequest->mFactory->getConfig()->getMediaFolder()).size(), mRequest->mFactory->getConfig()->getMediaFolder()) != 0) {
+      sendError(404, "Not Found", NULL, "003 File not found.");
+      return;
+  }
+
+  *(mLog->log()) << DEBUGPREFIX
+		   << " Trying to delete file " << guid  << endl;
+
+  if( remove( guid.c_str() ) != 0 ) {
+    *(mLog->log()) << DEBUGPREFIX
+		   << " Deletion Failed. Errno= " << errno << endl;
+    switch (errno) {
+    case 2: // No such file or directory 
+      sendError(400, "Bad Request", NULL, "018 No such file or directory. ");
+      break;
+    case 13: // Permission denied 
+      sendError(400, "Bad Request", NULL, "019 Permission Denied. ");
+      break;
+    case 21: // Is a directory 
+      sendError(400, "Bad Request", NULL, "020 Is a directory. ");
+      break;
+    default: // default
+      sendError(400, "Bad Request", NULL, "021 Deletion failed. ");
+      break;
+    }
+  }
+  else
+    sendHeaders(200, "OK", NULL, NULL, 0, -1);
+}
+
 void cResponseMemBlk::sendTimersXml() {
   char f[200];
 
@@ -1079,7 +1131,9 @@ void cResponseMemBlk::sendTimersXml() {
     //    s_timers.push_back(t);
     s_timers.Append(t);
   }
+#if VDRVERSNUM > 10721
   s_timers.Sort(timerCompare);
+#endif
 #else
   cSortedTimers s_timers;
 #endif
@@ -1539,7 +1593,8 @@ int cResponseMemBlk::sendMediaXml (struct stat *statbuf) {
     
     snprintf(pathbuf, sizeof(pathbuf), "http://%s:%d%s", own_ip.c_str(), mRequest->mServerPort, 
     	     cUrlEncode::doUrlSaveEncode(entries[i].sPath).c_str());
-    if (writeXmlItem(cUrlEncode::doXmlSaveEncode(entries[i].sName), pathbuf, "NA", "NA", "-", 
+    if (writeXmlItem(cUrlEncode::doXmlSaveEncode(entries[i].sName), pathbuf, "NA", "NA", 
+		     cUrlEncode::doUrlSaveEncode(entries[i].sPath).c_str(), 
 		     -1, entries[i].sStart, -1, -1, -1, -1, entries[i].sMime) == ERROR) 
       return ERROR;
 
