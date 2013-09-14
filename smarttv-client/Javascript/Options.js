@@ -59,7 +59,7 @@ Options.hide = function() {
 };
 
 Options.drawServerList = function () {
-	//delete all chiilds below optionsList
+	//delete all childs below optionsList
 	$("#optionsList").children().remove();
 	
 	for (var i = 0; i < Config.vdrServers.serverUrlList.length; i++) {
@@ -182,6 +182,8 @@ Options.moveCursorRight = function() {
 Options.onInput = function () {
     var keyCode = event.keyCode;
 
+    if (Config.verboseStart == true)
+    	Display.showPopup("");
     Main.log("Options.onInput Key= " + keyCode);
     switch(keyCode) {
         case tvKey.KEY_1:
@@ -385,6 +387,8 @@ Options.onInput = function () {
         	// Done
 //        	Options.cursorPos = Options.cursorPos +1;
 //        	Options.deleteChar(); //
+            if (Config.verboseStart == true)
+            	Display.showPopup("Options.onInput: Enter Pressed - Val= " + document.getElementById(Options.inputElm).value);
         	if (Options.state == Options.sSelect) {
         		Buttons.ynShow();
         		return;
@@ -398,8 +402,7 @@ Options.onInput = function () {
 
         	Main.enableKeys();
         	Options.hide();
-        	Main.changeState(0);
-        	
+        	Main.changeState(0);      	
         	Config.fetchConfig();
 
         	break;

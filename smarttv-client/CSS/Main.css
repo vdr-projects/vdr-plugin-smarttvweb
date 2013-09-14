@@ -94,17 +94,49 @@ body {
 	border-radius: 4px;
 	background: red;
 }
+
+.style_timerAct {
+	width :8px;
+	height:8px;
+	border-radius: 4px;
+	background: green;
+}
+
 .style_timerNone {
 	width :8px;
 }
 
 .style_headline {
 	color : black;
+	font-size:14px;
 	background : linear-gradient(0deg, #1e5799 0%,#2989d8 41%,#7db9e8 100%);
 	background : -webkit-linear-gradient(top, #1e5799 0%,#2989d8 41%,#7db9e8 100%);
 	border-radius: 3px;
 	-webkit-box-shadow: 2px 2px 1px 2px rgba(0,0,0, 0.5);
 }
+
+
+.style_hbOverlay {
+    position: absolute;
+    z-index:70;	
+	border-radius: 7px;
+	border-width:1px;
+	background:rgba(0,0,139, 0.8);
+	border-style:solid;
+	border-width:1px;
+	-webkit-box-shadow:3px 3px 7px 4px rgba(0,0,0, 0.5);
+}
+
+.style_hbOverlayRow {
+	padding-left : 5px;
+	padding-right: 5px;
+}
+
+.style_hbOverlayLElm {
+}
+.style_hbOverlayRElm {
+}
+
 
 #timerScreen {
     position: absolute;
@@ -302,7 +334,7 @@ body {
     position: absolute;
 	display: none;
 	left: 120px; top: 10px;
-    width: 720px; height: 100px;
+    width: 720px; height: 200px;
     border-style:solid;
 	border-width:2px;  
 	-webkit-border-radius: 7px;
