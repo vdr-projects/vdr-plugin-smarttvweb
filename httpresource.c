@@ -352,6 +352,14 @@ int cHttpResource::processRequest() {
   }
 
   //thlo for testing purpose
+/*
+  if (mPath.compare("/modifyTimer") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->receiveModTimerReq();
+    return OKAY;
+  }
+*/
+  //thlo for testing purpose
   if (mPath.compare("/addTimer") == 0) {
     mResponse = new cResponseMemBlk(this);
     ((cResponseMemBlk*)mResponse)->receiveAddTimerReq();
@@ -359,6 +367,14 @@ int cHttpResource::processRequest() {
   }
 
 #endif
+
+  if (mPath.compare("/deleteFile") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->receiveDelFileReq();
+    return OKAY;
+  }
+
+
   if (mPath.compare("/serverName.xml") == 0) {
     mResponse = new cResponseMemBlk(this);
     ((cResponseMemBlk*)mResponse)->sendServerNameXml( );
@@ -453,11 +469,20 @@ int cHttpResource::processRequest() {
     }
   }
 
-  if (mPath.find("/web/") == 0) {
+  if (mPath.find("/web/", 0, 5) == 0) {
     mPath = mFactory->getConfigDir() + mPath;
     *(mLog->log())<< DEBUGPREFIX
 		  << " Found web request. serving " << mPath << endl;
     ok_to_serve = true;    
+  }
+
+  if (mPath.find("/live/", 0, 6) == 0) {
+    *(mLog->log())<< DEBUGPREFIX
+		  << " Found live request. serving " << mPath << endl;
+    //mResponse = new cResponseLive(this, mPath.substr(6));
+    //((cResponseVdrDir*)mResponse)->sendMediaSegment( &statbuf);
+    return OKAY;
+    
   }
 
   if (mPath.compare(0, strlen(VideoDirectory), VideoDirectory) == 0) {
@@ -624,9 +649,14 @@ int cHttpResource::handlePost() {
   }
 
   if (mPath.compare("/deleteYtUrl") == 0) {
-
     mResponse = new cResponseMemBlk(this);
     ((cResponseMemBlk*)mResponse)->receiveDelYtUrl();
+    return OKAY;
+  }
+
+  if (mPath.compare("/deleteFile") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->receiveDelFileReq();
     return OKAY;
   }
 

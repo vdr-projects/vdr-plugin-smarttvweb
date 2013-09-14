@@ -33,7 +33,7 @@
 
 cSmartTvConfig::cSmartTvConfig(string d): mConfigDir(d), mLog(NULL), mCfgFile(NULL),
   mLogFile(), mMediaFolder(), mSegmentDuration(), mHasMinBufferTime(), mHasBitrateCorrection(),
-  mLiveChannels(), mGroupSep(IGNORE), mServerAddress("") {
+  mLiveChannels(), mGroupSep(IGNORE), mServerAddress(""), mServerPort(8000), mRecCmds(false) {
 
 #ifndef STANDALONE
   mLogFile= "";
@@ -106,6 +106,7 @@ void cSmartTvConfig::readConfig() {
       //      cout << " Found mMediaFolder= " << mMediaFolder << endl;
       continue;
     }
+
     if (strcmp(attr, "SegmentDuration") == 0)  {
       mSegmentDuration = atoi(value);
       //      cout << " Found mSegmentDuration= " << mSegmentDuration << endl;
@@ -140,7 +141,17 @@ void cSmartTvConfig::readConfig() {
 
     if (strcmp(attr, "ServerAddress") == 0) {
       mServerAddress = value;
-      //      cout << " Found mLiveChannels= " <<mLiveChannels << endl;
+      continue;
+    }
+
+    if (strcmp(attr, "ServerPort") == 0) {
+      mServerPort = atoi(value);
+      continue;
+    }
+
+    if (strcmp(attr, "RecCmds") == 0) {
+      if (strcmp(value, "enable") == 0)
+	mRecCmds = true;
       continue;
     }
 

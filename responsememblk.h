@@ -38,8 +38,9 @@ struct sFileEntry {
   string sName;
   string sPath;
   int sStart;
+  string sMime;
 
-sFileEntry(string n, string l, int s) : sName(n), sPath(l), sStart(s) {
+sFileEntry(string n, string l, int s, string m) : sName(n), sPath(l), sStart(s), sMime(m) {
   };
 };
 
@@ -75,6 +76,8 @@ class cResponseMemBlk : public cResponseBase {
   void receiveAddTimerReq();
   void receiveDelTimerReq();
 
+  void receiveDelFileReq();
+
   void receiveClientInfo();
 
   int receiveResume();
@@ -91,7 +94,7 @@ class cResponseMemBlk : public cResponseBase {
   int parseResume(cResumeEntry &entry, string &id);
   int parseFiles(vector<sFileEntry> *entries, string prefix, string dir_base, string dir_name, struct stat *statbuf);
   int sendDir(struct stat *statbuf);
-  int writeXmlItem(string title, string link, string programme, string desc, string guid, int no, time_t start, int dur, double fps, int is_pes, int is_new);
+  int writeXmlItem(string title, string link, string programme, string desc, string guid, int no, time_t start, int dur, double fps, int is_pes, int is_new, string mime);
   uint64_t getVdrFileSize();
 
  private:
