@@ -26,6 +26,7 @@
 #include "smarttvfactory.h"
 
 #include <sstream>
+#include <cstdio>
 
 #ifndef STANDALONE
 #include <vdr/recording.h>
@@ -44,7 +45,6 @@
 //#include <stdio.h>
 //#include <sys/stat.h>
 #include <dirent.h>
-
 #endif
 
 
@@ -1060,6 +1060,58 @@ void cResponseMemBlk::receiveDelTimerReq() {
   }  
 }
 
+void cResponseMemBlk::receiveDelFileReq() {
+  if (isHeadRequest())
+    return ;
+
+  *(mLog->log()) << DEBUGPREFIX << " cResponseMemBlk::receiveDelFileReq"  << endl;
+
+  vector<sQueryAVP> avps;
+  mRequest->parseQueryLine(&avps);
+
+  //guid=<guid>
+  string guid = "";
+
+  if (mRequest->getQueryAttributeValue(&avps, "guid", guid) == OKAY) {
+    guid = cUrlEncode::doUrlSaveDecode(guid);
+    *(mLog->log()) << DEBUGPREFIX
+		   << " guid= " << guid  << endl;
+  }
+
+  if (guid.size() == 0) {
+      sendError(404, "Not Found", NULL, "003 File not found.");
+      return;
+  }
+  if (guid.compare(0, (mRequest->mFactory->getConfig()->getMediaFolder()).size(), mRequest->mFactory->getConfig()->getMediaFolder()) != 0) {
+      sendError(404, "Not Found", NULL, "003 File not found.");
+      return;
+  }
+
+  *(mLog->log()) << DEBUGPREFIX
+		   << " Trying to delete file " << guid  << endl;
+
+  if( remove( guid.c_str() ) != 0 ) {
+    *(mLog->log()) << DEBUGPREFIX
+		   << " Deletion Failed. Errno= " << errno << endl;
+    switch (errno) {
+    case 2: // No such file or directory 
+      sendError(400, "Bad Request", NULL, "018 No such file or directory. ");
+      break;
+    case 13: // Permission denied 
+      sendError(400, "Bad Request", NULL, "019 Permission Denied. ");
+      break;
+    case 21: // Is a directory 
+      sendError(400, "Bad Request", NULL, "020 Is a directory. ");
+      break;
+    default: // default
+      sendError(400, "Bad Request", NULL, "021 Deletion failed. ");
+      break;
+    }
+  }
+  else
+    sendHeaders(200, "OK", NULL, NULL, 0, -1);
+}
+
 void cResponseMemBlk::sendTimersXml() {
   char f[200];
 
@@ -1079,7 +1131,9 @@ void cResponseMemBlk::sendTimersXml() {
     //    s_timers.push_back(t);
     s_timers.Append(t);
   }
+#if VDRVERSNUM > 10721
   s_timers.Sort(timerCompare);
+#endif
 #else
   cSortedTimers s_timers;
 #endif
@@ -1172,13 +1226,20 @@ void cResponseMemBlk::sendRecCmds() {
 
 void cResponseMemBlk::receiveExecRecCmdReq() {
   vector<sQueryAVP> avps;
-  mRequest->parseQueryLine(&avps);
   string guid; 
   string cmd_str;
   uint cmdid;
 
   if (isHeadRequest())
     return;
+
+  if (! mRequest->mFactory->getConfig()->getRecCmds()) {
+    sendError(400, "Bad Request", NULL, "017 execreccmd disabled.");
+    return;
+
+  }
+  mRequest->parseQueryLine(&avps);
+
 
   if (mRequest->getQueryAttributeValue(&avps, "guid", guid) != OKAY){
     sendError(400, "Bad Request", NULL, "002 No guid in query line");
@@ -1268,7 +1329,7 @@ uint64_t cResponseMemBlk::getVdrFileSize() {
 
 
 // common for all create xml file modules
-int cResponseMemBlk::writeXmlItem(string name, string link, string programme, string desc, string guid, int no, time_t start, int dur, double fps, int is_pes, int is_new) {
+int cResponseMemBlk::writeXmlItem(string name, string link, string programme, string desc, string guid, int no, time_t start, int dur, double fps, int is_pes, int is_new, string mime) {
   string hdr = "";
   char f[400];
 
@@ -1276,7 +1337,8 @@ int cResponseMemBlk::writeXmlItem(string name, string link, string programme, st
   //  snprintf(f, sizeof(f), "%s - %s", );
   hdr += "<title>" + name +"</title>\n";
   hdr += "<link>" +link + "</link>\n";
-  hdr += "<enclosure url=\"" +link + "\" type=\"video/mpeg\" />\n";
+  //  hdr += "<enclosure url=\"" +link + "\" type=\"video/mpeg\" />\n";
+  hdr += "<enclosure url=\"" +link + "\" type=\""+mime+"\" />\n";
   
   hdr += "<guid>" + guid + "</guid>\n";
 
@@ -1471,7 +1533,7 @@ int cResponseMemBlk::parseFiles(vector<sFileEntry> *entries, string prefix, stri
 		       << " Vdr Folder Found: " << pathbuf << " start= " << start << endl;
 #endif
 
-	entries->push_back(sFileEntry(dir_name, pathbuf, start));
+	entries->push_back(sFileEntry(dir_name, pathbuf, start, "video/mpeg"));
       }
       else {
 	// regular file
@@ -1479,8 +1541,9 @@ int cResponseMemBlk::parseFiles(vector<sFileEntry> *entries, string prefix, stri
       }
     }
     else {
-      if ((de->d_name)[0] != '.' )
-	entries->push_back(sFileEntry(prefix+de->d_name, pathbuf, 1));
+      if ((de->d_name)[0] != '.' ) {
+	entries->push_back(sFileEntry(prefix+de->d_name, pathbuf, 1, getMimeType(de->d_name)));
+      }
     }
   }
   closedir(dir);
@@ -1530,8 +1593,9 @@ int cResponseMemBlk::sendMediaXml (struct stat *statbuf) {
     
     snprintf(pathbuf, sizeof(pathbuf), "http://%s:%d%s", own_ip.c_str(), mRequest->mServerPort, 
     	     cUrlEncode::doUrlSaveEncode(entries[i].sPath).c_str());
-    if (writeXmlItem(cUrlEncode::doXmlSaveEncode(entries[i].sName), pathbuf, "NA", "NA", "-", 
-		     -1, entries[i].sStart, -1, -1, -1, -1) == ERROR) 
+    if (writeXmlItem(cUrlEncode::doXmlSaveEncode(entries[i].sName), pathbuf, "NA", "NA", 
+		     cUrlEncode::doUrlSaveEncode(entries[i].sPath).c_str(), 
+		     -1, entries[i].sStart, -1, -1, -1, -1, entries[i].sMime) == ERROR) 
       return ERROR;
 
   }
@@ -1865,7 +1929,7 @@ int cResponseMemBlk::sendChannelsXml (struct stat *statbuf) {
     string c_name = (group_sep != "") ? (group_sep + "~" + cUrlEncode::doXmlSaveEncode(channel->Name())) 
       : cUrlEncode::doXmlSaveEncode(channel->Name()); 
     //    if (writeXmlItem(channel->Name(), link, title, desc, *(channel->GetChannelID()).ToString(), start_time, duration) == ERROR) 
-    if (writeXmlItem(c_name, link, title, desc, *(channel->GetChannelID()).ToString(), channel->Number(), start_time, duration, -1, -1, -1) == ERROR) 
+    if (writeXmlItem(c_name, link, title, desc, *(channel->GetChannelID()).ToString(), channel->Number(), start_time, duration, -1, -1, -1, "video/mpeg") == ERROR) 
       return ERROR;
 
   }
@@ -2237,7 +2301,7 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
 		     cUrlEncode::doUrlSaveEncode(recording->FileName()).c_str(),
 		     -1, 
 		     recording->Start(), rec_dur, recording->FramesPerSecond(), 
-		     (recording->IsPesRecording() ? 0: 1), (recording->IsNew() ? 0: 1)) == ERROR) {
+		     (recording->IsPesRecording() ? 0: 1), (recording->IsNew() ? 0: 1), "video/mpeg") == ERROR) {
       *mResponseMessage = "";
       sendError(500, "Internal Server Error", NULL, "005 writeXMLItem returned an error");
       return OKAY;

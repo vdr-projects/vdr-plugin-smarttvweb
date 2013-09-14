@@ -47,33 +47,6 @@ cResponseFile::~cResponseFile() {
 }
 
 
-const char *cResponseFile::getMimeType(const char *name) {
-  char *ext = strrchr((char*)name, '.');
-  if (!ext) 
-    return NULL;
-  //  if (ext.compare(".html") || ext.compare(".htm")) return "text/html";
-  if (strcmp(ext, ".html") == 0 || strcmp(ext, ".htm") == 0) return "text/html";
-  if (strcmp(ext, ".jpg") == 0 || strcmp(ext, ".jpeg") == 0) return "image/jpeg";
-  if (strcmp(ext, ".gif") == 0) return "image/gif";
-  if (strcmp(ext, ".png") == 0) return "image/png";
-  if (strcmp(ext, ".xml") == 0) return "application/xml";  
-  if (strcmp(ext, ".css") == 0) return "text/css";
-  if (strcmp(ext, ".js") == 0) return "text/javascript";
-  if (strcmp(ext, ".au") == 0) return "audio/basic";
-  if (strcmp(ext, ".wav") == 0) return "audio/wav";
-  if (strcmp(ext, ".avi") == 0) return "video/x-msvideo";
-  if (strcmp(ext, ".mp4") == 0) return "video/mp4";
-  if (strcmp(ext, ".vdr") == 0) return "video/mpeg";
-  if (strcmp(ext, ".ts") == 0) return "video/mpeg";
-  if (strcmp(ext, ".mpeg") == 0 || strcmp(ext, ".mpg") == 0) return "video/mpeg";
-  if (strcmp(ext, ".mp3") == 0) return "audio/mpeg";
-  if (strcmp(ext, ".mpd") == 0) return "application/dash+xml";  
-  if (strcmp(ext, ".m3u8") == 0) return "application/x-mpegURL";
-  
-  return NULL;
-}
-
-
 int cResponseFile::sendFile() {
   // Send the First Datachunk, incl all headers
 
