@@ -27,9 +27,9 @@ var Config = {
 	recSortType : 0,
 	playKeyBehavior : 0,
 	haveYouTube : false,
+	verboseStart : false,    // Debug Messages during start (before widget.conf is loaded)
 	deviceType : 0   // Used to differentiate between browsers and platforms
 	// 0: Samsung
-
 };
 
 
@@ -56,12 +56,11 @@ Config.init = function () {
 	if (this.serverUrl != "") {
 		// Hardcoded server URL. Done with config
 		Main.log ("Hardcoded server URL. Done with config");
+		Display.showPopup ("Hardcoded server URL. Done with config");
 		Config.fetchConfig();
 		return;
 	}
 
-	
-//	if (this.deviceType == 0)
 	switch (this.deviceType){
 	case 0:
 		// This is a Samsung Smart TV
@@ -71,13 +70,22 @@ Config.init = function () {
 		}
 		catch (e) {		
 			Main.log("curWidget.id does not exists. Is that really a Samsung?");
+			Display.showPopup ("curWidget.id does not exists. Is that really a Samsung?");
 			return;
 		};
 		
 		var fileSystemObj = new FileSystem();
 	    
-		if (fileSystemObj.isValidCommonPath(curWidget.id) == 0){
+//		if (fileSystemObj.isValidCommonPath(curWidget.id) == 0){
+		if (fileSystemObj.isValidCommonPath(curWidget.id) != 1){
+// isValidCommonPath returns: 
+//	        0 : JS function failed
+//	        1 : valid
+//	        2 : invalid
+
 			Main.log("First Launch of the Widget");
+			if (Config.verboseStart == true)
+				Display.showPopup ("First Launch of the Widget");
 			// should switch to the config screen here
 			var res = fileSystemObj.createCommonDir(curWidget.id);
 			if (res == true) {
@@ -85,8 +93,8 @@ Config.init = function () {
 				return;
 			}
 			else {
+				Display.showPopup ("WARNING: Cannot create widget folder. Ignoring and trying to configure");
 				Config.doFirstLaunch();
-				Display.showPopup ("WARNING: Cannot create widget folder. Try Config");
 //		    	Display.showPopup (Lang[Lang.sel].configInit);    	
 
 //				Main.logToServer("ERROR: Cannot create widget folder curWidget.id= " +curWidget.id);
@@ -94,17 +102,28 @@ Config.init = function () {
 			return;
 		}
 		else {
-			// ok, there should be some config info 
+			// ok, there should be some config info
+			if (Config.verboseStart == true)
+				Display.showPopup ("Reading Context Now");
+			
 			Config.readContext();
+			// async check of available VDR servers. Will continue from a different place
 			return; //thlo: TODO
 		}
 		break;
+		default:
+			// another TV set.
+			break;
 	}
+	
+	//the function is likely never executed to the end. Check!
 	Server.notifyServer("started");
 	Config.fetchConfig();
 };
 
 Config.doFirstLaunch = function () {
+	if (Config.verboseStart == true)
+		Display.showPopup("OK: First Launch. Configure now");
 	Config.firstLaunch = true;
 
 	Main.changeState(Main.eOPT);
@@ -129,10 +148,15 @@ Config.getWidgetVersion = function () {
 
 
 Config.fetchConfig = function () {
+	if (Config.verboseStart == true)
+		Display.showPopup ("Fetching widget.conf...");
+
 	$.ajax({
 		url: this.serverUrl + "/widget.conf",
 		type : "GET",
 		success : function(data, status, XHR ) {
+			if (Config.verboseStart == true)
+				Display.showPopup ("Processing widget.conf...");
 
         	Main.log ("Parsing config XML now");
         	Main.logToServer("Parsing config XML now");
@@ -188,7 +212,7 @@ Config.fetchConfig = function () {
 		},
 		error : function (XHR, status, error) {
 	    	Main.log ("Config Server Error");  	
-	    	Display.showPopup("Config Server Error " + XHR.status + " " + status);
+	    	Display.showPopup("ERROR while fetching widget.conf " + XHR.status + " " + status);
 //	    	Display.showPopup(Lang[Lang.sel].configNoServer + " "+ XHR.status + " " + status);
 	    	
 	    	Main.logToServer("Config Server Error " + XHR.status + " " + status);
@@ -209,7 +233,10 @@ Config.deletedFromContext = function(idx) {
 Config.updateContext = function (addr) {
 	Main.log("Config.updateContext with ("+addr+")");
 	Main.logToServer("Config.updateContext with ("+addr+")");
-	
+
+	if ((Config.verboseStart == true) && (Config.firstLaunch == true)) 
+		Display.showPopup("Config.updateContext with ("+addr+")");
+
 	var found = false;
 	
 	for (var i = 0; i < Config.vdrServers.serverUrlList.length; i++) {
@@ -223,27 +250,15 @@ Config.updateContext = function (addr) {
 		// don't overwrite, if the address is already there.
 		Main.log("Config.updateContext: don't overwrite -> return");
 		Notify.showNotify("Server already included -> Ignoring", true);
-		
+		if ((Config.verboseStart == true) && (Config.firstLaunch == true)) 
+			Display.showPopup("Config.updateContext: don't overwrite -> return");
 		return;
 	}
 	Config.vdrServers.serverUrlList.push(addr);
 	
 	Config.writeServerUrlList();
-	/*
-	var fileSystemObj = new FileSystem();
 
-	var fd = fileSystemObj.openCommonFile(Config.cfgFileName,"w");
-
-//    fd.writeLine('serverAddr ' + addr); // SHould be overwritten by Options menue
-	for (var i = 0; i < Config.vdrServers.serverUrlList.length; i++) {
-		Main.log ("Config.updateContext itm= " + Config.vdrServers.serverUrlList[i]);
-		Main.logToServer ("Config.updateContext itm= " + Config.vdrServers.serverUrlList[i]);
-	    fd.writeLine('serverAddr ' + Config.vdrServers.serverUrlList[i]);		
-	}
-    
-    fileSystemObj.closeCommonFile(fd);
-*/
-    if (Config.serverAddr == "") {
+	if (Config.serverAddr == "") {
     	// only change the server, when needed.
         Config.serverAddr = addr;
         Config.serverUrl = "http://" + Config.serverAddr;
@@ -251,16 +266,6 @@ Config.updateContext = function (addr) {
     }
 };
 
-/*
-Config.writeContext = function (addr) {
-	var fileSystemObj = new FileSystem();
-
-	var fd = fileSystemObj.openCommonFile(Config.cfgFileName,"w");
-
-    fd.writeLine('serverAddr ' + addr); // SHould be overwritten by Options menue
-    fileSystemObj.closeCommonFile(fd);
-};
-*/
 Config.writeServerUrlList = function () {
 	var fileSystemObj = new FileSystem();
 
@@ -269,11 +274,15 @@ Config.writeServerUrlList = function () {
 	for (var i = 0; i < Config.vdrServers.serverUrlList.length; i++) {
 		Main.log ("Config.writeServerUrlList itm= " + Config.vdrServers.serverUrlList[i]);
 		Main.logToServer ("Config.writeServerUrlList itm= " + Config.vdrServers.serverUrlList[i]);
+		if (Config.verboseStart == true) 
+			Display.showPopup ("Config.writeServerUrlList: writing VdrServer= " + Config.vdrServers.serverUrlList[i]);
+
 	    fd.writeLine('serverAddr ' + Config.vdrServers.serverUrlList[i]);		
 	}
     
     fileSystemObj.closeCommonFile(fd);
-	
+	if (Config.verboseStart == true)  
+		Display.showPopup ("Config.writeServerUrlList done ");
 };
 
 Config.readContext = function () {
@@ -291,7 +300,10 @@ Config.readContext = function () {
 		    if (avp.length > 1) {
 		    	Config.vdrServers.serverUrlList.push(avp[1]);
 		    	Main.log("Config.readContext avp[1]= " + avp[1]);
-		    	Config.serverAddr = avp[1];
+				if (Config.verboseStart == true)
+					Display.showPopup ("Config.readContext: serverAddr= " + avp[1]);
+
+				Config.serverAddr = avp[1];
 		    	Config.serverUrl = "http://" + Config.serverAddr;
 		    }
 		    else {
@@ -306,10 +318,12 @@ Config.readContext = function () {
 	}
 	catch (e) {
 		Main.log("Config.readContext: Error while reading: e= " +e);
+		Display.showPopup("Config.readContext: Error while reading: e= " +e);
+		Display.showPopup("Trying to create now the local config file" );
 		var res = fileSystemObj.createCommonDir(curWidget.id);
 		if (res == true) {
 			Main.log("WARNING: ConfigRead Error. Launching Config-Menu from here");
-			//			Display.showPopup ("Config Read Error:  Try widget restart");  
+			Display.showPopup ("Config Read Error:  Try widget restart");  
 			
 		}
 		else {
@@ -318,13 +332,13 @@ Config.readContext = function () {
 			Display.showPopup ("WARNING: ConfigRead Error and WidgetFolder creation failed. <br> Launching Config-Menu from here");  
 //	    	Display.showPopup (Lang[Lang.sel].configRead2);    	
 			
-//			Main.log("-------------- Error: res = false ------------------------");			
 		}
 		Config.doFirstLaunch();
 
 	}
-	
-//	Config.vdrServers.serverUrlList.push("192.168.1.142:8000");
+
+	// Now, I read at least one VDR server address from Config file
+
 	this.vdrServers.checkServers();
 	if (Config.vdrServers.serverUrlList.length > 1) {
 		// Now I should show the popup to select the server.

@@ -241,6 +241,7 @@ Server.getResume = function (guid) {
 	});
 };
 
+/*
 Server.saveResume = function() {
 	var msg = ""; 
     msg += "filename:" + Data.getCurrentItem().childs[Main.selectedVideo].payload.guid + "\n"; 
@@ -252,59 +253,7 @@ Server.saveResume = function() {
 
 };
 
-Server.deleteRecording = function(guid) {
-	Main.log("Server.deleteRecording guid=" + guid);
-	Main.logToServer("Server.deleteRecording guid=" + guid);
-	Notify.handlerShowNotify("Deleting...", false);
-
-	$.ajax({
-		url: Config.serverUrl + "/deleteRecording.xml?id=" +guid,
-		type : "POST",
-		success : function(data, status, XHR ) {
-			Notify.showNotify("Deleted", true);
-			Data.deleteElm(Main.selectedVideo);
-			if (Main.selectedVideo >= Data.getVideoCount())
-				Main.selectedVideo = Data.getVideoCount() -1;
-			Server.updateVdrStatus();
-			Display.setVideoList(Main.selectedVideo, (Main.selectedVideo - Display.currentWindow));
-			Main.logToServer("Server.deleteRecording: Success" );
-			},
-		error : function (XHR, status, error) {
-			Main.logToServer("Server.deleteRecording: Error" );
-
-			// show popup
-			Notify.showNotify("Error", true);
-		}
-	});
-};
-
-Server.deleteUrls = function (guid) {
-	Main.log("Server.deleteUrls");
-	Main.logToServer("Server.deleteUrls guid=" + guid);
-	Notify.handlerShowNotify("Deleting...", false);
-
-	$.ajax({
-		url: Config.serverUrl + "/deleteYtUrl?guid=" +guid,
-		type : "POST",
-		success : function(data, status, XHR ) {
-			Notify.showNotify("Deleted", true);
-			Data.deleteElm(Main.selectedVideo);
-			if (Main.selectedVideo >= Data.getVideoCount())
-				Main.selectedVideo = Data.getVideoCount() -1;
-			Server.updateVdrStatus();
-			Display.setVideoList(Main.selectedVideo, (Main.selectedVideo - Display.currentWindow));
-			Main.logToServer("Server.deleteUrls: Success" );
-			},
-		error : function (XHR, status, error) {
-			Main.logToServer("Server.deleteUrls: Error" );
-			Notify.showNotify(status, true);
-
-			// show popup
-//			Notify.showNotify("Error", true);
-		}
-	});
-
-};
+*/
 
 Server.notifyServer = function (state) {
 	Main.log("Server.notifyServer state="+state +"&mac=" + Network.ownMac + "&ip=" + Network.ownIp);
@@ -360,6 +309,7 @@ Server.fetchRecCmdsList = function() {
 	});
 };
 
+/*
 Server.execRecCmd = function (cmd, guid) {
 	var url = Config.serverUrl + "/execreccmd?cmd="+cmd+"&guid=" + guid;
 
@@ -376,21 +326,96 @@ Server.execRecCmd = function (cmd, guid) {
 		}
 	});	
 };
-
+*/
 Server.getErrorText = function (status, input) {
-	var errno = parseInt(input.slice(0, 3));
+//	var errno_str = input.slice(0, 3);
+//	var errno = parseInt(errno_str, 10);
+	var errno = Number(input.slice(0, 3));
 
 	var res = "";
+
+	Main.logToServer("Server.getErrorText status= " + status + " Errno= " + errno + " input= " + input );
 	switch (status) {
 	case 400: // Bad Request
 		switch (errno) {
+			case 1: 
+				res = "Mandatory Line attribute not present.";
+				break;
+			case 2:
+				res= "No guid in query line";
+				break;
+			case 3:
+				res = "Entry not found. Deletion failed";
+				break;
+			case 6:
+				// set resume data
+				res = "Failed to find the recording.";
+				break;
+			case 7:
+				// get resume data
+				res = "Failed to find the recording.";
+				break;
+			case 8:
+				res = "File is new.";
+				break;
+			case 9:
+				res = "No id in query line";
+				break;
 			case 10:
-			res = "No Timer found.";
+				res = "No Timer found.";
+				break;
+
+			case 15:
+				res = "Mandatory cmd attribute not present.";
+				break;
+			case 16:
+				res = "Command (cmd) value out of range.";
+				break;
+			case 17:
+				res = "Execreccmd disabled.";
+				break;
+			case 18:
+				res = "No such file or directory.";
+				break;
+			case 19:
+				res = "Permission Denied.";
+				break;
+			case 20:
+				res = "Is a directory.";
+				break;
+			case 21:
+				res = "Deletion failed (for some reason).";
+				break;
+
+			default:
+				res = "Unhandled Errno - Status= " + status + " Errno= "+ errno; 
+				break;
+		}
+		break;
+	case 404: // File not found
+		switch (errno) {
+			case 1:
+				res = "Recording not found. Deletion failed.";
+				break;
+			case 2:
+				res = "Media Folder likely not configured.";
+				break;
+			case 3:
+				res = "File not found.";
+				break;
+			default:
+			res = "Unhandled Errno - Status= " + status + " Errno= "+ errno; 
+			break;
+		};
+	case 500: // Internal Server Error
+		switch (errno) {
+			case 6:
+				res = "deletion failed!";
 			break;
 			default:
 			res = "Unhandled Errno - Status= " + status + " Errno= "+ errno; 
 			break;
-		}
+		};
 		break;
 	case 503: // Service unavailable	
 		switch (errno) {
@@ -409,32 +434,424 @@ Server.getErrorText = function (status, input) {
 	return res;
 };
 
-var HeartbeatHandler = {
-	timeoutObj : null,
-	isActive : false
+Server.deleteRecording = function(guid) {
+	var obj = new execRestCmd(RestCmds.CMD_DelRec, guid);
+
+	/*
+	
+	Main.log("Server.deleteRecording guid=" + guid);
+	Main.logToServer("Server.deleteRecording guid=" + guid);
+	Notify.handlerShowNotify("Deleting...", false);
+
+	$.ajax({
+		url: Config.serverUrl + "/deleteRecording.xml?id=" +guid,
+		type : "POST",
+		success : function(data, status, XHR ) {
+			Notify.showNotify("Deleted", true);
+			Data.deleteElm(Main.selectedVideo);
+			if (Main.selectedVideo >= Data.getVideoCount())
+				Main.selectedVideo = Data.getVideoCount() -1;
+			Server.updateVdrStatus();
+			Display.setVideoList(Main.selectedVideo, (Main.selectedVideo - Display.currentWindow));
+			Main.logToServer("Server.deleteRecording: Success" );
+			},
+		error : function (XHR, status, error) {
+			Main.logToServer("Server.deleteRecording: Error" );
+
+			// show popup
+			Notify.showNotify("Error", true);
+		}
+	});
+	*/
 };
 
 
-HeartbeatHandler.start = function(){
-	if (this.isActive ==true)
-		window.clearTimeout(this.timeoutObj);
+Server.deleteUrls = function (guid) {
+
+	var obj = new execRestCmd(RestCmds.CMD_DelYtUrl, guid);
+
+/*	
+	Main.log("Server.deleteUrls");
+	Main.logToServer("Server.deleteUrls guid=" + guid);
+	Notify.handlerShowNotify("Deleting...", false);
+
+	$.ajax({
+		url: Config.serverUrl + "/deleteYtUrl?guid=" +guid,
+		type : "POST",
+		success : function(data, status, XHR ) {
+			Notify.showNotify("Deleted", true);
+			Data.deleteElm(Main.selectedVideo);
+			if (Main.selectedVideo >= Data.getVideoCount())
+				Main.selectedVideo = Data.getVideoCount() -1;
+			Server.updateVdrStatus();
+			Display.setVideoList(Main.selectedVideo, (Main.selectedVideo - Display.currentWindow));
+			Main.logToServer("Server.deleteUrls: Success" );
+			},
+		error : function (XHR, status, error) {
+			Main.logToServer("Server.deleteUrls: Error" );
+			Notify.showNotify(status, true);
+
+			// show popup
+//			Notify.showNotify("Error", true);
+		}
+	});
+*/
+};
+
+
+Server.getResume = function (guid) {
+	Main.log ("***** getResume *****");
+	var obj = new execRestCmd(RestCmds.CMD_GetResume, guid);
+/*
+	$.ajax({
+		url: Config.serverUrl + "/getResume.xml",
+		type : "POST",
+		data : "filename:" + guid +"\n", 
+		success : function(data, status, XHR ) {
+			Main.log("**** Resome Success Response - status= " + status + " mime= " + XHR.responseType + " data= "+ data);
+
+			var resume_str = $(data).find("resume").text();
+			if (resume_str != "") {
+				var resume_val = parseFloat(resume_str);
+				Main.log("resume val= " + resume_val );
+				Main.logToServer("resume val= " + resume_val );
+				Player.resumePos = resume_val;
+				Player.playVideo( resume_val);
+			}
+			else {
+	    		Display.hide();
+	        	Display.showProgress();
+				Player.playVideo(-1);
+			}
+
+		},
+		error : function (jqXHR, status, error) {
+			Main.log("**** Resome Error Response - status= " + status + " error= "+ error);
+    		Display.hide();
+        	Display.showProgress();
+			Player.playVideo(-1);
+		}
+	});
+	*/
+};
+
+Server.saveResume = function() {
+	var obj = new execRestCmd(RestCmds.CMD_SetResume, Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
+/*
+	var msg = ""; 
+    msg += "filename:" + Data.getCurrentItem().childs[Main.selectedVideo].payload.guid + "\n"; 
+    msg += "resume:"+ (Player.curPlayTime/1000) + "\n" ;
+    	
+	$.post(Config.serverUrl + "/setResume.xml", msg, function(data, textStatus, XHR) {
+		Main.logToServer("SaveResume Status= " + XHR.status );
+	}, "text");
+*/
+};
+
+Server.execRecCmd = function (cmd, guid) {
+	var obj = new execRestCmd(RestCmds.CMD_ExecRecCmd, guid, { cmd:cmd });
+
+};
+
+Server.deleteMedFile = function(guid) {
+	var obj = new execRestCmd(RestCmds.CMD_DelMedFile, guid);
+};
+
+var RestCmds = {
+	CMD_AddTimer : 0,
+	CMD_DelMedFile : 1,
+	CMD_DelYtUrl : 2,
+	CMD_DelRec : 3,
+	CMD_SetResume : 4,
+	CMD_GetResume : 5,
+	CMD_GetRecCmds : 6,
+	CMD_ExecRecCmd : 7,
+	CMD_ActTimer : 8,
+	CMD_DelTimer : 9
+};
+
+
+//--------------------------------------------------------------------
+//--------------------------------------------------------------------
+//----------------- execRestCmd --------------------------------------
+//--------------------------------------------------------------------
+//--------------------------------------------------------------------
+function execRestCmd(cmd, guid, parms) {
+	this.successCallback = null;
+	this.errorCallback = null;
+	this.guid = guid;
+	this.parms = parms;
+	
+	this.url = "";
+	this.cmd = -1;
+	this.method = "";
+	
+	switch(cmd) {
+		case RestCmds.CMD_AddTimer:
+			// add a timer
+			
+			this.url =Config.serverUrl + "/addTimer.xml?guid="+this.guid;
+			this.cmd = cmd;
+			this.method = "GET";
+			
+			this.successCallback = function(data, status, XHR ) {
+				Notify.showNotify("Timer added", true);
+				Main.log ("addTimer for Inst= " + this.guid +" status: " + ((status != null) ? status : "null"));  	
+			};
+		break;
+		case RestCmds.CMD_DelMedFile:
+			// delete a file from media folder
+			
+			Main.log("Server.deleteMedFile guid=" + guid);
+			Main.logToServer("Server.deleteMedFile guid=" + guid);
+
+			this.url =Config.serverUrl + "/deleteFile?guid=" +guid;
+			this.cmd = cmd;
+			this.method = "GET";
+			
+			this.successCallback = function(data, status, XHR ) {
+				Notify.showNotify("Deleted", true);
+				Data.deleteElm(Main.selectedVideo);
+				if (Main.selectedVideo >= Data.getVideoCount())
+				Main.selectedVideo = Data.getVideoCount() -1;
+			};
+		break;
+		case RestCmds.CMD_DelYtUrl:
+			// delete a YouTube URL
+			
+			Main.log("Server.deleteUrls");
+			Main.logToServer("Server.deleteUrls guid=" + guid);
+			Notify.handlerShowNotify("Deleting...", false);
+
+			this.url =Config.serverUrl + "/deleteYtUrl?guid=" +guid;
+			this.cmd = cmd;
+			this.method = "POST";
+
+			this.successCallback = function(data, status, XHR ) {
+				Notify.showNotify("Deleted", true);
+				Data.deleteElm(Main.selectedVideo);
+				if (Main.selectedVideo >= Data.getVideoCount())
+					Main.selectedVideo = Data.getVideoCount() -1;
+				Server.updateVdrStatus();
+				Display.setVideoList(Main.selectedVideo, (Main.selectedVideo - Display.currentWindow));
+				Main.logToServer("Server.deleteUrls: Success" );
+
+			};
+			break;
+		case RestCmds.CMD_DelRec:
+			// Delete a Recording
+			
+			Main.log("Server.deleteRecording guid=" + guid);
+			Main.logToServer("Server.deleteRecording guid=" + guid);
+			Notify.handlerShowNotify("Deleting...", false);
+
+			this.url =Config.serverUrl + "/deleteRecording.xml?id=" +guid;
+			this.cmd = cmd;
+			this.method = "POST";
+
+			this.successCallback = function(data, status, XHR ) {
+				Notify.showNotify("Deleted", true);
+				Data.deleteElm(Main.selectedVideo);
+				if (Main.selectedVideo >= Data.getVideoCount())
+					Main.selectedVideo = Data.getVideoCount() -1;
+				Server.updateVdrStatus();
+				Display.setVideoList(Main.selectedVideo, (Main.selectedVideo - Display.currentWindow));
+				Main.logToServer("Server.deleteRecording: Success" );
+			};
+			
+		break;
 		
-	this.isActive = true;
-	HeartbeatHandler.update();
+		case RestCmds.CMD_SetResume :
+			// Send Resume Data
+			
+			Main.log("Server.GetResume guid=" + guid);
+			Main.logToServer("Server.GetResume guid=" + guid);
+			this.url =Config.serverUrl + "/setResume.xml?guid=" +guid + "&resume=" + (Player.curPlayTime/1000);
+			this.cmd = cmd;
+			this.method = "POST";
+			this.successCallback = function(data, status, XHR ) {
+				Main.logToServer("SaveResume Status= " + XHR.status );
+			};
+
+			break;
+		case RestCmds.CMD_GetResume :
+			// Request Resume Data from VDR
+			
+			Main.log("Server.GetResume guid=" + guid);
+			Main.logToServer("Server.GetResume guid=" + guid);
+
+			this.url =Config.serverUrl + "/getResume.xml?guid=" +guid;
+			this.cmd = cmd;
+			this.method = "POST";
+			
+			this.successCallback = function(data, status, XHR ) {
+				Main.log("**** Resome Success Response - status= " + status + " mime= " + XHR.responseType + " data= "+ data);
+
+				var resume_str = $(data).find("resume").text();
+				if (resume_str != "") {
+					var resume_val = parseFloat(resume_str);
+					Main.log("resume val= " + resume_val );
+					Main.logToServer("resume val= " + resume_val );
+					Player.resumePos = resume_val;
+					Player.playVideo( resume_val);
+				}
+				else {
+					Main.logToServer("ERROR: No resume data in response " );
+
+		    		Display.hide();
+		        	Display.showProgress();
+					Player.playVideo(-1);
+				}
+			};
+
+			this.errorCallback = function() {
+				Display.hide();
+				Display.showProgress();
+				Player.playVideo(-1);
+			};
+			
+			
+			break;
+			
+		case RestCmds.CMD_ExecRecCmd :
+			// Execute a recording command
+		
+			Main.logToServer("Server.execRecCmd cmd="+parms.cmd+" guid=" + guid );
+
+			this.url = Config.serverUrl + "/execreccmd?cmd="+parms.cmd+"&guid=" + guid;
+			this.cmd = cmd;
+			this.method = "GET";
+
+			this.successCallback = function(data, status, XHR ) {
+				Main.logToServer("Server.execRecCmd OK" ) ;
+				Display.handleDescription(Main.selectedVideo);
+			};
+			break;
+
+		case RestCmds.CMD_ActTimer :
+			// Activate or Deactivate a timer
+		
+			Main.logToServer("Server.ActTimer index=" + guid + " setActive= " + ((parms.setActive == true) ? "true" : "false" ));
+
+			this.url = Config.serverUrl + "/activateTimer?index=" +guid + "&activate=" + ((parms.setActive == true) ? "true" : "false"),
+			this.cmd = cmd;
+			this.method = "GET";
+
+			this.successCallback = function(data, status, XHR ) {
+				Main.logToServer("Timers.activateTimer: Success" );
+				Main.log("Timers.activateTimer: Success" );
+
+				Timers.resetView();
+			};
+			break;
+
+		case RestCmds.CMD_DelTimer :
+			// Delete a timer
+		
+			Main.logToServer("Server.DelTimer index=" + guid );
+
+			this.url = Config.serverUrl + "/deleteTimer?index=" +guid,
+			this.cmd = cmd;
+			this.method = "GET";
+
+			this.successCallback = function(data, status, XHR ) {
+				Main.logToServer("Timers.deleteTimer: Success" );
+				Main.log("Timers.deleteTimer: Success" );
+
+				Timers.resetView();
+				// remove index from database
+			};
+			break;
+
+		default:
+			Main.log("execRestCmd - ERROR: CMD= " + cmd + " is not supported");
+			Main.logToServer("execRestCmd - ERROR: CMD= " + cmd + " is not supported");
+			break;
+	};
+
+	if (this.cmd > 0) 
+		this.request();
+	else {
+		Main.logToServer("execRestCmd - CMD (" + cmd + ") Not found");
+	}
+
 };
 
-HeartbeatHandler.update = function() {
-	Server.notifyServer("running");
-	this.timeoutObj = window.setTimeout(function() {HeartbeatHandler.update(); }, (60*1000)); // once every 1min
+execRestCmd.prototype.request = function () {
+	Main.log("execRestCmd request url= " + this.url);
+
+	$.ajax({
+		url: this.url,
+		type : this.method,
+		context : this,
+		timeout : 500,
+		success : this.successCallback,
+/*		function(data, status, XHR ) {
+			if (this.successCallback != null)
+				this.successCallback();
+			switch (this.cmd) {
+				case RestCmds.CMD_AddTimer:
+					Notify.showNotify("Timer added", true);
+					Main.log ("addTimer for Inst= " + this.guid +" status: " + ((status != null) ? status : "null"));  	
+				break;
+
+				case RestCmds.CMD_DelMedFile:
+					Notify.showNotify("Deleted", true);
+					Data.deleteElm(Main.selectedVideo);
+					if (Main.selectedVideo >= Data.getVideoCount())
+						Main.selectedVideo = Data.getVideoCount() -1;
+
+					break;
+				
+				case RestCmds.CMD_DelYtUrl:
+					Notify.showNotify("Deleted", true);
+					Data.deleteElm(Main.selectedVideo);
+					if (Main.selectedVideo >= Data.getVideoCount())
+						Main.selectedVideo = Data.getVideoCount() -1;
+					Server.updateVdrStatus();
+					Display.setVideoList(Main.selectedVideo, (Main.selectedVideo - Display.currentWindow));
+					Main.logToServer("Server.deleteUrls: Success" );
+				break;
+
+				case RestCmds.CMD_DelRec:
+					Notify.showNotify("Deleted", true);
+					Data.deleteElm(Main.selectedVideo);
+					if (Main.selectedVideo >= Data.getVideoCount())
+						Main.selectedVideo = Data.getVideoCount() -1;
+					Server.updateVdrStatus();
+					Display.setVideoList(Main.selectedVideo, (Main.selectedVideo - Display.currentWindow));
+					Main.logToServer("Server.deleteRecording: Success" );
+			
+				break;
+
+				default:
+					Main.logToServer("execRestCmd - Success for cmd= " + this.cmd);
+			};
+		},*/
+		error : function (XHR, status, error) {
+			
+			Main.logToServer("ERROR received for guid= " + this.guid + " status= " + status);
+			if (status == "timeout") {
+				Notify.showNotify( "Timeout.", true);
+				
+			}
+			else {
+				Main.log("ERROR= " + XHR.status + " text= " + XHR.responseText);
+				var res = Server.getErrorText(XHR.status, XHR.responseText); 
+		    	Main.log ("execRestCmd for Error Inst= " + this.guid+ " res= " + res); 
+				Notify.showNotify( res, true);
+
+				if (this.errorCallback != null)
+					this.errorCallback();
+				
+			}
+    		
+		}
+	});
+
 };
 
-HeartbeatHandler.stop = function(){
-	if (this.isActive == false )
-		return;
 
-	window.clearTimeout(this.timeoutObj);
-	this.isActive = false;
-};
 
 function addTimer(guid) {
 	this.successCallback = null;
@@ -467,6 +884,33 @@ addTimer.prototype.request = function () {
 		}
 	});
 
+};
+
+var HeartbeatHandler = {
+	timeoutObj : null,
+	isActive : false
+};
+
+
+HeartbeatHandler.start = function(){
+	if (this.isActive ==true)
+		window.clearTimeout(this.timeoutObj);
+		
+	this.isActive = true;
+	HeartbeatHandler.update();
+};
+
+HeartbeatHandler.update = function() {
+	Server.notifyServer("running");
+	this.timeoutObj = window.setTimeout(function() {HeartbeatHandler.update(); }, (60*1000)); // once every 1min
+};
+
+HeartbeatHandler.stop = function(){
+	if (this.isActive == false )
+		return;
+
+	window.clearTimeout(this.timeoutObj);
+	this.isActive = false;
 };
 
 

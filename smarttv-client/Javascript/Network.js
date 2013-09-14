@@ -15,9 +15,6 @@ Network.init = function () {
     		this.ownGw = this.plugin.GetGateway(nw_type);
     		this.ownIp = this.plugin.GetIP(nw_type);
         }
-        Main.log( "ownMac= " +  this.ownMac);
-        Main.log ("ownGw= " + this.ownGw);
-        Main.log ("ownIp= " + this.ownIp);
         this.isInited = true;
     }
     catch (e) {

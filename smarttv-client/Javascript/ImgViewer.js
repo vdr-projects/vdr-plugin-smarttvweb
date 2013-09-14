@@ -6,11 +6,24 @@ ImgViewer.init = function () {
 	var elem = document.getElementById('iv-anchor');
 	elem.setAttribute('onkeydown', 'ImgViewer.onInput();');
 
+	this.isActive = false;
+	
+	this.eFullScreen = 0;
+	this.eMedIcons = 1;
+	
+	this.screenMode = this.eFullScreen;
+	
+	
 	$("#imageViewer").hide();
 };
 
 ImgViewer.show = function () {
 	Display.hide();
+	this.isActive = true;
+	this.screenMode = this.eFullScreen;
+	this.imgList = [];
+	this.curImg = 0;
+
 	$("#imageViewer").show();
 	
 	$("#iv-anchor").focus();
@@ -18,20 +31,53 @@ ImgViewer.show = function () {
 	Main.log ("URL= " + Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
 
 	Spinner.show();
+	ImgViewer.createImgArray();
+	
+	if (this.imgList.length == 0) {
+		Notify.showNotify("No Image Found", true);
+		ImgViewer.hide();
+		return;
+	}
+	ImgViewer.showImage();
 
+	/*
 	if (ImgViewer.isImage() == true) {
 		ImgViewer.showImage();
 	}
 	else {
 		ImgViewer.showNextImage();
 	}
+	*/
 };
 
 ImgViewer.hide = function () {
+	this.isActive = false;
+	this.screenMode = this.eFullScreen;
 	Display.show();
 	$("#imageViewer").hide();
 	Spinner.hide();
+	
+	Display.setVideoList(Main.selectedVideo, (Main.selectedVideo - Display.currentWindow));
+
 	Main.enableKeys();
+};
+
+ImgViewer.createImgArray = function () {
+	var max = Data.getVideoCount();
+	for (var i = 0; i < Data.getVideoCount() ; i ++) {
+		if (ImgViewer.isImage( (Main.selectedVideo + i) % max) == true) {
+			this.imgList.push((Main.selectedVideo + i) % max);
+		}
+	}
+	
+};
+
+ImgViewer.isImage = function(no) {
+	if ((Data.getCurrentItem().childs[no].payload.mime == "image/jpeg") ||
+	(Data.getCurrentItem().childs[no].payload.mime == "image/png"))
+		return true;
+	else
+		return false;
 };
 
 ImgViewer.isImage = function() {
@@ -44,6 +90,13 @@ ImgViewer.isImage = function() {
 };
 
 ImgViewer.showNextImage = function () {
+	this.curImg++;
+	if (this.curImg >= this.imgList.length)
+		this.curImg = 0;
+
+	ImgViewer.showImage();
+
+	/*
 	Main.logToServer("ImgViewer.showNextImage curIdx= " +Main.selectedVideo);
 	var start_ts = new Date().getTime();
 
@@ -70,9 +123,17 @@ ImgViewer.showNextImage = function () {
 		Notify.showNotify("No Image Found", true);
 		ImgViewer.hide();
 	}
+	*/
 };
 
 ImgViewer.showPrevImage = function () {
+	this.curImg--;
+	if (this.curImg <0)
+		this.curImg = this.imgList.length-1;
+
+	ImgViewer.showImage();
+
+/*
 	Main.log("ImgViewer.showPrevImage curIdx= " +Main.selectedVideo);
 	var start_ts = new Date().getTime();
 	
@@ -99,10 +160,12 @@ ImgViewer.showPrevImage = function () {
 		Notify.showNotify("No Image Found", true);
 		ImgViewer.hide();
 	}
+	*/
 };
 
 ImgViewer.showImage = function () {	
-	Main.logToServer("showImage: "+ Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
+//	Main.logToServer("showImage: "+ Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
+	Main.logToServer("showImage: "+ Data.getCurrentItem().childs[this.imgList[this.curImg]].payload.link);
 
 	$("#ivImage")
 		.error(function() { 
@@ -120,7 +183,48 @@ ImgViewer.showImage = function () {
 			else {
 				$(this).css({"width": "100%", "height" : "auto"});
 			}})
-		.attr('src', Data.getCurrentItem().childs[Main.selectedVideo].payload.link +"?"+Math.random());
+		.attr('src', Data.getCurrentItem().childs[this.imgList[this.curImg]].payload.link +"?"+Math.random());
+//		.attr('src', Data.getCurrentItem().childs[Main.selectedVideo].payload.link +"?"+Math.random());
+};
+
+function ImgLoader (url, elm) {
+	this.url = url;
+	this.elm = elm;
+
+	this.elm
+		.error(function() { 
+			Main.log("ERROR"); 
+			ImgViewer.hide();
+			Spinner.hide();
+			Notify.showNotify("Error while loading image.", true);
+			})
+		.load(function () { 
+			Main.logToServer("showImage Loaded");
+			Spinner.hide();
+			if($(this).height() > $(this).width()) {
+				$(this).css({"height": "100%", "width" : "auto"});
+			}
+			else {
+				$(this).css({"width": "100%", "height" : "auto"});
+			}})
+		.attr('src', this.url +"?"+Math.random());
+	
+	};
+
+
+ImgViewer.showImageGrid = function () {
+	
+};
+
+ImgViewer.showGridRow = function (no) {
+	var p_width = $("body").outerWidth();
+	var elms = p_width / no;
+	
+	var row = $("<div>");
+
+	var l_elm = $("<div>", {style : "display: inline-block; ", class : "style_hbOverlayLElm"});
+	var r_elm = $("<div>", {style : "display: inline-block;"});
+
 };
 
 ImgViewer.onInput = function () {
@@ -140,17 +244,36 @@ ImgViewer.onInput = function () {
 			ImgViewer.showNextImage();
 		break;
 		case tvKey.KEY_ENTER:
-//			Buttons.ynShow();
+			if (this.screenMode == this.eFullScreen) {
+				this.screenMode = this.eMedIcons;
+			}
+			else {
+				this.screenMode = this.eFullScreen;
+			}
+	;
+
+		//			Buttons.ynShow();
 			// Show overlay info
 
 		break;
 		case tvKey.KEY_RETURN:
 		case tvKey.KEY_EXIT:
 		case tvKey.KEY_STOP:
+			Main.selectedVideo = this.imgList[this.curImg];
+
 			ImgViewer.hide();
-			
 			if (this.returnCallback  != null)
 				this.returnCallback(); 	    	
+			break;
+		case tvKey.KEY_BLUE:
+			break;
+		case tvKey.KEY_YELLOW:
+			Main.log("Delete YE Button");
+			Buttons.ynShow();
+//			Server.deleteMedFile(Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
+		break;
+		case tvKey.KEY_TOOLS:
+			Helpbar.showHelpbar();
 			break;
 
 	}

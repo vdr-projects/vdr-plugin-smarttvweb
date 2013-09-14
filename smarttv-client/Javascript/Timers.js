@@ -1,8 +1,11 @@
 var Timers = {
 	timerList : [],
 	scrollDur : 300,
-	scrollFlip : 100
-
+	scrollFlip : 100,
+	btnMode : 0
+	// 0 nothing
+	// 1: delete
+	// 2: 
 };
 
 Timers.init = function() {
@@ -145,8 +148,8 @@ Timers.createMenu= function () {
 };
 
 Timers.getPrintDate = function (day) {
-	var day = new Date (day * 1000);
-	return day.getDate() + "." + (day.getMonth() +1) + "." + day.getFullYear()	 
+	var d = new Date (day * 1000);
+	return d.getDate() + "." + (d.getMonth() +1) + "." + d.getFullYear();	 
 };
 
 Timers.getWeekdays = function (wd) {
@@ -170,7 +173,10 @@ Timers.createEntry= function (i, w) {
 	var row = $("<div>", {id: "tmr-"+i, class : "style_menuItem", style : "text-align:left;overflow-x: hidden;white-space : nowrap;"}); //, style : "text-overflow: ellipsis;white-space : nowrap;" 
 
 //	row.append($("<div>", {class : ((Timers.timerList[i].isrec ==true) ? "style_timerRec" : ""), style : "display: inline-block;"}));
-	row.append($("<div>", {class : ((Timers.timerList[i].isrec ==true) ? "style_timerRec" : "style_timerNone"), style : "display: inline-block;"})); 
+	
+	
+	row.append($("<div>", {class : ((Timers.timerList[i].isrec ==true) ? "style_timerRec" : ((Timers.timerList[i].flags & 1) != 0) ? "style_timerAct" : "style_timerNone"), style : "display: inline-block;"})); 
+
 	if (	Timers.timerList[i].isSingleEvent == true) {
 	}
 	else {
@@ -199,14 +205,16 @@ Timers.resetView = function () {
 
 };
 
-Timers.deleteTimer = function () {
+Timers.timerCallback = function () {
 // delete the current timer
 	Main.log("****** Delete Timer: " + Timers.timerList[this.btnSelected].title);
 	
-	var del_req = new DeleteTimerReq (Timers.timerList[this.btnSelected].index);
-//	var del_req = new DeleteTimerReq (10);
+//	var del_req = new DeleteTimerReq (Timers.timerList[this.btnSelected].index);
 
-}
+	var obj = new execRestCmd(RestCmds.CMD_DelTimer, Timers.timerList[this.btnSelected].index);
+	//	var del_req = new DeleteTimerReq (10);
+};
+
 
 Timers.selectBtnUp = function () {
 	var btnname = "#tmr-"+this.btnSelected;
@@ -271,6 +279,46 @@ Timers.onInput = function () {
 //			Timers.hide();
 
 		break;
+		case tvKey.KEY_YELLOW:
+
+			Timers.timerCallback = function () {
+			// delete the current timer
+				Main.log("Timers.timerCallback: " + Timers.timerList[this.btnSelected].title);
+				var obj = new execRestCmd(RestCmds.CMD_DelTimer, Timers.timerList[this.btnSelected].index);
+				//	var del_req = new DeleteTimerReq (10);
+			};
+
+			Buttons.ynShow();
+//			Timers.hide();
+
+		break;
+		case tvKey.KEY_RED:
+			if ((Timers.timerList[this.btnSelected].flags & 1) != 0) {
+				// Timer is currently active
+				Buttons.ynHeadlineText ("Deactivate Timer ?");
+				Timers.timerCallback = function () {
+						Main.log("Timers.timerCallback Deactivate Timer: " + Timers.timerList[this.btnSelected].title);						
+						var obj = new execRestCmd(RestCmds.CMD_ActTimer, Timers.timerList[this.btnSelected].index, {setActive : false});
+					};
+				
+			}
+			else {
+				// Timer is currently deactive
+				Buttons.ynHeadlineText ("Activate Timer ?");
+				Timers.timerCallback = function () {
+					Main.log("Timers.timerCallback Activate Timer: " + Timers.timerList[this.btnSelected].title);						
+					var obj = new execRestCmd(RestCmds.CMD_ActTimer, Timers.timerList[this.btnSelected].index, {setActive : true});
+				};
+			}
+
+			Buttons.ynShow();
+//			Timers.hide();
+
+		break;
+    	case tvKey.KEY_TOOLS:
+    		Helpbar.showHelpbar();
+    	break;
+		
 		case tvKey.KEY_RETURN:
 		case tvKey.KEY_EXIT:
 			Timers.hide();
@@ -288,7 +336,7 @@ Timers.onInput = function () {
 };
 
 
-
+/*
 function DeleteTimerReq (idx) {
 	this.index = idx;	
 	this.exec();
@@ -321,3 +369,4 @@ DeleteTimerReq.prototype.exec = function () {
 	});
 
 };
+*/

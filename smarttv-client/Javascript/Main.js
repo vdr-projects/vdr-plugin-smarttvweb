@@ -88,6 +88,7 @@ Main.onLoad = function() {
 		
 	}
 	catch (e) {
+		// Not a TV  set. Use Config.serverAddrDefault as server address
 		Config.deviceType = 1;
 		tvKey = Main.tvKeys; 
 
@@ -135,8 +136,13 @@ showHandler = function() {
 // Called by Config, when done
 Main.init = function () {
 	Main.log("Main.init()");
+	if (Config.verboseStart == true)
+		Display.showPopup ("Config done: Main.init() now" );
 
 	if (Config.debug == true) {
+		if (Config.verboseStart == true)
+			Display.showPopup ("Main.init: widgetdebug is true. Logging to (" + Config.serverUrl + ")");
+		
 		Main.logToServer = function (msg) {
 			if (Config.serverUrl == "" )
 				return;
@@ -193,7 +199,13 @@ Main.init = function () {
 	Timers.init();
 	ImgViewer.init();
 //	Timers.show();
+	
+	//set popup to normal timeout duration
+	Display.popupOlHandler.olDelay = 3*1000;
 
+	Config.verboseStart = false;
+	Display.scrollPopup ();
+	// end
 	
 	if (Config.deviceType == 0){
 	Main.log("ProductInfo= " + deviceapis.tv.info.getProduct());
@@ -719,8 +731,10 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (keyCode) {
 //    Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
 //    Main.logToServer(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
     
-    switch(keyCode)
-    {
+    switch(keyCode) {
+    	case tvKey.KEY_TOOLS:
+    		Helpbar.showHelpbar();
+    	break;
         case tvKey.KEY_1:
         	Main.log("KEY_1 pressed");
 //        	Display.showProgress();
@@ -917,6 +931,10 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function (keyCode) {
 // Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
  
  switch(keyCode) {
+	case tvKey.KEY_TOOLS:
+		Helpbar.showHelpbar();
+	break;
+
 	case tvKey.KEY_ASPECT:
 		Player.toggleAspectRatio();
 		break;
@@ -1108,6 +1126,10 @@ cMenuKeyHndl.prototype.handleKeyDown = function (keyCode) {
 // var keyCode = event.keyCode;
  
  switch(keyCode) {
+	case tvKey.KEY_TOOLS:
+		Helpbar.showHelpbar();
+	break;
+
  	case tvKey.KEY_0:
 		if (Main.state == Main.eLIVE) {
 			Main.log("cMenu DirectAccess: keyCode= " + keyCode);
@@ -1176,6 +1198,10 @@ cMenuKeyHndl.prototype.handleKeyDown = function (keyCode) {
  		break;		
  	case tvKey.KEY_YELLOW:
  		if (Main.state == Main.eURLS) {
+ 			Buttons.ynShow();
+ 		}
+ 		if (Main.state == Main.eMED) {
+ 			Main.log("Delete YE Button");
  			Buttons.ynShow();
  		}
  		break;
