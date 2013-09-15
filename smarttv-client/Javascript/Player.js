@@ -146,7 +146,7 @@ Player.toggleAspectRatio = function () {
 
 Player.toggle3DEffectMode = function () {
 	Main.logToServer("Player.toggle3DEffectMode");
-	if (Main.isBdPlayer() == true) {
+	if (Main.isTvSet() == false) {
 		if( 1 == Player.screenObj.Flag3DTVConnect() ) {
 			Main.logToServer("BDPlayer connected to 3D TV");
 			Player.setNew3DEffectMode();

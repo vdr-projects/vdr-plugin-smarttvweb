@@ -47,6 +47,11 @@ Display.init = function()
     this.popupOlHandler.init(Display.handlerShowPopup, Display.handlerHidePopup);
     this.infoOlHandler.init(Display.handlerShowInfo, Display.handlerHideInfo);
     this.infoOlHandler.olDelay = Config.infoTimeout;
+
+    // Different popup behavior during config phase;
+    this.popupOlHandler.olDelay = 30*1000;
+    $("#popup").css("height", "300px");
+    // end
     
     if (!this.statusDiv) {
         success = false;
@@ -168,7 +173,7 @@ Display.getNumString =function(num, fmt) {
 };
 
 Display.selectItem = function (item) {
-
+//	item.setAttribute("class", "style_menuItemSelected");
 	item.style.color = "black";
 	item.style.background = "white";
 	item.style.background = "-webkit-linear-gradient(top, rgba(246,248,249,1) 0%,rgba(229,235,238,1) 50%,rgba(215,222,227,1) 51%,rgba(245,247,249,1) 100%)";
@@ -178,6 +183,7 @@ Display.selectItem = function (item) {
 };
 
 Display.unselectItem = function (item) {
+//	item.setAttribute("class", "style_menuItem");
 	item.style.color = "white";
 //	item.style.backgroundColor = "transparent";
 	item.style.background = "transparent";
@@ -276,7 +282,7 @@ Display.tuneLeftSide = function() {
 	res.w3 = "5%";
 	switch (Main.state) {
 		case Main.eLIVE:
-			res.w1 = "5%";
+			res.w1 = "7%";
 			res.w2 = "25%";
 			res.w3 = "65%";
 		break;
@@ -900,9 +906,26 @@ Display.handlerHideInfo = function() {
  * Popup handlers
  */
 Display.showPopup = function(text) {
-	var oldHTML = document.getElementById("popup").innerHTML;
-	Display.putInnerHTML(document.getElementById("popup"), oldHTML + "<br>" + text);
+//	var oldHTML = document.getElementById("popup").innerHTML;
+//	Display.putInnerHTML(document.getElementById("popup"), oldHTML + "<br>" + text);
+	
+	if (text == "")
+		this.popupOlHandler.show();
+		
+	var elm = $("<p>", {text: text});
+	$("#popup").append(elm);
 	this.popupOlHandler.show();
+	
+	Display.scrollPopup ();
+};
+
+Display.scrollPopup = function () {
+	var t = $('#popup').children().last().position().top;
+	var h = $('#popup').children().last().outerHeight();
+	if ((t + h) > $("#popup").height()) {
+		$("#popup").animate ({scrollTop:  $("#popup").scrollTop() + t + h - $("#popup").height()}, 200);		
+	}
+	
 };
 
 Display.handlerShowPopup = function() {
@@ -911,6 +934,10 @@ Display.handlerShowPopup = function() {
 };
 
 Display.handlerHidePopup = function() {
+	$("#popup").css("height", "100px");
+
+    $('#popup').children().each(function() { $(this).remove(); });
+
     document.getElementById("popup").style.display="none";
     Display.putInnerHTML(document.getElementById("popup"), "");
 };
@@ -1035,7 +1062,7 @@ OverlayHandler.prototype.checkHideCallback = function () {
 	var now = Display.GetEpochTime();
 	if (now >= this.hideTime) {
 
-		this.olDelay = 3000;
+//		this.olDelay = 3000;
 		if (this.hideCallback) {
 			this.hideCallback();			
 		}

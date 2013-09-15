@@ -88,6 +88,7 @@ Main.onLoad = function() {
 		
 	}
 	catch (e) {
+		// Not a TV  set. Use Config.serverAddrDefault as server address
 		Config.deviceType = 1;
 		tvKey = Main.tvKeys; 
 
@@ -135,8 +136,13 @@ showHandler = function() {
 // Called by Config, when done
 Main.init = function () {
 	Main.log("Main.init()");
+	if (Config.verboseStart == true)
+		Display.showPopup ("Config done: Main.init() now" );
 
 	if (Config.debug == true) {
+		if (Config.verboseStart == true)
+			Display.showPopup ("Main.init: widgetdebug is true. Logging to (" + Config.serverUrl + ")");
+		
 		Main.logToServer = function (msg) {
 			if (Config.serverUrl == "" )
 				return;
@@ -191,14 +197,20 @@ Main.init = function () {
 	Comm.init();
 
 	Timers.init();
+	ImgViewer.init();
 //	Timers.show();
+	
+	//set popup to normal timeout duration
+	Display.popupOlHandler.olDelay = 3*1000;
 
+	Config.verboseStart = false;
+	Display.scrollPopup ();
+	// end
 	
 	if (Config.deviceType == 0){
 	Main.log("ProductInfo= " + deviceapis.tv.info.getProduct());
 	Main.logToServer("ProductInfo= " + deviceapis.tv.info.getProduct());
-	Main.logToServer("isBdPlayer= " + Main.isBdPlayer());
-	Main.logToServer("TimeZone= " + deviceapis.tv.info.getTimeZone());
+	Main.logToServer("isTvSet= " + Main.isTvSet());
 	}
 //	TestHandler.showMenu(20);
 	
@@ -221,9 +233,10 @@ Main.init = function () {
 	}
 */	
 //	 Read widget conf. find the file to log
-/*
+
+	/*
 	xhttp=new XMLHttpRequest();
-	xhttp.open("GET","$MANAGER_WIDGET/Common/webapi/1.0/deviceapis.js",false);
+	xhttp.open("GET","$MANAGER_WIDGET/Common/API/TVKeyValue.js",false);
 	xhttp.send("");
 	xmlDoc=xhttp.responseText;
 	Main.logToServer (xmlDoc);
@@ -261,8 +274,8 @@ Main.testUrls = function () {
 
 };
 
-Main.isBdPlayer = function () {
-	if (deviceapis.tv.info.getProduct() == 2) //deviceapis.tv.info.PRODUCT_TYPE_BD
+Main.isTvSet = function () {
+	if (deviceapis.tv.info.getProduct() == 0) //deviceapis.tv.info.PRODUCT_TYPE_TV
 		return true;
 	else
 		return false;
@@ -593,19 +606,23 @@ Main.playItem = function (url) {
 		
 		break;
 	case Main.eMED:
-		Display.hide();
-    	Display.showProgress();
-		Player.mFormat = Player.ePDL;
+		if (ImgViewer.isImage() == true) {
+			ImgViewer.show();
+		}
+		else {
+			Display.hide();
+			Display.showProgress();
+			Player.mFormat = Player.ePDL;
     	
-    	Main.log(" playItem: now= " + now + " start_time= " + start_time + " dur= " + duration + " (Start + Dur - now)= " + ((start_time + duration) -now));
+			Main.log(" playItem: now= " + now + " start_time= " + start_time + " dur= " + duration + " (Start + Dur - now)= " + ((start_time + duration) -now));
 
-		Display.setOlTitle(Data.getCurrentItem().childs[Main.selectedVideo].title);
+			Display.setOlTitle(Data.getCurrentItem().childs[Main.selectedVideo].title);
 
-		Player.setVideoURL( Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
-		Player.playVideo(-1);
+			Player.setVideoURL( Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
+			Player.playVideo(-1);
 
-		Player.guid = "unknown";
-
+			Player.guid = "unknown";
+		}
 		break;
 	case Main.eURLS:
 		Display.hide();
@@ -714,8 +731,10 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (keyCode) {
 //    Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
 //    Main.logToServer(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
     
-    switch(keyCode)
-    {
+    switch(keyCode) {
+    	case tvKey.KEY_TOOLS:
+    		Helpbar.showHelpbar();
+    	break;
         case tvKey.KEY_1:
         	Main.log("KEY_1 pressed");
 //        	Display.showProgress();
@@ -873,10 +892,12 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (keyCode) {
         case tvKey.KEY_YELLOW:
 			Player.nextSubtitleTrack();
         	break;
-        case 1089:
+        case tvKey.KEY_SUB_TITLE: // (1089) BD Player Key for Green
         case tvKey.KEY_3D: 
         case tvKey.KEY_GREEN:
         	Player.toggle3DEffectMode();
+         	widgetAPI.blockNavigation(event);
+
         	break;
 		break;
         default:
@@ -910,6 +931,10 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function (keyCode) {
 // Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
  
  switch(keyCode) {
+	case tvKey.KEY_TOOLS:
+		Helpbar.showHelpbar();
+	break;
+
 	case tvKey.KEY_ASPECT:
 		Player.toggleAspectRatio();
 		break;
@@ -1074,6 +1099,12 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function (keyCode) {
      case tvKey.KEY_YELLOW:
 			Player.nextSubtitleTrack();
      	break;
+     case tvKey.KEY_SUB_TITLE: // BD Player Fix for Key Green (1089)
+     case tvKey.KEY_3D: 
+     case tvKey.KEY_GREEN:
+     	Player.toggle3DEffectMode();
+     	widgetAPI.blockNavigation(event);
+     	break;
 
      default:
      	this.defaultKeyHandler.handleDefKeyDown(keyCode);
@@ -1095,6 +1126,10 @@ cMenuKeyHndl.prototype.handleKeyDown = function (keyCode) {
 // var keyCode = event.keyCode;
  
  switch(keyCode) {
+	case tvKey.KEY_TOOLS:
+		Helpbar.showHelpbar();
+	break;
+
  	case tvKey.KEY_0:
 		if (Main.state == Main.eLIVE) {
 			Main.log("cMenu DirectAccess: keyCode= " + keyCode);
@@ -1157,10 +1192,16 @@ cMenuKeyHndl.prototype.handleKeyDown = function (keyCode) {
 		break;
  
  	case tvKey.KEY_RED:
- 		RecCmdHandler.showMenu(Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
+		if ((Main.state == Main.eLIVE) || (Main.state == Main.eREC)) {
+			RecCmdHandler.showMenu(Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
+		}
  		break;		
  	case tvKey.KEY_YELLOW:
  		if (Main.state == Main.eURLS) {
+ 			Buttons.ynShow();
+ 		}
+ 		if (Main.state == Main.eMED) {
+ 			Main.log("Delete YE Button");
  			Buttons.ynShow();
  		}
  		break;
@@ -1603,11 +1644,11 @@ Main.tvKeys = {
 		KEY_LEFT :37,
 		KEY_RIGHT :39,
 		KEY_ENTER :13,
+		KEY_RED :82,
 
 		KEY_RETURN :27,
 		KEY_STOP :27, // ESC
 //		KEY_MUTE :27,
-		KEY_RED :82,
 
 		KEY_1 :49,
 		KEY_2 :50,

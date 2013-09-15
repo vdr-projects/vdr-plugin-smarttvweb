@@ -42,6 +42,7 @@ Buttons.init = function (){
 		//		$("#prc-buttons-anchor").attr("onkeydown", "Button.prButton.onInput();");   
 		}
 };
+
 Buttons.ynReturnCallback = function () {
 	switch (Main.state) {
 	case Main.eOPT:
@@ -50,6 +51,10 @@ Buttons.ynReturnCallback = function () {
 	case Main.eTMR:
 		Buttons.ynHide();
 		Timers.focus();
+		break;
+	case Main.eMED:
+		Buttons.ynHide();
+		
 		break;
 	default:
 		break;
@@ -79,9 +84,12 @@ Buttons.ynEnterCallback = function () {
 
 				break;
 			case Main.eTMR:
-				Timers.deleteTimer();
+				
+				Timers.timerCallback();
 				break;
-
+			case Main.eMED:
+				Server.deleteMedFile(Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
+				break;
 			}
 						
 			break;
@@ -144,6 +152,11 @@ Buttons.prcHide = function () {
 	Main.enableKeys();
 };
 
+//change the Headline Text of the yn buttons (Default is "Delete ?")
+Buttons.ynHeadlineText = function(msg) {
+	$("#yn-btn-text").text(msg);	
+};
+
 Buttons.ynShow = function () {
 	Main.log("Buttons.ynShow()");
 	this.ynButton.show();
@@ -151,6 +164,7 @@ Buttons.ynShow = function () {
 };
 
 Buttons.ynHide = function () {
+	$("#yn-btn-text").text("Delete ?");
 	this.ynButton.hide();
 	switch (Main.state) {
 	case Main.eOPT:
@@ -257,7 +271,7 @@ Buttons.createYnButtons= function () {
 	var row = $("<tr>", {style: "width:100%; align:center"});
 	var cell = $("<td>",  {style :"height:80%; width:100%", colspan:"3" });
 	cell.css("align","center");
-	var txt_div = $("<div>", {text: "Delete ?"});
+	var txt_div = $("<div>", {text: "Delete ?", id : "yn-btn-text"});
 	cell.append(txt_div);
 	row.append(cell);
 	tbody.append(row);
