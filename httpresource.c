@@ -352,14 +352,13 @@ int cHttpResource::processRequest() {
   }
 
   //thlo for testing purpose
-/*
-  if (mPath.compare("/modifyTimer") == 0) {
+
+  if (mPath.compare("/activateTimer") == 0) {
     mResponse = new cResponseMemBlk(this);
-    ((cResponseMemBlk*)mResponse)->receiveModTimerReq();
+    ((cResponseMemBlk*)mResponse)->receiveActTimerReq();
     return OKAY;
   }
-*/
-  //thlo for testing purpose
+
   if (mPath.compare("/addTimer") == 0) {
     mResponse = new cResponseMemBlk(this);
     ((cResponseMemBlk*)mResponse)->receiveAddTimerReq();

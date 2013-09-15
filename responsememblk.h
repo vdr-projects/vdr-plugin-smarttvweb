@@ -74,6 +74,7 @@ class cResponseMemBlk : public cResponseBase {
   void receiveExecRecCmdReq();
 
   void receiveAddTimerReq();
+  void receiveActTimerReq();
   void receiveDelTimerReq();
 
   void receiveDelFileReq();
