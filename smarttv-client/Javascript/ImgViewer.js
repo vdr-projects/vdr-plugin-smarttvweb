@@ -1,5 +1,6 @@
 var ImgViewer = {
-	returnCallback : null
+	returnCallback : null,
+	imgOlHandler : null
 };
 
 ImgViewer.init = function () {
@@ -13,7 +14,9 @@ ImgViewer.init = function () {
 	
 	this.screenMode = this.eFullScreen;
 	
-	
+//	this.imgOlHandler = new OverlayHandler("ImgHndl");
+//    this.imgOlHandler.init(Display.handlerShowImgInfo, Display.handlerHideImgInfo);
+
 	$("#imageViewer").hide();
 };
 
@@ -26,8 +29,8 @@ ImgViewer.show = function () {
 
 	$("#imageViewer").show();
 	
-	$("#iv-anchor").focus();
-
+	ImgViewer.focus ();
+	
 	Main.log ("URL= " + Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
 
 	Spinner.show();
@@ -38,16 +41,16 @@ ImgViewer.show = function () {
 		ImgViewer.hide();
 		return;
 	}
-	ImgViewer.showImage();
 
-	/*
-	if (ImgViewer.isImage() == true) {
-		ImgViewer.showImage();
-	}
-	else {
-		ImgViewer.showNextImage();
-	}
-	*/
+//	ImgViewer.showImageGrid();
+
+	ImgViewer.showImage();
+};
+
+ImgViewer.focus = function () {
+	Main.log("ImgViewer.focus ");
+	$("#iv-anchor").focus();
+	
 };
 
 ImgViewer.hide = function () {
@@ -63,6 +66,8 @@ ImgViewer.hide = function () {
 };
 
 ImgViewer.createImgArray = function () {
+	this.imgList = [];
+
 	var max = Data.getVideoCount();
 	for (var i = 0; i < Data.getVideoCount() ; i ++) {
 		if (ImgViewer.isImage( (Main.selectedVideo + i) % max) == true) {
@@ -95,35 +100,6 @@ ImgViewer.showNextImage = function () {
 		this.curImg = 0;
 
 	ImgViewer.showImage();
-
-	/*
-	Main.logToServer("ImgViewer.showNextImage curIdx= " +Main.selectedVideo);
-	var start_ts = new Date().getTime();
-
-	var start_idx = Main.selectedVideo;
-	var found_next = false;
-	Main.nextVideo(1) ;
-	while ( start_idx != Main.selectedVideo ) {
-		Main.logToServer ("ImgViewer.showNextImage: Main.selectedVideo increased to " + Main.selectedVideo);
-		if (ImgViewer.isImage() == true) {
-
-			Main.logToServer( "Found idx= " +Main.selectedVideo);
-			found_next = true;
-			break;
-		}
-		Main.nextVideo(1);
-
-	}
-	var now = new Date().getTime();
-	Main.logToServer ("Duration= " + (now-start_ts));
-
-	if (found_next)
-		ImgViewer.showImage();
-	else {
-		Notify.showNotify("No Image Found", true);
-		ImgViewer.hide();
-	}
-	*/
 };
 
 ImgViewer.showPrevImage = function () {
@@ -132,41 +108,16 @@ ImgViewer.showPrevImage = function () {
 		this.curImg = this.imgList.length-1;
 
 	ImgViewer.showImage();
-
-/*
-	Main.log("ImgViewer.showPrevImage curIdx= " +Main.selectedVideo);
-	var start_ts = new Date().getTime();
-	
-	var start_idx = Main.selectedVideo;
-	var found_next = false;
-	Main.previousVideo(1);
-	while ( start_idx != Main.selectedVideo ) {
-		Main.log ("ImgViewer.showPrevImage: Main.selectedVideo increased to " + Main.selectedVideo);
-		if (ImgViewer.isImage() == true) {
-			
-			Main.log( "Found idx= " +Main.selectedVideo);
-			found_next = true;
-			break;
-		}
-		Main.previousVideo(1);
-
-	}
-	var now = new Date().getTime();
-	Main.logToServer ("Duration= " + (now-start_ts));
-	
-	if (found_next)
-		ImgViewer.showImage();
-	else {
-		Notify.showNotify("No Image Found", true);
-		ImgViewer.hide();
-	}
-	*/
 };
 
 ImgViewer.showImage = function () {	
-//	Main.logToServer("showImage: "+ Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
+	Main.log("showImage: "+ Data.getCurrentItem().childs[this.imgList[this.curImg]].payload.link);
 	Main.logToServer("showImage: "+ Data.getCurrentItem().childs[this.imgList[this.curImg]].payload.link);
+	var p_width = $("#imageViewer").width();
+	var p_height = $("#imageViewer").height();
 
+	var img_name = Data.getCurrentItem().childs[this.imgList[this.curImg]].payload.link.split("/");
+	Notify.showNotify( img_name[img_name.length -1], true);
 	$("#ivImage")
 		.error(function() { 
 			Main.log("ERROR"); 
@@ -177,55 +128,62 @@ ImgViewer.showImage = function () {
 		.load(function () { 
 			Main.logToServer("showImage Loaded");
 			Spinner.hide();
+			/*
 			if($(this).height() > $(this).width()) {
 				$(this).css({"height": "100%", "width" : "auto"});
 			}
 			else {
 				$(this).css({"width": "100%", "height" : "auto"});
-			}})
-		.attr('src', Data.getCurrentItem().childs[this.imgList[this.curImg]].payload.link +"?"+Math.random());
-//		.attr('src', Data.getCurrentItem().childs[Main.selectedVideo].payload.link +"?"+Math.random());
+			}*/
+			})
+		.attr('src', Data.getCurrentItem().childs[this.imgList[this.curImg]].payload.link +"?"+Math.random())
+		.css({"max-width": p_width + "px", "max-height" :p_height  + "px" });
 };
 
-function ImgLoader (url, elm) {
-	this.url = url;
-	this.elm = elm;
-
-	this.elm
+ImgViewer.ImgLoader = function(url, w, h) {
+//	this.url = url;
+	var elm = $("<div>", {style : "display: inline-block; width: " + w + "px; height: "+ h + "px;" });
+	var img = $("<img>", {style : "max-width: " + w + "px; max-height: "+ h + "px;" });
+	elm.append(img);
+	
+	img
 		.error(function() { 
-			Main.log("ERROR"); 
-			ImgViewer.hide();
-			Spinner.hide();
-			Notify.showNotify("Error while loading image.", true);
+			Main.log("ERROR while loading"); 
 			})
 		.load(function () { 
-			Main.logToServer("showImage Loaded");
+//			Main.logToServer("showImage Loaded");
 			Spinner.hide();
-			if($(this).height() > $(this).width()) {
+/*			if($(this).height() > $(this).width()) {
 				$(this).css({"height": "100%", "width" : "auto"});
 			}
 			else {
 				$(this).css({"width": "100%", "height" : "auto"});
-			}})
-		.attr('src', this.url +"?"+Math.random());
-	
-	};
+			}
+			*/
+			})
+		.attr('src', url +"?"+Math.random());
+
+	return elm;
+};
 
 
 ImgViewer.showImageGrid = function () {
+	var p_width = $("#imageViewer").width();
+	var p_height = $("#imageViewer").height();
+	
+	var no_elms = 5;
+
+	for (var y = 0; y < no_elms; y++) {
+		var row = $("<div>");
+		
+		for (var i = 0; i < no_elms; i ++) {
+			row.append(ImgViewer.ImgLoader("http://192.168.1.122:8000/hd2/mpeg/Bilder/PANA-IMG_130803-110113.jpg" , p_width / no_elms, p_height / no_elms));
+		};
+		$("#imageViewer").append(row);
+	};
 	
 };
 
-ImgViewer.showGridRow = function (no) {
-	var p_width = $("body").outerWidth();
-	var elms = p_width / no;
-	
-	var row = $("<div>");
-
-	var l_elm = $("<div>", {style : "display: inline-block; ", class : "style_hbOverlayLElm"});
-	var r_elm = $("<div>", {style : "display: inline-block;"});
-
-};
 
 ImgViewer.onInput = function () {
     var keyCode = event.keyCode;
@@ -269,6 +227,7 @@ ImgViewer.onInput = function () {
 			break;
 		case tvKey.KEY_YELLOW:
 			Main.log("Delete YE Button");
+			Main.selectedVideo = this.imgList[this.curImg];
 			Buttons.ynShow();
 //			Server.deleteMedFile(Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
 		break;

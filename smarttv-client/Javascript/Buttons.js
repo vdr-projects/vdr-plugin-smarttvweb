@@ -54,7 +54,6 @@ Buttons.ynReturnCallback = function () {
 		break;
 	case Main.eMED:
 		Buttons.ynHide();
-		
 		break;
 	default:
 		break;
@@ -173,6 +172,15 @@ Buttons.ynHide = function () {
 	case Main.eTMR:
 		Timers.focus();
 	break;
+	case Main.eMED:
+		Main.log("Buttons.ynReturnCallback isActive= " + (ImgViewer.isActive == true) ? "true" : "false");
+		if (ImgViewer.isActive == true) {
+			ImgViewer.focus ();
+		}
+		else
+			Main.enableKeys();
+
+		break;
 	default:
 		Main.enableKeys();
 		break;
