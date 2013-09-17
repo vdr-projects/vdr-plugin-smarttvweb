@@ -99,7 +99,6 @@ Server.updateEntry = function(guid) {
 
 			$(data).find("item").each(function () {
 				var title = $(this).find('title').text();
-//				var link = $(this).find('link').text();
 				var link = $(this).find('enclosure').attr('url');
 				var guid = $(this).find('guid').text();
 				var programme = $(this).find('programme').text();
@@ -207,7 +206,7 @@ Server.updateVdrStatus = function (){
 	});
 };
 
-
+/*
 Server.getResume = function (guid) {
 //	Main.log ("***** getResume *****");
 	$.ajax({
@@ -240,7 +239,7 @@ Server.getResume = function (guid) {
 		}
 	});
 };
-
+*/
 /*
 Server.saveResume = function() {
 	var msg = ""; 
@@ -286,10 +285,6 @@ Server.fetchRecCmdsList = function() {
                 RecCmds.addItem( title_list, {cmd : cmd, confirm: confirm });              	
 				}); // each
 
-/*            if (Server.dataReceivedCallback) {
-                Server.dataReceivedCallback();
-            }
-*/			
 //			RecCmds.dumpFolderStruct();
 			RecCmds.completed();
 			RecCmdHandler.createRecCmdOverlay();
@@ -301,32 +296,10 @@ Server.fetchRecCmdsList = function() {
 		parsererror : function () {
 			Main.logToServer("Server.fetchRecCmdsList parserError  " );
 			Display.showPopup("Error in XML File");
-/*            if (Server.errorCallback != null) {
-            	Server.errorCallback("XmlError");
-            }
-*/
 		}
 	});
 };
 
-/*
-Server.execRecCmd = function (cmd, guid) {
-	var url = Config.serverUrl + "/execreccmd?cmd="+cmd+"&guid=" + guid;
-
-	Main.logToServer("Server.execRecCmd cmd="+cmd+" guid=" + guid + " url= " + url);
-	$.ajax({
-		url: url,
-		type : "GET",
-		success : function(data, status, XHR ) {
-			Main.logToServer("Server.execRecCmd OK" ) ;
-			Display.handleDescription(Main.selectedVideo);
-		},
-		error : function (XHR, status, error) {
-			Main.logToServer("Server.execRecCmd failed" ) ;
-		}
-	});	
-};
-*/
 Server.getErrorText = function (status, input) {
 //	var errno_str = input.slice(0, 3);
 //	var errno = parseInt(errno_str, 10);
@@ -437,32 +410,6 @@ Server.getErrorText = function (status, input) {
 Server.deleteRecording = function(guid) {
 	var obj = new execRestCmd(RestCmds.CMD_DelRec, guid);
 
-	/*
-	
-	Main.log("Server.deleteRecording guid=" + guid);
-	Main.logToServer("Server.deleteRecording guid=" + guid);
-	Notify.handlerShowNotify("Deleting...", false);
-
-	$.ajax({
-		url: Config.serverUrl + "/deleteRecording.xml?id=" +guid,
-		type : "POST",
-		success : function(data, status, XHR ) {
-			Notify.showNotify("Deleted", true);
-			Data.deleteElm(Main.selectedVideo);
-			if (Main.selectedVideo >= Data.getVideoCount())
-				Main.selectedVideo = Data.getVideoCount() -1;
-			Server.updateVdrStatus();
-			Display.setVideoList(Main.selectedVideo, (Main.selectedVideo - Display.currentWindow));
-			Main.logToServer("Server.deleteRecording: Success" );
-			},
-		error : function (XHR, status, error) {
-			Main.logToServer("Server.deleteRecording: Error" );
-
-			// show popup
-			Notify.showNotify("Error", true);
-		}
-	});
-	*/
 };
 
 
@@ -470,82 +417,19 @@ Server.deleteUrls = function (guid) {
 
 	var obj = new execRestCmd(RestCmds.CMD_DelYtUrl, guid);
 
-/*	
-	Main.log("Server.deleteUrls");
-	Main.logToServer("Server.deleteUrls guid=" + guid);
-	Notify.handlerShowNotify("Deleting...", false);
-
-	$.ajax({
-		url: Config.serverUrl + "/deleteYtUrl?guid=" +guid,
-		type : "POST",
-		success : function(data, status, XHR ) {
-			Notify.showNotify("Deleted", true);
-			Data.deleteElm(Main.selectedVideo);
-			if (Main.selectedVideo >= Data.getVideoCount())
-				Main.selectedVideo = Data.getVideoCount() -1;
-			Server.updateVdrStatus();
-			Display.setVideoList(Main.selectedVideo, (Main.selectedVideo - Display.currentWindow));
-			Main.logToServer("Server.deleteUrls: Success" );
-			},
-		error : function (XHR, status, error) {
-			Main.logToServer("Server.deleteUrls: Error" );
-			Notify.showNotify(status, true);
-
-			// show popup
-//			Notify.showNotify("Error", true);
-		}
-	});
-*/
 };
 
 
 Server.getResume = function (guid) {
 	Main.log ("***** getResume *****");
 	var obj = new execRestCmd(RestCmds.CMD_GetResume, guid);
-/*
-	$.ajax({
-		url: Config.serverUrl + "/getResume.xml",
-		type : "POST",
-		data : "filename:" + guid +"\n", 
-		success : function(data, status, XHR ) {
-			Main.log("**** Resome Success Response - status= " + status + " mime= " + XHR.responseType + " data= "+ data);
 
-			var resume_str = $(data).find("resume").text();
-			if (resume_str != "") {
-				var resume_val = parseFloat(resume_str);
-				Main.log("resume val= " + resume_val );
-				Main.logToServer("resume val= " + resume_val );
-				Player.resumePos = resume_val;
-				Player.playVideo( resume_val);
-			}
-			else {
-	    		Display.hide();
-	        	Display.showProgress();
-				Player.playVideo(-1);
-			}
-
-		},
-		error : function (jqXHR, status, error) {
-			Main.log("**** Resome Error Response - status= " + status + " error= "+ error);
-    		Display.hide();
-        	Display.showProgress();
-			Player.playVideo(-1);
-		}
-	});
-	*/
 };
 
 Server.saveResume = function() {
+	
 	var obj = new execRestCmd(RestCmds.CMD_SetResume, Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
-/*
-	var msg = ""; 
-    msg += "filename:" + Data.getCurrentItem().childs[Main.selectedVideo].payload.guid + "\n"; 
-    msg += "resume:"+ (Player.curPlayTime/1000) + "\n" ;
-    	
-	$.post(Config.serverUrl + "/setResume.xml", msg, function(data, textStatus, XHR) {
-		Main.logToServer("SaveResume Status= " + XHR.status );
-	}, "text");
-*/
+
 };
 
 Server.execRecCmd = function (cmd, guid) {
@@ -613,8 +497,24 @@ function execRestCmd(cmd, guid, parms) {
 				Notify.showNotify("Deleted", true);
 				Data.deleteElm(Main.selectedVideo);
 				if (Main.selectedVideo >= Data.getVideoCount())
-				Main.selectedVideo = Data.getVideoCount() -1;
+					Main.selectedVideo = Data.getVideoCount() -1;
+
+				Display.setVideoList(Main.selectedVideo, (Main.selectedVideo - Display.currentWindow));
+				
+
+				if (ImgViewer.isActive == true) {
+					ImgViewer.createImgArray();
+					ImgViewer.showImage();
+					ImgViewer.focus ();
+				}
+
 			};
+			this.errorCallback = function() {
+				if (ImgViewer.isActive == true) {
+					ImgViewer.focus ();
+				}
+			};
+			
 		break;
 		case RestCmds.CMD_DelYtUrl:
 			// delete a YouTube URL
@@ -664,8 +564,8 @@ function execRestCmd(cmd, guid, parms) {
 		case RestCmds.CMD_SetResume :
 			// Send Resume Data
 			
-			Main.log("Server.GetResume guid=" + guid);
-			Main.logToServer("Server.GetResume guid=" + guid);
+			Main.log("Server.SetResume guid=" + guid);
+			Main.logToServer("Server.SetResume guid=" + guid + " resume= " + (Player.curPlayTime/1000) + "sec");
 			this.url =Config.serverUrl + "/setResume.xml?guid=" +guid + "&resume=" + (Player.curPlayTime/1000);
 			this.cmd = cmd;
 			this.method = "POST";
@@ -691,7 +591,7 @@ function execRestCmd(cmd, guid, parms) {
 				if (resume_str != "") {
 					var resume_val = parseFloat(resume_str);
 					Main.log("resume val= " + resume_val );
-					Main.logToServer("resume val= " + resume_val );
+					Main.logToServer("GetResume for" + this.guid + " resume val= " + resume_val + "sec");
 					Player.resumePos = resume_val;
 					Player.playVideo( resume_val);
 				}
@@ -786,48 +686,7 @@ execRestCmd.prototype.request = function () {
 		context : this,
 		timeout : 500,
 		success : this.successCallback,
-/*		function(data, status, XHR ) {
-			if (this.successCallback != null)
-				this.successCallback();
-			switch (this.cmd) {
-				case RestCmds.CMD_AddTimer:
-					Notify.showNotify("Timer added", true);
-					Main.log ("addTimer for Inst= " + this.guid +" status: " + ((status != null) ? status : "null"));  	
-				break;
 
-				case RestCmds.CMD_DelMedFile:
-					Notify.showNotify("Deleted", true);
-					Data.deleteElm(Main.selectedVideo);
-					if (Main.selectedVideo >= Data.getVideoCount())
-						Main.selectedVideo = Data.getVideoCount() -1;
-
-					break;
-				
-				case RestCmds.CMD_DelYtUrl:
-					Notify.showNotify("Deleted", true);
-					Data.deleteElm(Main.selectedVideo);
-					if (Main.selectedVideo >= Data.getVideoCount())
-						Main.selectedVideo = Data.getVideoCount() -1;
-					Server.updateVdrStatus();
-					Display.setVideoList(Main.selectedVideo, (Main.selectedVideo - Display.currentWindow));
-					Main.logToServer("Server.deleteUrls: Success" );
-				break;
-
-				case RestCmds.CMD_DelRec:
-					Notify.showNotify("Deleted", true);
-					Data.deleteElm(Main.selectedVideo);
-					if (Main.selectedVideo >= Data.getVideoCount())
-						Main.selectedVideo = Data.getVideoCount() -1;
-					Server.updateVdrStatus();
-					Display.setVideoList(Main.selectedVideo, (Main.selectedVideo - Display.currentWindow));
-					Main.logToServer("Server.deleteRecording: Success" );
-			
-				break;
-
-				default:
-					Main.logToServer("execRestCmd - Success for cmd= " + this.cmd);
-			};
-		},*/
 		error : function (XHR, status, error) {
 			
 			Main.logToServer("ERROR received for guid= " + this.guid + " status= " + status);

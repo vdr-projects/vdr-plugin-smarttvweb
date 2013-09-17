@@ -453,7 +453,9 @@ Player.playVideo = function(resume_pos) {
         		resume_pos = 0;
 
         	try {
-        		//				Player.AVPlayerObj.open (this.url, Player.getBuffer());
+				Main.logToServer("Player.play Start playback of url= " + this.url + " resume= " + resume_pos + " sec");
+
+				//				Player.AVPlayerObj.open (this.url, Player.getBuffer());        		
 				Player.AVPlayerObj.open (this.url);
 				Player.AVPlayerObj.play(Player.onPlaySuccess, Player.onError, resume_pos);
 			}
@@ -469,7 +471,9 @@ Player.playVideo = function(resume_pos) {
         		resume_pos = 0;
 			Player.setCurrentPlayTimeOffset(resume_pos * 1000.0);
 			try {
-//				Player.AVPlayerObj.open(this.url+ "?time=" + resume_pos, Player.getBuffer() );
+				Main.logToServer("Player.play Start playback of url= " + this.url + " time= " + resume_pos + " sec");
+
+				//				Player.AVPlayerObj.open(this.url+ "?time=" + resume_pos, Player.getBuffer() );
 				Player.AVPlayerObj.open(this.url+ "?time=" + resume_pos );
 				Player.AVPlayerObj.play(Player.onPlaySuccess , Player.onError);
 			}
@@ -484,7 +488,6 @@ Player.playVideo = function(resume_pos) {
         if ((this.mFormat == this.eHLS) && (this.isLive == false)){
         	Notify.showNotify("No Trickplay", true);
         }
-//        Audio.plugin.SetSystemMute(false); 
 //        pluginObj.setOffScreenSaver();
     }
 };

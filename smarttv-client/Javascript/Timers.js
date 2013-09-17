@@ -1,6 +1,6 @@
 var Timers = {
 	timerList : [],
-	scrollDur : 300,
+	scrollDur : 100,
 	scrollFlip : 100,
 	btnMode : 0
 	// 0 nothing
@@ -175,16 +175,16 @@ Timers.createEntry= function (i, w) {
 //	row.append($("<div>", {class : ((Timers.timerList[i].isrec ==true) ? "style_timerRec" : ""), style : "display: inline-block;"}));
 	
 	
-	row.append($("<div>", {class : ((Timers.timerList[i].isrec ==true) ? "style_timerRec" : ((Timers.timerList[i].flags & 1) != 0) ? "style_timerAct" : "style_timerNone"), style : "display: inline-block;"})); 
+	row.append($("<div>", {class : ((Timers.timerList[i].isrec ==true) ? "style_timerRec" : ((Timers.timerList[i].flags & 1) != 0) ? "style_timerAct" : "style_timerNone"), style : "display: inline-block; color : inherit;"})); 
 
 	if (	Timers.timerList[i].isSingleEvent == true) {
 	}
 	else {
 	}
-	row.append($("<div>", {text : Timers.timerList[i].channelname, style : "padding-left:5px;width:12%; display: inline-block;", class : "style_overflow"}));
-	row.append($("<div>", {text : Timers.timerList[i].start, style : "padding-left:5px; width:9%; display: inline-block;", class : "style_overflow"}));
-	row.append($("<div>", {text : Timers.timerList[i].stop, style : "padding-left:5px; width:9%; display: inline-block;", class : "style_overflow"}));	
-	row.append($("<div>", {text : Timers.timerList[i].title, style : "padding-left:5px; width:68%;display: inline-block;", class : "style_overflow"}));
+	row.append($("<div>", {text : Timers.timerList[i].channelname, style : "padding-left:5px;width:12%; display: inline-block; color : inherit; ", class : "style_overflow"}));
+	row.append($("<div>", {text : Timers.timerList[i].start, style : "padding-left:5px; width:9%; display: inline-block; color : inherit; ", class : "style_overflow"}));
+	row.append($("<div>", {text : Timers.timerList[i].stop, style : "padding-left:5px; width:9%; display: inline-block; color : inherit; ", class : "style_overflow"}));	
+	row.append($("<div>", {text : Timers.timerList[i].title, style : "padding-left:5px; width:68%;display: inline-block; color : inherit; ", class : "style_overflow"}));
 	return row;
 };
 

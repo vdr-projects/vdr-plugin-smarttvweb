@@ -204,7 +204,7 @@ Main.init = function () {
 	Display.popupOlHandler.olDelay = 3*1000;
 
 	Config.verboseStart = false;
-	Display.scrollPopup ();
+//	Display.scrollPopup ();
 	// end
 	
 	if (Config.deviceType == 0){
@@ -1644,12 +1644,10 @@ Main.tvKeys = {
 		KEY_LEFT :37,
 		KEY_RIGHT :39,
 		KEY_ENTER :13,
-		KEY_RED :82,
-
+		KEY_EXIT :27,
 		KEY_RETURN :27,
 		KEY_STOP :27, // ESC
 //		KEY_MUTE :27,
-
 		KEY_1 :49,
 		KEY_2 :50,
 		KEY_3 :51,
@@ -1660,14 +1658,12 @@ Main.tvKeys = {
 		KEY_8 :56,
 		KEY_9 :57,
 		KEY_0 :48,
-
+		KEY_TOOLS: 116, 
+		KEY_RED :82,		
+		KEY_GREEN :103,
+		KEY_YELLOW :121,
+		KEY_BLUE :98,
 		// Un-used keycodes
-		KEY_RETURN :88,
-		KEY_EXIT :45,
-		KEY_RED :108,
-		KEY_GREEN :20,
-		KEY_YELLOW :21,
-		KEY_BLUE :22,
 		KEY_RW :69,
 		KEY_PAUSE :74,
 		KEY_FF :72,

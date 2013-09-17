@@ -61,11 +61,11 @@ Display.init = function()
     	var elm = $("#video"+i);
     	$(elm).css({"width" : "100%", "text-align": "left", "padding-top": "4px", "padding-bottom": "5px" });
     	$(elm).append($("<div>").css({ "display": "inline-block", "width":"20%", 
-			"overflow": "hidden", "text-overflow":"ellipsis", "height": "14px"})); 
+			"overflow": "hidden", "text-overflow":"ellipsis", "height": "14px", "color": "inherit"})); 
     	$(elm).append($("<div>").css({ "display": "inline-block", "width":"70%", 
-			"overflow": "hidden", "text-overflow":"ellipsis", "white-space": "nowrap", "height": "14px"})); 
+			"overflow": "hidden", "text-overflow":"ellipsis", "white-space": "nowrap", "height": "14px", "color": "inherit"})); 
     	$(elm).append($("<div>").css({ "display": "inline-block", "width":"5%", 
-    		"overflow": "hidden", "text-overflow":"ellipsis", "white-space": "nowrap", "height": "14px"})); 
+    		"overflow": "hidden", "text-overflow":"ellipsis", "white-space": "nowrap", "height": "14px", "color": "inherit"})); 
     }  
 	
     /*
