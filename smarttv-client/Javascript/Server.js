@@ -83,78 +83,6 @@ Server.fetchVideoList = function(url) {
 	});
 };
 
-Server.updateEntry = function(guid) {
-	
-	Server.curGuid = Data.getCurrentItem().childs[Main.selectedVideo].payload.guid;
-
-	//url is sufficed with ?guid
-	var url = Config.serverUrl + "/recordings.xml?guid="+guid;
-	Main.logToServer(" Server.updateEntry: guid= " + guid);
-	
-	$.ajax({
-		url: url,
-		type : "GET",
-		success : function(data, status, XHR ) {
-			Main.logToServer("Server.updateEntry Success Response - status= " + status + " mime= " + XHR.responseType + " data= "+ data);
-
-			$(data).find("item").each(function () {
-				var title = $(this).find('title').text();
-				var link = $(this).find('enclosure').attr('url');
-				var guid = $(this).find('guid').text();
-				var programme = $(this).find('programme').text();
-				var description = $(this).find('description').text();
-				var startVal = parseInt($(this).find('start').text());
-				var durVal = parseInt($(this).find('duration').text());
-				var fps = parseFloat($(this).find('fps').text());
-				var ispes = $(this).find('ispes').text();
-				var isnew = $(this).find('isnew').text();
-				var num = parseInt($(this).find('number').text());
-				Main.logToServer("Server.updateEntry: title= " + title + " start= " + startVal + " dur= " + durVal + " fps= " + fps);
-				
-                var title_list = title.split("~");
-                Data.addItem( title_list, {link : link, prog: programme, desc: description, guid : guid, start: startVal, 
-                			dur: durVal, ispes : ispes, isnew : isnew, fps : fps, num : num});              	
-							
-				}); // each
-
-			Data.assets.sortPayload(Data.sortType);
-
-			// check, whether Main.selectedVideo still points to the entry with guid
-			if (Data.getCurrentItem().childs[Main.selectedVideo].payload.guid != Server.curGuid) {
-				Main.logToServer("Server.updateEntry: curGuid has changed: curGuid= " + Server.curGuid);
-				Main.logToServer("Server.updateEntry: selVid= "+ Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
-				Main.selectedVideo = Main.selectedVideo+1;
-				Main.logToServer("Server.updateEntry: curGuid has changed: selVid+1"+ Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
-			}
-
-			var first_item = Main.selectedVideo - Display.currentWindow;
-		    if (first_item < 0 )
-		    	first_item = 0;
-
-        	Display.setVideoList(Main.selectedVideo, first_item); 
-        	// Main.selectedVideo does not fit anymore!!!!!
-        	// should do a general reset (jump to 0), when a new element is added
-        	// should reset to zero
-        	// plus update notif
-			Main.logToServer(" done");
-			
-		},
-		error : function (jqXHR, status, error) {
-			Main.logToServer("Server.updateEntry Error Response - status= " + status + " error= "+ error);
-			Display.showPopup("Error with XML File: " + status);
-			Server.retries ++;
-		},
-		parsererror : function () {
-			Main.logToServer("Server.updateEntry parserError  " );
-			Display.showPopup("Error in XML File");
-			Server.retries ++;
-            if (Server.errorCallback != null) {
-            	Server.errorCallback("XmlError");
-            }
-
-		}
-	});
-};
 
 //---------------------------------------------
 
@@ -206,53 +134,6 @@ Server.updateVdrStatus = function (){
 	});
 };
 
-/*
-Server.getResume = function (guid) {
-//	Main.log ("***** getResume *****");
-	$.ajax({
-		url: Config.serverUrl + "/getResume.xml",
-		type : "POST",
-		data : "filename:" + guid +"\n", 
-		success : function(data, status, XHR ) {
-			Main.log("**** Resome Success Response - status= " + status + " mime= " + XHR.responseType + " data= "+ data);
-
-			var resume_str = $(data).find("resume").text();
-			if (resume_str != "") {
-				var resume_val = parseFloat(resume_str);
-				Main.log("resume val= " + resume_val );
-				Main.logToServer("resume val= " + resume_val );
-				Player.resumePos = resume_val;
-				Player.playVideo( resume_val);
-			}
-			else {
-	    		Display.hide();
-	        	Display.showProgress();
-				Player.playVideo(-1);
-			}
-
-		},
-		error : function (jqXHR, status, error) {
-			Main.log("**** Resome Error Response - status= " + status + " error= "+ error);
-    		Display.hide();
-        	Display.showProgress();
-			Player.playVideo(-1);
-		}
-	});
-};
-*/
-/*
-Server.saveResume = function() {
-	var msg = ""; 
-    msg += "filename:" + Data.getCurrentItem().childs[Main.selectedVideo].payload.guid + "\n"; 
-    msg += "resume:"+ (Player.curPlayTime/1000) + "\n" ;
-    	
-	$.post(Config.serverUrl + "/setResume.xml", msg, function(data, textStatus, XHR) {
-		Main.logToServer("SaveResume Status= " + XHR.status );
-	}, "text");
-
-};
-
-*/
 
 Server.notifyServer = function (state) {
 	Main.log("Server.notifyServer state="+state +"&mac=" + Network.ownMac + "&ip=" + Network.ownIp);
@@ -320,6 +201,12 @@ Server.getErrorText = function (status, input) {
 			case 3:
 				res = "Entry not found. Deletion failed";
 				break;
+			case 4:
+				res = "TV address field empty.";
+				break;
+			case 5:
+				res = "Mandatory TV address attribute not present.";
+				break;
 			case 6:
 				// set resume data
 				res = "Failed to find the recording.";
@@ -337,7 +224,18 @@ Server.getErrorText = function (status, input) {
 			case 10:
 				res = "No Timer found.";
 				break;
-
+			case 11:
+				res = "No id in query line";
+				break;
+			case 12:
+				res = "Invalid Channel ID.";
+				break;
+			case 13:
+				res = "Time to large.";
+				break;
+			case 14:
+				res = "Timer already defined.";
+				break;
 			case 15:
 				res = "Mandatory cmd attribute not present.";
 				break;
@@ -382,9 +280,27 @@ Server.getErrorText = function (status, input) {
 		};
 	case 500: // Internal Server Error
 		switch (errno) {
+			case 1:
+				res = "Schedule is zero";
+				break;
+			case 2:
+				res = "Event is zero";
+				break;
+			case 3:
+				res = "Title is zero.";
+				break;
+			case 4:
+				res = "Description is zero.";
+				break;
+			case 5:
+				res = "writeXMLItem returned an error";
+				break;
 			case 6:
 				res = "deletion failed!";
-			break;
+				break;
+			case 7:
+				res = "Title is zero";
+				break;
 			default:
 			res = "Unhandled Errno - Status= " + status + " Errno= "+ errno; 
 			break;
@@ -407,39 +323,52 @@ Server.getErrorText = function (status, input) {
 	return res;
 };
 
+Server.addTimer = function (guid) {
+	var obj = new execRestCmd(RestCmds.CMD_AddTimer, guid);
+};
+
+Server.actTimer = function (guid, act) {
+	// act : true = activate timer	
+	// act : false = deactivate timer
+//	var obj = new execRestCmd(RestCmds.CMD_ActTimer, Timers.timerList[this.btnSelected].index, {setActive : false});
+	var obj = new execRestCmd(RestCmds.CMD_ActTimer, guid, {setActive : act});
+};
+
+Server.delTimer = function (guid) {
+	var obj = new execRestCmd(RestCmds.CMD_DelTimer, guid);
+};
+
 Server.deleteRecording = function(guid) {
 	var obj = new execRestCmd(RestCmds.CMD_DelRec, guid);
-
 };
 
 
 Server.deleteUrls = function (guid) {
-
 	var obj = new execRestCmd(RestCmds.CMD_DelYtUrl, guid);
-
 };
-
 
 Server.getResume = function (guid) {
 	Main.log ("***** getResume *****");
 	var obj = new execRestCmd(RestCmds.CMD_GetResume, guid);
-
 };
 
 Server.saveResume = function() {
-	
 	var obj = new execRestCmd(RestCmds.CMD_SetResume, Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
-
 };
 
 Server.execRecCmd = function (cmd, guid) {
 	var obj = new execRestCmd(RestCmds.CMD_ExecRecCmd, guid, { cmd:cmd });
-
 };
 
 Server.deleteMedFile = function(guid) {
 	var obj = new execRestCmd(RestCmds.CMD_DelMedFile, guid);
 };
+
+Server.updateEntry = function(guid) {
+	var obj = new execRestCmd(RestCmds.CMD_UpdateEntry, guid);
+
+};
+
 
 var RestCmds = {
 	CMD_AddTimer : 0,
@@ -451,7 +380,8 @@ var RestCmds = {
 	CMD_GetRecCmds : 6,
 	CMD_ExecRecCmd : 7,
 	CMD_ActTimer : 8,
-	CMD_DelTimer : 9
+	CMD_DelTimer : 9,
+	CMD_UpdateEntry : 10
 };
 
 
@@ -460,25 +390,52 @@ var RestCmds = {
 //----------------- execRestCmd --------------------------------------
 //--------------------------------------------------------------------
 //--------------------------------------------------------------------
-function execRestCmd(cmd, guid, parms) {
-	this.successCallback = null;
+function execRestCmd(cmd, guid, args) {
+//	this.successCallback = null;
 	this.errorCallback = null;
 	this.guid = guid;
-	this.parms = parms;
-	
-	this.url = "";
+	this.args = args;
 	this.cmd = -1;
-	this.method = "";
+	
+	this.parms = {
+		context : this,
+
+		error : function (XHR, status, error) {
+			this.statusCode = XHR.status; 
+			this.status = status;
+			this.errno =  Number(XHR.responseText.slice(0, 3));
+			
+			Main.logToServer("ERROR received for guid= " + this.guid + " status= " + status);
+			if (status == "timeout") {
+				Notify.showNotify( "Timeout.", true);
+				
+			}
+			else {
+				Main.log("ERROR= " + XHR.status + " text= " + XHR.responseText);
+				var res = Server.getErrorText(XHR.status, XHR.responseText); 
+		    	Main.log ("execRestCmd for Error Inst= " + this.guid+ " res= " + res); 
+				Notify.showNotify( res, true);
+
+				if (this.errorCallback != null)
+					this.errorCallback();
+				
+			}
+    		
+		}
+	};
+
+	
 	
 	switch(cmd) {
 		case RestCmds.CMD_AddTimer:
 			// add a timer
 			
-			this.url =Config.serverUrl + "/addTimer.xml?guid="+this.guid;
 			this.cmd = cmd;
-			this.method = "GET";
+			this.parms.url =Config.serverUrl + "/addTimer.xml?guid="+this.guid;
+			this.parms.method = "GET";
+//			this.parms.timeout = 500;
 			
-			this.successCallback = function(data, status, XHR ) {
+			this.parms.success = function(data, status, XHR ) {
 				Notify.showNotify("Timer added", true);
 				Main.log ("addTimer for Inst= " + this.guid +" status: " + ((status != null) ? status : "null"));  	
 			};
@@ -486,24 +443,29 @@ function execRestCmd(cmd, guid, parms) {
 		case RestCmds.CMD_DelMedFile:
 			// delete a file from media folder
 			
-			Main.log("Server.deleteMedFile guid=" + guid);
-			Main.logToServer("Server.deleteMedFile guid=" + guid);
+			Main.log("Server.deleteMedFile guid=" + this.guid);
+			Main.logToServer("Server.deleteMedFile guid=" + this.guid);
 
-			this.url =Config.serverUrl + "/deleteFile?guid=" +guid;
 			this.cmd = cmd;
-			this.method = "GET";
-			
-			this.successCallback = function(data, status, XHR ) {
+			this.parms.url =Config.serverUrl + "/deleteFile?guid=" +this.guid;
+			this.parms.method = "GET";
+//			this.parms.timeout = 500;
+
+			var img_name = this.guid.split("/");
+			Notify.showNotify("Deleting "+  img_name[img_name.length -1], true);
+
+			this.parms.success = function(data, status, XHR ) {
 				Notify.showNotify("Deleted", true);
 				Data.deleteElm(Main.selectedVideo);
 				if (Main.selectedVideo >= Data.getVideoCount())
 					Main.selectedVideo = Data.getVideoCount() -1;
 
 				Display.setVideoList(Main.selectedVideo, (Main.selectedVideo - Display.currentWindow));
-				
 
 				if (ImgViewer.isActive == true) {
 					ImgViewer.createImgArray();
+					ImgViewer.curImg = 0;
+				
 					ImgViewer.showImage();
 					ImgViewer.focus ();
 				}
@@ -523,11 +485,12 @@ function execRestCmd(cmd, guid, parms) {
 			Main.logToServer("Server.deleteUrls guid=" + guid);
 			Notify.handlerShowNotify("Deleting...", false);
 
-			this.url =Config.serverUrl + "/deleteYtUrl?guid=" +guid;
 			this.cmd = cmd;
-			this.method = "POST";
+			this.parms.url =Config.serverUrl + "/deleteYtUrl?guid=" +guid;
+			this.parms.method = "POST";
+//			this.parms.timeout = 500;
 
-			this.successCallback = function(data, status, XHR ) {
+			this.parms.success = function(data, status, XHR ) {
 				Notify.showNotify("Deleted", true);
 				Data.deleteElm(Main.selectedVideo);
 				if (Main.selectedVideo >= Data.getVideoCount())
@@ -535,8 +498,8 @@ function execRestCmd(cmd, guid, parms) {
 				Server.updateVdrStatus();
 				Display.setVideoList(Main.selectedVideo, (Main.selectedVideo - Display.currentWindow));
 				Main.logToServer("Server.deleteUrls: Success" );
-
 			};
+			
 			break;
 		case RestCmds.CMD_DelRec:
 			// Delete a Recording
@@ -545,11 +508,12 @@ function execRestCmd(cmd, guid, parms) {
 			Main.logToServer("Server.deleteRecording guid=" + guid);
 			Notify.handlerShowNotify("Deleting...", false);
 
-			this.url =Config.serverUrl + "/deleteRecording.xml?id=" +guid;
 			this.cmd = cmd;
-			this.method = "POST";
+			this.parms.url =Config.serverUrl + "/deleteRecording.xml?id=" +guid;
+			this.parms.method = "POST";
+//			this.parms.timeout = 500;
 
-			this.successCallback = function(data, status, XHR ) {
+			this.parms.success = function(data, status, XHR ) {
 				Notify.showNotify("Deleted", true);
 				Data.deleteElm(Main.selectedVideo);
 				if (Main.selectedVideo >= Data.getVideoCount())
@@ -564,12 +528,17 @@ function execRestCmd(cmd, guid, parms) {
 		case RestCmds.CMD_SetResume :
 			// Send Resume Data
 			
-			Main.log("Server.SetResume guid=" + guid);
-			Main.logToServer("Server.SetResume guid=" + guid + " resume= " + (Player.curPlayTime/1000) + "sec");
-			this.url =Config.serverUrl + "/setResume.xml?guid=" +guid + "&resume=" + (Player.curPlayTime/1000);
+			Main.log ("Server.SetResume guid=" + guid + " resume= " + (Player.curPlayTime/1000) + "sec or " + Display.durationString(Player.curPlayTime/1000));
+			Main.logToServer("Server.SetResume guid=" + guid + " resume= " + (Player.curPlayTime/1000) + "sec or " + Display.durationString(Player.curPlayTime/1000));
+
 			this.cmd = cmd;
-			this.method = "POST";
-			this.successCallback = function(data, status, XHR ) {
+			this.parms.url =Config.serverUrl + "/setResume.xml?guid=" +guid + "&resume=" + (Player.curPlayTime/1000);
+			this.parms.method = "POST";
+//			this.parms.timeout = 1000;
+
+			Notify.showNotify( "Set resume to " + Display.durationString(Player.curPlayTime/1000), true);
+
+			this.parms.success = function(data, status, XHR ) {
 				Main.logToServer("SaveResume Status= " + XHR.status );
 			};
 
@@ -580,11 +549,12 @@ function execRestCmd(cmd, guid, parms) {
 			Main.log("Server.GetResume guid=" + guid);
 			Main.logToServer("Server.GetResume guid=" + guid);
 
-			this.url =Config.serverUrl + "/getResume.xml?guid=" +guid;
 			this.cmd = cmd;
-			this.method = "POST";
+			this.parms.url =Config.serverUrl + "/getResume.xml?guid=" +guid;
+			this.parms.method = "POST";
+			this.parms.timeout = 500;
 			
-			this.successCallback = function(data, status, XHR ) {
+			this.parms.success = function(data, status, XHR ) {
 				Main.log("**** Resome Success Response - status= " + status + " mime= " + XHR.responseType + " data= "+ data);
 
 				var resume_str = $(data).find("resume").text();
@@ -592,6 +562,7 @@ function execRestCmd(cmd, guid, parms) {
 					var resume_val = parseFloat(resume_str);
 					Main.log("resume val= " + resume_val );
 					Main.logToServer("GetResume for" + this.guid + " resume val= " + resume_val + "sec");
+					Notify.showNotify( "Resume from " + Display.durationString(resume_val), true);
 					Player.resumePos = resume_val;
 					Player.playVideo( resume_val);
 				}
@@ -608,21 +579,20 @@ function execRestCmd(cmd, guid, parms) {
 				Display.hide();
 				Display.showProgress();
 				Player.playVideo(-1);
-			};
-			
-			
+			};	
 			break;
 			
 		case RestCmds.CMD_ExecRecCmd :
 			// Execute a recording command
 		
-			Main.logToServer("Server.execRecCmd cmd="+parms.cmd+" guid=" + guid );
+			Main.logToServer("Server.execRecCmd cmd="+this.args.cmd+" guid=" + guid );
 
-			this.url = Config.serverUrl + "/execreccmd?cmd="+parms.cmd+"&guid=" + guid;
 			this.cmd = cmd;
-			this.method = "GET";
+			this.parms.url = Config.serverUrl + "/execreccmd?cmd="+this.args.cmd+"&guid=" + guid;
+			this.parms.method = "GET";
+//			this.parms.timeout = 500;
 
-			this.successCallback = function(data, status, XHR ) {
+			this.parms.success = function(data, status, XHR ) {
 				Main.logToServer("Server.execRecCmd OK" ) ;
 				Display.handleDescription(Main.selectedVideo);
 			};
@@ -631,13 +601,14 @@ function execRestCmd(cmd, guid, parms) {
 		case RestCmds.CMD_ActTimer :
 			// Activate or Deactivate a timer
 		
-			Main.logToServer("Server.ActTimer index=" + guid + " setActive= " + ((parms.setActive == true) ? "true" : "false" ));
+			Main.logToServer("Server.ActTimer index=" + guid + " setActive= " + ((this.args.setActive == true) ? "true" : "false" ));
 
-			this.url = Config.serverUrl + "/activateTimer?index=" +guid + "&activate=" + ((parms.setActive == true) ? "true" : "false"),
 			this.cmd = cmd;
-			this.method = "GET";
+			this.parms.url = Config.serverUrl + "/activateTimer?index=" +guid + "&activate=" + ((this.args.setActive == true) ? "true" : "false"),
+			this.parms.method = "GET";
+			this.parms.timeout = 500;
 
-			this.successCallback = function(data, status, XHR ) {
+			this.parms.success = function(data, status, XHR ) {
 				Main.logToServer("Timers.activateTimer: Success" );
 				Main.log("Timers.activateTimer: Success" );
 
@@ -650,11 +621,12 @@ function execRestCmd(cmd, guid, parms) {
 		
 			Main.logToServer("Server.DelTimer index=" + guid );
 
-			this.url = Config.serverUrl + "/deleteTimer?index=" +guid,
 			this.cmd = cmd;
-			this.method = "GET";
+			this.parms.url = Config.serverUrl + "/deleteTimer?index=" +guid,
+			this.parms.method = "GET";
+//			this.parms.timeout = 500;
 
-			this.successCallback = function(data, status, XHR ) {
+			this.parms.success = function(data, status, XHR ) {
 				Main.logToServer("Timers.deleteTimer: Success" );
 				Main.log("Timers.deleteTimer: Success" );
 
@@ -662,7 +634,76 @@ function execRestCmd(cmd, guid, parms) {
 				// remove index from database
 			};
 			break;
+			
+		case RestCmds.CMD_UpdateEntry:
+			Server.curGuid = Data.getCurrentItem().childs[Main.selectedVideo].payload.guid;
 
+			//url is sufficed with ?guid
+			Main.logToServer(" Server.updateEntry: guid= " + guid);
+
+			this.cmd = cmd;
+			this.parms.url = Config.serverUrl + "/recordings.xml?guid="+guid,
+			this.parms.method = "GET";
+			this.retries = 0;
+
+			this.parms.success = function(data, status, XHR ) {
+				Main.logToServer("Server.updateEntry Success Response - status= " + status + " mime= " + XHR.responseType + " data= "+ data);
+
+				$(data).find("item").each(function () {
+					var title = $(this).find('title').text();
+					var link = $(this).find('enclosure').attr('url');
+					var guid = $(this).find('guid').text();
+					var programme = $(this).find('programme').text();
+					var description = $(this).find('description').text();
+					var startVal = parseInt($(this).find('start').text());
+					var durVal = parseInt($(this).find('duration').text());
+					var fps = parseFloat($(this).find('fps').text());
+					var ispes = $(this).find('ispes').text();
+					var isnew = $(this).find('isnew').text();
+					var num = parseInt($(this).find('number').text());
+					Main.logToServer("Server.updateEntry: title= " + title + " start= " + startVal + " dur= " + durVal + " fps= " + fps);
+					
+	                var title_list = title.split("~");
+	                Data.addItem( title_list, {link : link, prog: programme, desc: description, guid : guid, start: startVal, 
+	                			dur: durVal, ispes : ispes, isnew : isnew, fps : fps, num : num});              	
+
+					Display.showPopup("Server.updateEntry: addItem= " + title);
+								
+					}); // each
+
+				Data.assets.sortPayload(Data.sortType);
+
+				// check, whether Main.selectedVideo still points to the entry with guid
+				if (Data.getCurrentItem().childs[Main.selectedVideo].payload.guid != Server.curGuid) {
+					Main.logToServer("Server.updateEntry: curGuid has changed: curGuid= " + Server.curGuid);
+					Main.logToServer("Server.updateEntry: selVid= "+ Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
+					Main.selectedVideo = Main.selectedVideo+1;
+					Main.logToServer("Server.updateEntry: curGuid has changed: selVid+1"+ Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
+				}
+
+				var first_item = Main.selectedVideo - Display.currentWindow;
+			    if (first_item < 0 ) {
+			    	first_item = 0;
+
+				}
+	        	Display.setVideoList(Main.selectedVideo, first_item); 
+				Main.logToServer(" done");
+				
+			};
+			
+			this.errorCallback = function() {
+
+				Display.logToServer ("Server.updateEntry Error Response status= " + this.statusCode + " errno= " + this.errno+ " retries= " +this.retries);
+				
+				if ((this.statusCode== 400) && (this.errno == 7)) {
+					if (this.retires < 10) {
+						Server.updateEntry(this.guid) ;
+					}
+					this.retries ++;
+					
+				}
+			};
+			break;
 		default:
 			Main.log("execRestCmd - ERROR: CMD= " + cmd + " is not supported");
 			Main.logToServer("execRestCmd - ERROR: CMD= " + cmd + " is not supported");
@@ -678,72 +719,11 @@ function execRestCmd(cmd, guid, parms) {
 };
 
 execRestCmd.prototype.request = function () {
-	Main.log("execRestCmd request url= " + this.url);
-
-	$.ajax({
-		url: this.url,
-		type : this.method,
-		context : this,
-		timeout : 500,
-		success : this.successCallback,
-
-		error : function (XHR, status, error) {
-			
-			Main.logToServer("ERROR received for guid= " + this.guid + " status= " + status);
-			if (status == "timeout") {
-				Notify.showNotify( "Timeout.", true);
-				
-			}
-			else {
-				Main.log("ERROR= " + XHR.status + " text= " + XHR.responseText);
-				var res = Server.getErrorText(XHR.status, XHR.responseText); 
-		    	Main.log ("execRestCmd for Error Inst= " + this.guid+ " res= " + res); 
-				Notify.showNotify( res, true);
-
-				if (this.errorCallback != null)
-					this.errorCallback();
-				
-			}
-    		
-		}
-	});
+	Main.log("execRestCmd request url= " + this.parms.url);
+	$.ajax(this.parms);
 
 };
 
-
-
-function addTimer(guid) {
-	this.successCallback = null;
-	this.errorCallback = null;
-	this.guid = guid;
-	this.request();
-};
-
-addTimer.prototype.request = function () {
-	var url =Config.serverUrl + "/addTimer.xml?guid="+this.guid;
-	Main.log("addTimer request url= " + url);
-
-	$.ajax({
-		url: url,
-		type : "GET",
-		context : this,
-		timeout : 400,
-		success : function(data, status, XHR ) {
-			Main.log ("addTimer for Inst= " + this.guid +" status: " + ((status != null) ? status : "null"));  	
-		},
-		error : function (XHR, status, error) {
-	    	Main.log ("addTimer for Error Inst= " + this.guid+" status: " + ((status != null) ? status : "null")); 
-	    	if (XHR.status == 400) {
-	    		
-	    		Display.showPopup("Timer creation failed channel= "+this.guid + " Text= " + XHR.responseText, true);	    		
-	    	}
-	    	else
-	    		Display.showPopup("Timer creation failed channel= "+this.guid + " code= " + XHR.status, true);	    		
-    		
-		}
-	});
-
-};
 
 var HeartbeatHandler = {
 	timeoutObj : null,

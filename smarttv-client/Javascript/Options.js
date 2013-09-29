@@ -387,6 +387,7 @@ Options.onInput = function () {
         	// Done
 //        	Options.cursorPos = Options.cursorPos +1;
 //        	Options.deleteChar(); //
+        	Main.logToServer("Options.onInput: Enter Pressed - Val= " + document.getElementById(Options.inputElm).value);
             if (Config.verboseStart == true)
             	Display.showPopup("Options.onInput: Enter Pressed - Val= " + document.getElementById(Options.inputElm).value);
         	if (Options.state == Options.sSelect) {

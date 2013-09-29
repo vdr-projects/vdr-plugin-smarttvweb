@@ -283,6 +283,7 @@ Main.isTvSet = function () {
 
 Main.changeState = function (state) {
 	Main.log("change state: OldState= " + this.state + " NewState= " + state);
+	Main.logToServer("change state: OldState= " + this.state + " NewState= " + state);
 	var old_state = this.state;
 
 	
@@ -1069,10 +1070,10 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function (keyCode) {
      case 73:
 
     	 Main.log("KEY_REC with guid= Data.getCurrentItem().childs[Main.selectedVideo].payload.guid");
-    	 var timer_req = new addTimer(Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
+//    	 var timer_req = new addTimer(Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
+		Server.addTimer(Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
     	 // use the guid and request the epg.
          // use the event id then issue the rec command
-//         Data.getCurrentItem().childs[Main.selectedVideo].payload.guid
     	 
      case tvKey.KEY_PAUSE:
          Main.log("REC / PAUSE");

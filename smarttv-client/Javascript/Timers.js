@@ -156,13 +156,22 @@ Timers.getWeekdays = function (wd) {
 	var map = wd.toString(2);
 	var res = "";
 
-	res += ((map[0] == "1") ? "M" : "-");
-	res += ((map[1] == "1") ? "D" : "-");
-	res += ((map[2] == "1") ? "M" : "-");
-	res += ((map[3] == "1") ? "D" : "-");
-	res += ((map[4] == "1") ? "F" : "-");
-	res += ((map[5] == "1") ? "S" : "-");
-	res += ((map[6] == "1") ? "S" : "-");
+	if (map.length <= 7) {
+		var suf = "0000000".slice(0, (7-map.length));
+		map = suf + map;
+	}
+	else {
+		// take the last 7 digits
+		map = map.slice ((7-map.length));
+	}
+
+	res += ((map[6] == "1") ? "M" : "-");
+	res += ((map[5] == "1") ? "T" : "-");
+	res += ((map[4] == "1") ? "W" : "-");
+	res += ((map[3] == "1") ? "T" : "-");
+	res += ((map[2] == "1") ? "F" : "-");
+	res += ((map[1] == "1") ? "S" : "-");
+	res += ((map[0] == "1") ? "S" : "-");
 
 	return res;	 
 };
@@ -209,10 +218,9 @@ Timers.timerCallback = function () {
 // delete the current timer
 	Main.log("****** Delete Timer: " + Timers.timerList[this.btnSelected].title);
 	
-//	var del_req = new DeleteTimerReq (Timers.timerList[this.btnSelected].index);
+//	var obj = new execRestCmd(RestCmds.CMD_DelTimer, Timers.timerList[this.btnSelected].index);
+	Server.delTimer(Timers.timerList[this.btnSelected].index);
 
-	var obj = new execRestCmd(RestCmds.CMD_DelTimer, Timers.timerList[this.btnSelected].index);
-	//	var del_req = new DeleteTimerReq (10);
 };
 
 
@@ -276,7 +284,6 @@ Timers.onInput = function () {
 		break;
 		case tvKey.KEY_ENTER:
 			Buttons.ynShow();
-//			Timers.hide();
 
 		break;
 		case tvKey.KEY_YELLOW:
@@ -284,12 +291,10 @@ Timers.onInput = function () {
 			Timers.timerCallback = function () {
 			// delete the current timer
 				Main.log("Timers.timerCallback: " + Timers.timerList[this.btnSelected].title);
-				var obj = new execRestCmd(RestCmds.CMD_DelTimer, Timers.timerList[this.btnSelected].index);
-				//	var del_req = new DeleteTimerReq (10);
+				Server.delTimer(Timers.timerList[this.btnSelected].index);
 			};
 
 			Buttons.ynShow();
-//			Timers.hide();
 
 		break;
 		case tvKey.KEY_RED:
@@ -298,7 +303,7 @@ Timers.onInput = function () {
 				Buttons.ynHeadlineText ("Deactivate Timer ?");
 				Timers.timerCallback = function () {
 						Main.log("Timers.timerCallback Deactivate Timer: " + Timers.timerList[this.btnSelected].title);						
-						var obj = new execRestCmd(RestCmds.CMD_ActTimer, Timers.timerList[this.btnSelected].index, {setActive : false});
+						Server.actTimer(Timers.timerList[this.btnSelected].index, false);
 					};
 				
 			}
@@ -307,7 +312,7 @@ Timers.onInput = function () {
 				Buttons.ynHeadlineText ("Activate Timer ?");
 				Timers.timerCallback = function () {
 					Main.log("Timers.timerCallback Activate Timer: " + Timers.timerList[this.btnSelected].title);						
-					var obj = new execRestCmd(RestCmds.CMD_ActTimer, Timers.timerList[this.btnSelected].index, {setActive : true});
+					Server.actTimer(Timers.timerList[this.btnSelected].index,  true);
 				};
 			}
 
@@ -336,37 +341,3 @@ Timers.onInput = function () {
 };
 
 
-/*
-function DeleteTimerReq (idx) {
-	this.index = idx;	
-	this.exec();
-};
-
-DeleteTimerReq.prototype.exec = function () {
-	Main.log("Sending delete request for idx= " + this.index);
-	$.ajax({
-		url: Config.serverUrl + "/deleteTimer?index=" +this.index,
-		type : "GET",
-		context : this,
-		success : function(data, status, XHR ) {
-			Main.logToServer("Timers.deleteTimer: Success" );
-			Main.log("Timers.deleteTimer: Success" );
-
-			Timers.resetView();
-			// remove index from database
-			},
-		error : function (XHR, status, error) {
-			Main.logToServer("Timers.deleteTimer: ERROR "  + XHR.status + ": " + XHR.responseText );
-			Main.log("Timers.deleteTimer: ERROR (" + XHR.status + ": " + XHR.responseText  +")");
-
-			var res = Server.getErrorText(XHR.status, XHR.responseText); 
-//			var res = parseInt(XHR.responseText.slice(0, 3));
-			Main.log("Timers.deleteTimer: res(" + res +") for idx= " + this.index);
-
-			Notify.showNotify( res, true);
-			
-		}
-	});
-
-};
-*/

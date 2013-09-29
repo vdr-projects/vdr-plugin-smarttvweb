@@ -643,7 +643,9 @@ Display.getDisplayTitle = function(item) {
 Display.resetAtStop = function () {
 	// this function should reset all overlay features to plan recordings.
 	// Hide Recording bar
-	Notify.notifyOlHandler.cancel();
+
+// TODO: Debugging purpose
+//	Notify.notifyOlHandler.cancel();
 
 	Player.resetAtStop(); // Needs to be done at beginning to reset parameters
 	Display.resetStartStop();
@@ -909,6 +911,7 @@ Display.showPopup = function(text) {
 //	var oldHTML = document.getElementById("popup").innerHTML;
 //	Display.putInnerHTML(document.getElementById("popup"), oldHTML + "<br>" + text);
 	
+	Main.log("Display.showPopup text= " + text);
 	if (text == "")
 		this.popupOlHandler.show();
 		
@@ -920,6 +923,8 @@ Display.showPopup = function(text) {
 };
 
 Display.scrollPopup = function () {
+	Main.log("Display.scrollPopup" );
+	
 	var t = $('#popup').children().last().position().top;
 	var h = $('#popup').children().last().outerHeight();
 	if ((t + h) > $("#popup").height()) {
