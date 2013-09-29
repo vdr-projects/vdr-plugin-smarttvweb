@@ -2211,9 +2211,11 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
   }
 
   if (mRequest->getQueryAttributeValue(&avps, "guid", guid) == OKAY){
+    guid = cUrlEncode::doUrlSaveDecode(guid);
     *(mLog->log())<< DEBUGPREFIX
 		  << " Found a guid Parameter: " << guid
 		  << endl;
+    
     single_item = true;
   }
 
@@ -2312,8 +2314,12 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
   cRecording *recording = NULL;
   if (single_item) {
     recording = Recordings.GetByName(guid.c_str());
-    if (recording == NULL)
+    if (recording == NULL) {
       *(mLog->log())<< DEBUGPREFIX << " WARNING in sendRecordingsXml: recording " << guid << " not found" << endl;
+      sendError(400, "Bad Request", NULL, "007 Failed to find the recording.");
+      return OKAY;
+    }
+
   }
   else {
     recording = Recordings.First();
