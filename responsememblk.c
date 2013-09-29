@@ -345,7 +345,7 @@ int cResponseMemBlk::receiveResume() {
 		  << " resume= " << entry.mResume
 		  << endl;
 
-    sendError(400, "Bad Request", NULL, "006 Failed to find the recording.");
+    sendError(400, "Bad Request", NULL, "007 Failed to find the recording.");
     return OKAY;
   }
 
@@ -382,6 +382,7 @@ int cResponseMemBlk::sendResumeXml () {
   cResumeEntry entry;
   string id;
 
+  // obsolete?
   parseResume(entry, id);
 
   vector<sQueryAVP> avps;
@@ -400,7 +401,6 @@ int cResponseMemBlk::sendResumeXml () {
 
   cRecording *rec = Recordings.GetByName(entry.mFilename.c_str());
   if (rec == NULL) {
-    //Error 404
     *(mLog->log())<< DEBUGPREFIX
 		  << " ERROR in sendResume: recording not found - filename= " << entry.mFilename << endl;
     sendError(400, "Bad Request", NULL, "007 Failed to find the recording.");
@@ -750,6 +750,59 @@ void cResponseMemBlk::writeMPD(double duration, int bitrate, float seg_dur, int 
   sendHeaders(200, "OK", NULL, "application/x-mpegURL", mResponseMessage->size(), -1);
 }
 
+void cResponseMemBlk::receiveActTimerReq() {
+  if (isHeadRequest())
+    return ;
+
+  *(mLog->log()) << DEBUGPREFIX << " cResponseMemBlk::receiveActTimerReq"  << endl;
+
+  vector<sQueryAVP> avps;
+  mRequest->parseQueryLine(&avps);
+
+  string index_str = "";
+  int index =-1;
+
+  string activate_str = "";
+  bool activate = true;  // the default is to activate the timer
+
+  if (mRequest->getQueryAttributeValue(&avps, "index", index_str) == OKAY) {
+    index = atoi(index_str.c_str());
+    *(mLog->log()) << DEBUGPREFIX << " index= " << index  << endl;
+  }
+
+  if (mRequest->getQueryAttributeValue(&avps, "activate", activate_str) == OKAY) {
+    if (activate_str.compare("false") == 0) {
+	activate= false;
+	*(mLog->log()) << DEBUGPREFIX
+		   << " activate= false "  << endl;
+    }
+  }
+  
+  if (Timers.BeingEdited()) {
+    *(mLog->log()) << DEBUGPREFIX << " cResponseMemBlk::receiveActTimerReq: Timers are being edited. returning "   << endl;
+    sendError(503, "Service Unavailable", NULL, "001 Timers are being edited.");
+    return;
+  }
+
+  cTimer *to_act = Timers.Get(index);
+  if (to_act == NULL) {
+    sendError(400, "Bad Request", NULL, "010 No Timer found.");
+    return;
+  }
+
+  cTimer t = *to_act;
+  if (activate) {
+    t.SetFlags(tfActive);
+  }
+  else {
+    t.ClrFlags(tfActive);
+  }
+  *to_act = t;
+  Timers.SetModified();
+
+  sendHeaders(200, "OK", NULL, "text/plain", 0, -1);
+
+}
 
 void cResponseMemBlk::receiveAddTimerReq() {
   if (isHeadRequest())
