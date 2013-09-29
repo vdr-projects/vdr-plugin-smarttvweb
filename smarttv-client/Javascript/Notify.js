@@ -1,5 +1,5 @@
 var Notify = {
-	notifyOlHandler : null	
+	notifyOlHandler : null
 };
 
 
@@ -11,6 +11,7 @@ Notify.init = function () {
 
 
 Notify.showNotify = function (msg, timer) {
+
 	$("#notify").text(msg);
 	if (timer == true)
 		this.notifyOlHandler.show();
@@ -24,6 +25,6 @@ Notify.handlerShowNotify = function () {
 
 Notify.handlerHideNotify = function () {
 	$("#notify").hide();
-		$("#notify").text("");
+	$("#notify").text("");
 };
 

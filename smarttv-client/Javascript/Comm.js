@@ -61,19 +61,13 @@ Comm.onDeviceEvent = function(sParam) {
 	switch(Number(sParam.infoType)) {
 		case Comm.customMgr.DEV_EVENT_MESSAGE_RECEIVED:
 			//CustomDeviceMessageInfo
-//				Main.log("#### onDeviceEvent -1- DEV_EVENT_MESSAGE_RECEIVED:" + sParam.data.message1);
-//				Main.logToServer("#### onDeviceEvent -1- DEV_EVENT_MESSAGE_RECEIVED:" + sParam.data.message1);
                 Comm.onMessageReceived(sParam.data.message1, sParam.data.message2);
 			break;
 		case Comm.customMgr.DEV_EVENT_JOINED_GROUP:
 			//CustomDeviceGroupInfo
-//				Main.log("#### onDeviceEvent -1- DEV_EVENT_JOINED_GROUP ####");
-//				Main.logToServer("#### onDeviceEvent -1- DEV_EVENT_JOINED_GROUP ####");
 			break;
 		case Comm.customMgr.DEV_EVENT_LEFT_GROUP:
 			//CustomDeviceGroupInfo
-//				Main.log("#### onDeviceEvent -1- DEV_EVENT_LEFT_GROUP ####");
-//				Main.logToServer("#### onDeviceEvent -1- DEV_EVENT_LEFT_GROUP ####");
 			break;
 		default:
 				Main.logToServer("onDeviceEvent -1- Unknown event infoType= " + Number(sParam.infoType));
@@ -114,14 +108,16 @@ Comm.onMessageReceived = function(message, context) {
 			Main.logToServer("ERROR: msg.payload.id is not defined");
 			return;	    	
 		}
+		// TODO: I should change to the new server only if there is no other vdr server defined.
+		// Otherwise, check whether the new service is active. If active, add it to the list.
     	Config.updateContext(msg.payload.serverAddr); 
-    	if (Config.firstLaunch == true) 
+    	if (Config.firstLaunch == true) {
     		Main.state = 1; // ensure, that the cursor is on 1st position        		
 
-    	Main.enableKeys();
-    	Options.hide();
-    	Main.changeState(0);
-
+			Main.enableKeys();
+			Options.hide();
+			Main.changeState(0);
+		}
 		break;
 	case "INFO":
 		Main.logToServer("INFO: type= " + msg.payload.type + " val= " + msg.payload.name);
@@ -129,22 +125,27 @@ Comm.onMessageReceived = function(message, context) {
 		case "RECSTART":
 			Notify.showNotify("Recording started: '" + msg.payload.name +"'", true);
 			if (Main.state == Main.eREC) {
-				Server.updateEntry(msg.payload.name);
-			}
-			// msg.payload.name is the guid. I should now run a query, then update the database and update the screen (if needed)
-			
+				Server.updateEntry(msg.payload.guid);
+			}		
 			break;
 		case "RECSTOP":
 			Notify.showNotify("Recording finished: " + msg.payload.name+"'", true);
 			break;
 		case "TCADD":
 			Notify.showNotify("Timer added: '" + msg.payload.name+"'", true);
+			if (Main.state == Main.eTMR) {
+				Timers.resetView();
+			}
 			break;
 		case "TCMOD":
 			Notify.showNotify("Timer modified: '" + msg.payload.name+"'", true);
+			if (Main.state == Main.eTMR) {
+				Timers.resetView();			}
 			break;
 		case "TCDEL":
 			Notify.showNotify("Timer deleted: '" + msg.payload.name+"'", true);
+			if (Main.state == Main.eTMR) {
+				Timers.resetView();			}
 			break;
 
 		}

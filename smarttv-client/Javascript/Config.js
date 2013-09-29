@@ -249,6 +249,7 @@ Config.updateContext = function (addr) {
 	if (found == true) {
 		// don't overwrite, if the address is already there.
 		Main.log("Config.updateContext: don't overwrite -> return");
+		Main.logToServer("Config.updateContext: don't overwrite -> return");
 		Notify.showNotify("Server already included -> Ignoring", true);
 		if ((Config.verboseStart == true) && (Config.firstLaunch == true)) 
 			Display.showPopup("Config.updateContext: don't overwrite -> return");

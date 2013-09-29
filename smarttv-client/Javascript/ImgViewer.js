@@ -227,6 +227,10 @@ ImgViewer.onInput = function () {
 			break;
 		case tvKey.KEY_YELLOW:
 			Main.log("Delete YE Button");
+			var img_name = Data.getCurrentItem().childs[this.imgList[this.curImg]].payload.link.split("/");
+			Notify.showNotify( img_name[img_name.length -1], true);
+
+			Buttons.ynHeadlineText ("Delete " + img_name[img_name.length -1]);
 			Main.selectedVideo = this.imgList[this.curImg];
 			Buttons.ynShow();
 //			Server.deleteMedFile(Data.getCurrentItem().childs[Main.selectedVideo].payload.guid);
