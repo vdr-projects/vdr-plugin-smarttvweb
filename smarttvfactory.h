@@ -48,8 +48,8 @@ class cStatus {
 
 using namespace std;
 
-#define PLG_VERSION "0.9.9-pre"
-#define SERVER "SmartTvWeb/0.9.9-pre" 
+#define PLG_VERSION "0.9.9"
+#define SERVER "SmartTvWeb/0.9.9" 
 
 struct sClientEntry {
   string mac;
@@ -102,7 +102,9 @@ class SmartTvServer : public cStatus {
     void pushCfgServerAddressToTv( string tv_addr);
 
     string getRecCmdsMsg() { return mRecMsg; };
+    string getCmdCmdsMsg() { return mCmdMsg; };
     vector<cCmd*>* getRecCmds() { return &mRecCmds; };
+    vector<cCmd*>* getCmdCmds() { return &mCmdCmds; };
 
     void OsdStatusMessage(const char *Message);
 
@@ -114,6 +116,7 @@ class SmartTvServer : public cStatus {
     void setNonBlocking(int fd);
 
     void initRecCmds();
+    void initCmdCmds();
     // status callbacks
     void Recording(const cDevice *Device, const char *Name, const char *FileName, bool On);
     void TimerChange(const cTimer *Timer, eTimerChange Change);
@@ -133,7 +136,9 @@ class SmartTvServer : public cStatus {
     vector<sClientEntry*> mConTvClients;
 
     vector<cCmd*> mRecCmds;
+    vector<cCmd*> mCmdCmds;
     string mRecMsg;
+    string mCmdMsg;
 
     int mActiveSessions;
     int mHttpClientId;
@@ -148,7 +153,9 @@ class SmartTvServer : public cStatus {
     cManageUrls* mManagedUrls;
 
     string mRecCmdMsg;
+    string mCmdCmdMsg;
     vector<string> mRecCmdList;
+    vector<string> mCmdCmdList;
 };
 
 

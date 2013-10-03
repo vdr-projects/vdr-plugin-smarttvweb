@@ -1277,6 +1277,20 @@ void cResponseMemBlk::sendRecCmds() {
   sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), -1);
 }
 
+void cResponseMemBlk::sendCmds() {
+  *(mLog->log()) << DEBUGPREFIX << "  sendCmds"  << endl;
+
+  if (isHeadRequest())
+    return;
+
+  mResponseMessage = new string();
+  *mResponseMessage = mRequest->mFactory->getCmdCmdsMsg();
+  mResponseMessagePos = 0;
+  mRequest->mConnState = SERVING;
+
+  sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), -1);
+}
+
 void cResponseMemBlk::receiveExecRecCmdReq() {
   vector<sQueryAVP> avps;
   string guid; 
@@ -1286,8 +1300,8 @@ void cResponseMemBlk::receiveExecRecCmdReq() {
   if (isHeadRequest())
     return;
 
-  if (! mRequest->mFactory->getConfig()->getRecCmds()) {
-    sendError(400, "Bad Request", NULL, "017 execreccmd disabled.");
+  if (! mRequest->mFactory->getConfig()->getCmds()) {
+    sendError(400, "Bad Request", NULL, "017 commands disabled.");
     return;
 
   }
@@ -1323,6 +1337,71 @@ void cResponseMemBlk::receiveExecRecCmdReq() {
 		<< endl;
 
   string cmd = ((*r_cmds)[cmdid])->mCommand + " " + guid;
+
+//  dsyslog("executing command '%s'", cmd.c_str());
+  *(mLog->log())<< DEBUGPREFIX
+		<< " exec cmd: " << cmd << endl;
+  cPipe p;
+  string result ="";
+  if (p.Open(cmd.c_str(), "r")) {
+    int c;
+    while ((c = fgetc(p)) != EOF) {
+      result += c;
+    } // while
+    p.Close();
+  } // if (p.open
+  else {
+    //  esyslog("ERROR: can't open pipe for command '%s'", cmd);
+   *(mLog->log())<< DEBUGPREFIX
+		 << " ERROR: cannot open pipe for cmd " << cmd << endl;
+ }
+  *(mLog->log())<< DEBUGPREFIX
+		<< " Exec cmd result: " << result << endl;
+  //report result to widget
+  mRequest->mFactory->OsdStatusMessage(result.c_str());
+ 
+  sendHeaders(200, "OK", NULL, NULL, 0, -1);
+  return;
+}
+
+void cResponseMemBlk::receiveExecCmdReq() {
+  vector<sQueryAVP> avps;
+  string cmd_str;
+  uint cmdid;
+
+  if (isHeadRequest())
+    return;
+
+  if (! mRequest->mFactory->getConfig()->getCmds()) {
+    sendError(400, "Bad Request", NULL, "017 commands disabled.");
+    return;
+  }
+  mRequest->parseQueryLine(&avps);
+
+  if (mRequest->getQueryAttributeValue(&avps, "cmd", cmd_str) != OKAY){
+      sendError(400, "Bad Request", NULL, "015 Mandatory cmd attribute not present.");
+      return ;
+  }
+  cmdid = atoi(cmd_str.c_str());
+
+  *(mLog->log())<< DEBUGPREFIX
+		<< " receiveExecCmd cmd= " << cmdid 
+		<< endl;
+  vector<cCmd*>* r_cmds =  mRequest->mFactory->getCmdCmds();
+
+  if ((cmdid <0 ) || ( cmdid > r_cmds->size())) {
+    *(mLog->log())<< DEBUGPREFIX
+		  << " ERROR: cmd value out of range." << endl;
+      sendError(400, "Bad Request", NULL, "016 Command (cmd) value out of range.");
+      return ;
+  }
+  *(mLog->log())<< DEBUGPREFIX
+		<< " cmdid= " << cmdid
+		<< " t= " << ((*r_cmds)[cmdid])->mTitle
+		<< " c= " << ((*r_cmds)[cmdid])->mCommand
+		<< endl;
+
+  string cmd = ((*r_cmds)[cmdid])->mCommand;
 
 //  dsyslog("executing command '%s'", cmd.c_str());
   *(mLog->log())<< DEBUGPREFIX

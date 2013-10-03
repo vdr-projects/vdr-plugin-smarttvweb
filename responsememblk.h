@@ -71,7 +71,9 @@ class cResponseMemBlk : public cResponseBase {
   int sendManifest (struct stat *statbuf, bool is_hls = true);
   void sendTimersXml();
   void sendRecCmds();
+  void sendCmds();
   void receiveExecRecCmdReq();
+  void receiveExecCmdReq();
 
   void receiveAddTimerReq();
   void receiveActTimerReq();

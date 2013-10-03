@@ -326,6 +326,17 @@ int cHttpResource::processRequest() {
     return OKAY;
   }
 
+  if (mPath.compare("/cmds.xml") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->sendCmds();
+    return OKAY;
+  }
+  if (mPath.compare("/execcmd") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->receiveExecCmdReq();
+    return OKAY;
+  }
+
   if (mPath.compare("/setResume.xml") == 0) {
     mResponse = new cResponseMemBlk(this);
     ((cResponseMemBlk*)mResponse)->receiveResume();
@@ -667,6 +678,12 @@ int cHttpResource::handlePost() {
   if (mPath.compare("/execreccmd") == 0) {
     mResponse = new cResponseMemBlk(this);
     ((cResponseMemBlk*)mResponse)->receiveExecRecCmdReq();
+    return OKAY;
+  }
+
+  if (mPath.compare("/execcmd") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->receiveExecCmdReq();
     return OKAY;
   }
 
