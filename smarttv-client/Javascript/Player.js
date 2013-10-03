@@ -518,6 +518,7 @@ Player.stopVideo = function() {
 		
 		this.state = this.STOPPED;
         Display.status("Stop");
+        Display.hideStatus();
     	Player.AVPlayerObj.hide();
 
 		try {

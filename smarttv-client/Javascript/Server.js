@@ -666,9 +666,7 @@ function execRestCmd(cmd, guid, args) {
 	                var title_list = title.split("~");
 	                Data.addItem( title_list, {link : link, prog: programme, desc: description, guid : guid, start: startVal, 
 	                			dur: durVal, ispes : ispes, isnew : isnew, fps : fps, num : num});              	
-
-					Display.showPopup("Server.updateEntry: addItem= " + title);
-								
+							
 					}); // each
 
 				Data.assets.sortPayload(Data.sortType);
