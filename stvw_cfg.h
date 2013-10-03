@@ -55,7 +55,7 @@ class cSmartTvConfig {
   eGroupSep mGroupSep;
   string mServerAddress;
   int mServerPort;
-  bool mRecCmds;
+  bool mCmds;
 
  public:
   cSmartTvConfig(string dir);
@@ -73,7 +73,7 @@ class cSmartTvConfig {
   eGroupSep getGroupSep() { return mGroupSep; };
   string getServerAddress() { return mServerAddress; };
   int getServerPort() { return mServerPort; };
-  bool getRecCmds() { return mRecCmds; };
+  bool getCmds() { return mCmds; };
 };
 
 #endif

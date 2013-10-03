@@ -109,7 +109,8 @@ void cCmd::trim(string &t) {
 
 SmartTvServer::SmartTvServer(): cStatus(), mRequestCount(0), isInited(false), serverPort(PORT), mServerFd(-1),
   mSegmentDuration(10), mHasMinBufferTime(40),  mLiveChannels(20), 
-  clientList(), mConTvClients(), mRecCmds(), mRecMsg(), mActiveSessions(0), mHttpClientId(0), mConfig(NULL), mMaxFd(0),
+  clientList(), mConTvClients(), mRecCmds(), mCmdCmds(), mRecMsg(), mCmdMsg(), mActiveSessions(0), mHttpClientId(0), 
+  mConfig(NULL), mMaxFd(0),
   mManagedUrls(NULL){
 }
 
@@ -121,6 +122,9 @@ SmartTvServer::~SmartTvServer() {
 
   for (uint i =0; i < mRecCmds.size(); i++)
     delete mRecCmds[i];
+
+  for (uint i =0; i < mCmdCmds.size(); i++)
+    delete mCmdCmds[i];
 }
 
 // Status methods
@@ -702,6 +706,16 @@ void SmartTvServer::initRecCmds() {
 
 }
 
+void SmartTvServer::initCmdCmds() {
+  mRecMsg = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+  mRecMsg += "<cmdcmds>\n";
+  mRecMsg += processNestedItemList("", &Commands, &mCmdCmds);
+  mRecMsg += "</cmdcmds>\n";
+
+  *(mLog.log()) << "reccmds.conf parsed" << endl;
+
+}
+
 void SmartTvServer::initServer(string dir) {
   /* This function initialtes the listening socket for the server
    * and sets isInited to true
@@ -724,6 +738,7 @@ void SmartTvServer::initServer(string dir) {
   *(mLog.log()) << "LogFile= " << mConfig->getLogFile() << endl;
 
   initRecCmds();
+  initCmdCmds();
  
 #else
   mConfig = new cSmartTvConfig("."); 

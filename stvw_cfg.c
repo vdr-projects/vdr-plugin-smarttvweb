@@ -33,7 +33,7 @@
 
 cSmartTvConfig::cSmartTvConfig(string d): mConfigDir(d), mLog(NULL), mCfgFile(NULL),
   mLogFile(), mMediaFolder(), mSegmentDuration(), mHasMinBufferTime(), mHasBitrateCorrection(),
-  mLiveChannels(), mGroupSep(IGNORE), mServerAddress(""), mServerPort(8000), mRecCmds(false) {
+  mLiveChannels(), mGroupSep(IGNORE), mServerAddress(""), mServerPort(8000), mCmds(false) {
 
 #ifndef STANDALONE
   mLogFile= "";
@@ -149,9 +149,9 @@ void cSmartTvConfig::readConfig() {
       continue;
     }
 
-    if (strcmp(attr, "RecCmds") == 0) {
+    if (strcmp(attr, "Commands") == 0) {
       if (strcmp(value, "enable") == 0)
-	mRecCmds = true;
+	mCmds = true;
       continue;
     }
 
