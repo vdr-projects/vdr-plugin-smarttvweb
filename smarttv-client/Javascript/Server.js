@@ -432,7 +432,7 @@ function execRestCmd(cmd, guid, args) {
 			
 			this.cmd = cmd;
 			this.parms.url =Config.serverUrl + "/addTimer.xml?guid="+this.guid;
-			this.parms.method = "GET";
+			this.parms.type = "GET";
 //			this.parms.timeout = 500;
 			
 			this.parms.success = function(data, status, XHR ) {
@@ -448,7 +448,7 @@ function execRestCmd(cmd, guid, args) {
 
 			this.cmd = cmd;
 			this.parms.url =Config.serverUrl + "/deleteFile?guid=" +this.guid;
-			this.parms.method = "GET";
+			this.parms.type = "GET";
 //			this.parms.timeout = 500;
 
 			var img_name = this.guid.split("/");
@@ -487,7 +487,7 @@ function execRestCmd(cmd, guid, args) {
 
 			this.cmd = cmd;
 			this.parms.url =Config.serverUrl + "/deleteYtUrl?guid=" +guid;
-			this.parms.method = "POST";
+			this.parms.type = "POST";
 //			this.parms.timeout = 500;
 
 			this.parms.success = function(data, status, XHR ) {
@@ -510,7 +510,7 @@ function execRestCmd(cmd, guid, args) {
 
 			this.cmd = cmd;
 			this.parms.url =Config.serverUrl + "/deleteRecording.xml?id=" +guid;
-			this.parms.method = "POST";
+			this.parms.type = "POST";
 //			this.parms.timeout = 500;
 
 			this.parms.success = function(data, status, XHR ) {
@@ -533,7 +533,7 @@ function execRestCmd(cmd, guid, args) {
 
 			this.cmd = cmd;
 			this.parms.url =Config.serverUrl + "/setResume.xml?guid=" +guid + "&resume=" + (Player.curPlayTime/1000);
-			this.parms.method = "POST";
+			this.parms.type = "POST";
 //			this.parms.timeout = 1000;
 
 			Notify.showNotify( "Set resume to " + Display.durationString(Player.curPlayTime/1000), true);
@@ -551,7 +551,7 @@ function execRestCmd(cmd, guid, args) {
 
 			this.cmd = cmd;
 			this.parms.url =Config.serverUrl + "/getResume.xml?guid=" +guid;
-			this.parms.method = "POST";
+			this.parms.type = "POST";
 			this.parms.timeout = 500;
 			
 			this.parms.success = function(data, status, XHR ) {
@@ -589,7 +589,7 @@ function execRestCmd(cmd, guid, args) {
 
 			this.cmd = cmd;
 			this.parms.url = Config.serverUrl + "/execreccmd?cmd="+this.args.cmd+"&guid=" + guid;
-			this.parms.method = "GET";
+			this.parms.type = "GET";
 //			this.parms.timeout = 500;
 
 			this.parms.success = function(data, status, XHR ) {
@@ -605,7 +605,7 @@ function execRestCmd(cmd, guid, args) {
 
 			this.cmd = cmd;
 			this.parms.url = Config.serverUrl + "/activateTimer?index=" +guid + "&activate=" + ((this.args.setActive == true) ? "true" : "false"),
-			this.parms.method = "GET";
+			this.parms.type = "GET";
 			this.parms.timeout = 500;
 
 			this.parms.success = function(data, status, XHR ) {
@@ -623,7 +623,7 @@ function execRestCmd(cmd, guid, args) {
 
 			this.cmd = cmd;
 			this.parms.url = Config.serverUrl + "/deleteTimer?index=" +guid,
-			this.parms.method = "GET";
+			this.parms.type = "GET";
 //			this.parms.timeout = 500;
 
 			this.parms.success = function(data, status, XHR ) {
@@ -643,7 +643,7 @@ function execRestCmd(cmd, guid, args) {
 
 			this.cmd = cmd;
 			this.parms.url = Config.serverUrl + "/recordings.xml?guid="+guid,
-			this.parms.method = "GET";
+			this.parms.type = "GET";
 			this.retries = 0;
 
 			this.parms.success = function(data, status, XHR ) {
@@ -666,9 +666,7 @@ function execRestCmd(cmd, guid, args) {
 	                var title_list = title.split("~");
 	                Data.addItem( title_list, {link : link, prog: programme, desc: description, guid : guid, start: startVal, 
 	                			dur: durVal, ispes : ispes, isnew : isnew, fps : fps, num : num});              	
-
-					Display.showPopup("Server.updateEntry: addItem= " + title);
-								
+							
 					}); // each
 
 				Data.assets.sortPayload(Data.sortType);

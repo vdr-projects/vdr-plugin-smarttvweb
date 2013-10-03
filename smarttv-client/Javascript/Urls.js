@@ -54,9 +54,11 @@ UrlsFetcher.fetchUrls = function(url) {
 		},
 		error : function (jqXHR, status, error) {
 			Main.log("UrlsFetcher.fetchUrls Error Response - status= " + status + " error= "+ error);
+			Main.logToServer("UrlsFetcher.fetchUrls Error Response - status= " + status + " error= "+ error);
 		},
 		parsererror : function () {
 			Main.log("UrlsFetcher.fetchUrls parserError  " );
+			Main.logToServer("UrlsFetcher.fetchUrls parserError  " );
 
 		}
 	});
@@ -162,6 +164,7 @@ UrlsFetcher.getYtDescription = function (vid) {
 		},
 		error : function(jqXHR, status, error) {
 			Main.log("UrlsFetcher.getYtDescription: Error");
+			Main.logToServer("UrlsFetcher.getYtDescription: Error");
 	        UrlsFetcher.handleResponse(false);
 		}
 	
@@ -173,6 +176,7 @@ UrlsFetcher.getYtDescription = function (vid) {
 	
 UrlsFetcher.getYtVideoUrl = function (vid) {
 	Main.log("UrlsFetcher.getYtVideoUrl: vid= " + vid);
+	Main.logToServer("UrlsFetcher.getYtVideoUrl: vid= " + vid);
 
 	//Reset
 	UrlsFetcher.fv = "";
@@ -240,6 +244,7 @@ UrlsFetcher.extractYtUrl = function (vid) {
 	
 	while (!ok) {
 		if (UrlsFetcher.preference[UrlsFetcher.curQuality] in UrlsFetcher.urls) {
+			Main.logToServer(" YT Url= " + UrlsFetcher.urls[UrlsFetcher.preference[UrlsFetcher.curQuality]]);
 			Player.setVideoURL(UrlsFetcher.urls[UrlsFetcher.preference[UrlsFetcher.curQuality]]);
 			ok = true;
 			Notify.showNotify("Quality: " + UrlsFetcher.qualities[UrlsFetcher.preference[UrlsFetcher.curQuality]], true);
@@ -248,6 +253,7 @@ UrlsFetcher.extractYtUrl = function (vid) {
 			UrlsFetcher.curQuality --;
 		if (UrlsFetcher.curQuality <0) {
 			Player.setVideoURL(UrlsFetcher.urls[UrlsFetcher.usable[0]]);
+			Main.logToServer(" YT Url= " + UrlsFetcher.urls[UrlsFetcher.preference[UrlsFetcher.curQuality]]);
 			Notify.showNotify("Quality: " + UrlsFetcher.qualities[UrlsFetcher.usable[0]], true);
 			ok = true;
 		}
