@@ -707,13 +707,12 @@ void SmartTvServer::initRecCmds() {
 }
 
 void SmartTvServer::initCmdCmds() {
-  mRecMsg = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
-  mRecMsg += "<cmdcmds>\n";
-  mRecMsg += processNestedItemList("", &Commands, &mCmdCmds);
-  mRecMsg += "</cmdcmds>\n";
+  mCmdMsg = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+  mCmdMsg += "<cmdcmds>\n";
+  mCmdMsg += processNestedItemList("", &Commands, &mCmdCmds);
+  mCmdMsg += "</cmdcmds>\n";
 
-  *(mLog.log()) << "reccmds.conf parsed" << endl;
-
+  *(mLog.log()) << "commands.conf parsed" << endl;
 }
 
 void SmartTvServer::initServer(string dir) {
