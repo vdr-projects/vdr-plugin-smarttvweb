@@ -1792,7 +1792,11 @@ int cResponseMemBlk::sendVdrStatusXml (struct stat *statbuf) {
   char timebuf[128];
   time_t now;
 
+#if VDRVERSNUM >= 20102
+  percent = cVideoDirectory::VideoDiskSpace(&free, &used);
+#else
   percent = VideoDiskSpace(&free, &used);
+#endif
 
   *mResponseMessage += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
   *mResponseMessage += "<vdrstatus>\n";
