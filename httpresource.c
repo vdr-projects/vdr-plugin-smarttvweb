@@ -495,7 +495,11 @@ int cHttpResource::processRequest() {
     
   }
 
+#if VDRVERSNUM >= 20102
+  if (mPath.compare(0, strlen(cVideoDirectory::Name()), cVideoDirectory::Name()) == 0) {
+#else
   if (mPath.compare(0, strlen(VideoDirectory), VideoDirectory) == 0) {
+#endif
     *(mLog->log())<< DEBUGPREFIX
 		  << " Found video dir request. serving " << mPath << endl;
     ok_to_serve = true;    
