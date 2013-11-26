@@ -1,11 +1,23 @@
 //Diff: 
 // getNumString
 // createJQMDomTree
+var Main = {};
+Main.log = function (msg) {
+    console.log(msg);
+};
+
+var Config = {};
+Config.sortType = 0;
+
 
 var Data =
 {
 	assets : new Item,
 	folderList : [],
+	createAccessMap : false,
+	directAccessMap : {},
+	sortType : 0,
+	maxSort : 3
 };
 
 Array.prototype.remove = function(from, to) {
@@ -19,19 +31,29 @@ Data.reset = function() {
 	this.assets = new Item;
 	
 	this.folderList = [];		
-
+	this.createAccessMap = false;
+	this.sortType = Config.sortType;
 //	this.folderList.push({item : this.assets, id: 0});
 //	Main.log("Data.reset: folderList.push. this.folderList.length= " + this.folderList.length);
 };
 
 Data.completed= function(sort) {
-	if (sort == true)
-		this.assets.sortPayload();
+	if (sort == true) {
+		this.assets.sortPayload(Data.sortType);
+		if (this.createAccessMap == true) {
+			Main.log("ERROR: access map does not match anymore");
+		}
+	}
 	
 	this.folderList.push({item : this.assets, id: 0});
-//	Main.log("Data.completed: folderList.push. this.folderList.length= " + this.folderList.length);
-//	Main.log ("Data.completed()= " +this.folderList.length);
+    Main.log("---------- completed ------------");    
+	Main.log("Data.completed: Data.folderList.length= " + this.folderList.length);
+	Main.log("Data.completed(): createAccessMap= " + ((this.createAccessMap == true) ? "true": "false"));
+};
 
+Data.nextSortType = function () {
+	Data.sortType = (Data.sortType +1) % Data.maxSort;
+	this.assets.sortPayload(Data.sortType);	
 };
 
 Data.selectFolder = function (idx, first_idx) {
@@ -55,6 +77,9 @@ Data.isRootFolder = function() {
 };
 
 Data.addItem = function(t_list, pyld) {
+	if (this.createAccessMap == true) {
+		this.directAccessMap[pyld.num] = [];
+	}
     this.assets.addChild(t_list, pyld, 0);
 };
 
@@ -85,6 +110,10 @@ Data.getVideoCount = function() {
 	return this.folderList[this.folderList.length-1].item.childs.length;
 };
 
+Data.deleteElm = function (pos) {
+	Data.getCurrentItem().childs.remove(pos);
+};
+
 Data.getNumString =function(num, fmt) {
         var res = "";
 
@@ -106,12 +135,70 @@ Data.getNumString =function(num, fmt) {
 Data.deleteElm = function (pos) {
 	Data.getCurrentItem().childs.remove(pos);
 };
+//--------------------------------------------------
+//--------------------- RecCmds --------------------
+//--------------------------------------------------
+
+var RecCmds = {	
+	cmds : new Item,
+	folderList : [],
+};
+
+RecCmds.reset = function() {
+	this.cmds = null;
+	this.cmds = new Item;
+	this.folderList = [];		
+	Main.log("RecCmds.reset: folderList.push. this.folderList.length= " + this.folderList.length);
+};
+
+RecCmds.completed= function() {
+	this.folderList.push({item : this.cmds, id: 0});
+	Main.log("---------- completed ------------");    
+	Main.log("RecCmds.completed: Data.folderList.length= " + this.folderList.length);
+};
+
+RecCmds.selectFolder = function (idx, first_idx) {
+	this.folderList.push({item : this.getCurrentItem().childs[idx], id: idx, first:first_idx});
+	Main.log("RecCmds.selectFolder: folderList.push. this.folderList.length= " + this.folderList.length);
+};
+
+RecCmds.folderUp = function () {
+	itm = this.folderList.pop();
+	Main.log("RecCmds.folderUp: folderList.pop. this.folderList.length= " + this.folderList.length);
+	return itm;
+};
+
+RecCmds.isRootFolder = function() {
+	Main.log("RecCmds.isRootFolder: this.folderList.length= " + this.folderList.length);
+	if (this.folderList.length == 1)
+		return true;
+	else
+		return false;
+};
+
+RecCmds.addItem = function(t_list, pyld) {
+    this.cmds.addChild(t_list, pyld, 0);
+};
+
+RecCmds.dumpFolderStruct = function(){
+    Main.log("---------- RecCmds.dumpFolderStruct ------------");    
+    this.cmds.print(0);
+    Main.log("---------- RecCmds.dumpFolderStruct Done -------");    
+};
+
+RecCmds.getCurrentItem = function () {
+	return this.folderList[this.folderList.length-1].item;
+};
+
+RecCmds.getVideoCount = function() {
+	return this.folderList[this.folderList.length-1].item.childs.length;
+};
 //-----------------------------------------
 function Item() {
     this.title = "root";
     this.isFolder = true;
     this.childs = [];
-    this.payload = "";  // only set, if (isFolder == false)
+    this.payload = {};  // only set, if (isFolder == false)
 }
 
 Item.prototype.isFolder = function() {
@@ -140,6 +227,10 @@ Item.prototype.getItem = function (title) {
 
 Item.prototype.addChild = function (key, pyld, level) {
 	if (key.length == 1) {
+		if (Data.createAccessMap == true) {
+			Data.directAccessMap[pyld.num].push(this.childs.length);
+		//	this.titles.push({title: pyld.startstr + " - " + key , pyld : pyld});
+		}
 		var folder = new Item;
 //		folder.title = pyld.startstr + " - " + key;
 		folder.title = key[0];
@@ -149,7 +240,7 @@ Item.prototype.addChild = function (key, pyld, level) {
 //	this.titles.push({title: pyld.startstr + " - " + key , pyld : pyld});
     }
     else {
-    	if (level > 10) {
+    	if (level > 20) {
     		Main.log(" too many levels");
     		return;
     	}
@@ -157,14 +248,21 @@ Item.prototype.addChild = function (key, pyld, level) {
     	var found = false;
     	for (var i = 0; i < this.childs.length; i++) {
     		if (this.childs[i].title == t) {
+				if (Data.createAccessMap == true) {
+					Data.directAccessMap[pyld.num].push(i); // should start from 1
+				}
     			this.childs[i].addChild(key, pyld, level +1);
     			found = true;
-    			break;
+				break;
     		}
     	}
     	if (found == false) {
     		var folder = new Item;
+			if (Data.createAccessMap == true) {
+				Data.directAccessMap[pyld.num].push(this.childs.length); // should start from 1
+			}
     		folder.title = t;
+    		folder.payload['start'] = 0;
     		folder.addChild(key, pyld, level+1);
     		this.childs.push(folder);
     	}
@@ -236,6 +334,63 @@ Item.prototype.print = function(level) {
         	this.childs[i].print(level +1);
     	}
     }
+};
+
+Item.prototype.sortPayload = function(sel) {
+	for (var i = 0; i < this.childs.length; i++) {
+		if (this.childs[i].isFolder == true) {
+			this.childs[i].sortPayload(sel);
+		}
+	}
+
+	switch (sel) {
+	case 1:
+		// Dy Date
+		this.childs.sort(function(a,b) { 
+			if (a.payload.start == b.payload.start) {
+				return ((a.title < b.title) ? -1 : 1);
+			}
+			else {
+				return (a.payload.start - b.payload.start);
+			}
+		});
+		break;
+	case 2:
+		// Dy Date
+		this.childs.sort(function(a,b) { 
+			if (a.payload.start == b.payload.start) {
+				return (a.title >= b.title);
+			}
+			else {
+				return (b.payload.start - a.payload.start);
+			}
+		});
+		break;
+	case 3:
+	    this.childs.sort(function(a,b) { 
+	    	if (a.title == b.title) {
+	    		return (b.payload.start -a.payload.start);
+	    	}
+	    	else {
+	    		return ((a.title < b.title) ? -1 : 1);
+
+	    	}		
+	    });
+	    break;
+	case 0:
+	default:
+	    this.childs.sort(function(a,b) { 
+	    	if (a.title == b.title) {
+	    		return (a.payload.start - b.payload.start);
+	    	}
+	    	else {
+	    		return ((a.title < b.title) ? -1 : 1);
+
+	    	}		
+	    });
+
+		break;
+	}
 };
 
 Item.prototype.createJQMDomTree = function(level) {
