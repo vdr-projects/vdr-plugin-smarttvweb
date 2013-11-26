@@ -48,8 +48,9 @@ class cStatus {
 
 using namespace std;
 
-#define PLG_VERSION "0.9.9"
-#define SERVER "SmartTvWeb/0.9.9" 
+#define PLG_VERSION "0.9.a-pre"
+#define SERVER "SmartTvWeb/0.9.a-pre" 
+class cLiveRelay;
 
 struct sClientEntry {
   string mac;
@@ -77,13 +78,13 @@ class SmartTvServer : public cStatus {
     void initServer(string c_dir);
     void loop();
     void cleanUp();
-    int runAsThread();
+    int  runAsThread();
     void threadLoop();
 
     Log mLog;
 
     void readRecordings();
-    int isServing();
+    int  isServing();
 
     string getConfigDir() { return mConfigDir; };
     cSmartTvConfig* getConfig() { return mConfig; };
@@ -108,6 +109,10 @@ class SmartTvServer : public cStatus {
 
     void OsdStatusMessage(const char *Message);
 
+    void clrWriteFlag(int fd);
+    void setWriteFlag(int fd);
+    int openPipe();
+
  private:
     void addHttpResource(int fd, cHttpResourceBase* resource);
     void pushToClients(cHttpResourceBase* resource);
@@ -122,6 +127,9 @@ class SmartTvServer : public cStatus {
     void TimerChange(const cTimer *Timer, eTimerChange Change);
 
     string processNestedItemList(string, cList<cNestedItem> *, vector<cCmd*>*);
+
+    void closeHttpResource(int rfd);
+    void acceptHttpResource(int &req_id);
 
     pthread_t mThreadId;
     int mRequestCount;

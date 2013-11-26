@@ -46,6 +46,7 @@
 #include "responsefile.h"
 #include "responsevdrdir.h"
 #include "responsememblk.h"
+#include "responselive.h"
 
 #ifndef STANDALONE
 #include <vdr/recording.h>
@@ -488,8 +489,9 @@ int cHttpResource::processRequest() {
 
   if (mPath.find("/live/", 0, 6) == 0) {
     *(mLog->log())<< DEBUGPREFIX
-		  << " Found live request. serving " << mPath << endl;
-    //mResponse = new cResponseLive(this, mPath.substr(6));
+		  << " Found live request. serving " << mPath 
+		  << endl;
+    mResponse = new cResponseLive(this, mPath.substr(6));
     //((cResponseVdrDir*)mResponse)->sendMediaSegment( &statbuf);
     return OKAY;
     
@@ -599,24 +601,23 @@ int cHttpResource::handleWrite() {
     return OKAY;
   }
   
-  //  if (mResponse->mBlkLen == mResponse->mBlkPos) {
   if (mResponse->isBlkWritten()) {
     // note the mBlk may be filled with header info first.
     if (mResponse->fillDataBlk() != OKAY) {
       return ERROR;
     }
+    if (mResponse->mBlkLen == 0) {
+      return OKAY;
+    }
   }
   
-  //  int this_write = write(mFd, &(mResponse->mBlkData[mBlkPos]), mResponse->mBlkLen - mResponse->mBlkPos);
-  //  int this_write = mResponse->writeData(mFd);
-  //  if (this_write <=0)    {
   if (mResponse->writeData(mFd) <=0)    {
 
 #ifndef DEBUG
     *(mLog->log())<< DEBUGPREFIX
-	   << " ERROR after write: Stopped (Client terminated Connection)"
+		  << " close in write: Stopped (Client terminated Connection)"
 		  << " mBlkPos= " << mResponse->mBlkPos << " mBlkLen= " << mResponse->mBlkLen
-	   << DEBUGHDR << endl;
+		  << DEBUGHDR << endl;
 #endif
     mConnState = TOCLOSE;
     mConnected = false;

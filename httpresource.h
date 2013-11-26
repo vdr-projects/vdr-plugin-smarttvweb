@@ -31,7 +31,10 @@
 #include "log.h"
 #include "httpresource_base.h"
 
-#define MAXLEN 32768 
+//#define MAXLEN 65536 
+//#define MAXLEN 524288 
+//#define MAXLEN 1048576 
+#define MAXLEN 3760000
 
 using namespace std;
 

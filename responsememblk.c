@@ -2027,8 +2027,12 @@ int cResponseMemBlk::sendChannelsXml (struct stat *statbuf) {
       break;
     }
 
-    //    snprintf(f, sizeof(f), "http://%s:3000/%s.ts", mServerAddr.c_str(), *(channel->GetChannelID()).ToString());
-    snprintf(f, sizeof(f), "http://%s:3000/%s.ts", own_ip.c_str(), *(channel->GetChannelID()).ToString());
+    if (mRequest->mFactory->getConfig()->useStreamDev4Live() )
+      snprintf(f, sizeof(f), "http://%s:3000/%s.ts", own_ip.c_str(), *(channel->GetChannelID()).ToString());
+    else
+      snprintf(f, sizeof(f), "http://%s:%d/live/%s", own_ip.c_str(), mRequest->mServerPort,
+	       *(channel->GetChannelID()).ToString());
+    
     string link = f;
 
     const cSchedule *schedule = schedules->GetSchedule(channel->GetChannelID());

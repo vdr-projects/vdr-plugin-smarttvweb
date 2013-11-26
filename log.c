@@ -49,7 +49,7 @@ int Log::init(string fileName) {
   if (fileName != "") {
     mLogFile = new ofstream();
 
-    mLogFile->open(fileName.c_str(), ios::out );
+    mLogFile->open(fileName.c_str(), ios::out); // | ios::app
     *mLogFile << "Log Created: " << timebuf << endl;
   }
   else

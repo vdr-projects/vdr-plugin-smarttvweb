@@ -41,4 +41,23 @@ class cHttpResourceBase {
   int mServerPort;
 };
 
+
+class Log;
+
+class cHttpResourcePipe : public cHttpResourceBase {
+ public:
+  cHttpResourcePipe(int f, SmartTvServer* fac);
+  virtual ~cHttpResourcePipe();
+  
+  int handleRead(); 
+  int handleWrite() { return 0; };
+  int checkStatus() { return 0; };
+ private:
+  static int mPipeId;
+  Log*       mLog;
+
+  char*      mBuf;
+};
+
+
 #endif

@@ -56,6 +56,10 @@ class cSmartTvConfig {
   string mServerAddress;
   int mServerPort;
   bool mCmds;
+  bool mUseStreamDev4Live;
+  int mBuiltInLiveStartMode;
+  int mBuiltInLivePktBuf4Hd;
+  int mBuiltInLivePktBuf4Sd;
 
  public:
   cSmartTvConfig(string dir);
@@ -74,6 +78,11 @@ class cSmartTvConfig {
   string getServerAddress() { return mServerAddress; };
   int getServerPort() { return mServerPort; };
   bool getCmds() { return mCmds; };
+  bool useStreamDev4Live() { return mUseStreamDev4Live; };
+  int getBuiltInLiveStartMode() {return mBuiltInLiveStartMode; };
+  int getBuiltInLivePktBuf4Hd() { return mBuiltInLivePktBuf4Hd; };
+  int getBuiltInLivePktBuf4Sd() { return mBuiltInLivePktBuf4Sd; };
+
 };
 
 #endif
