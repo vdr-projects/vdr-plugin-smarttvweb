@@ -37,6 +37,8 @@
 using namespace std;
 
 #if VDRVERSNUM < 10732
+#define PCRFACTOR 300 // conversion from 27MHz PCR extension to 90kHz PCR base
+
 inline int64_t TsGetPcr(const uchar *p)
 {
   if (TsHasAdaptationField(p)) {
