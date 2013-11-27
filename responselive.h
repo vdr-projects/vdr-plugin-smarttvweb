@@ -36,6 +36,25 @@
 
 using namespace std;
 
+#if VDRVERSNUM < 10732
+inline int64_t TsGetPcr(const uchar *p)
+{
+  if (TsHasAdaptationField(p)) {
+     if (p[4] >= 7 && (p[5] & TS_ADAPT_PCR)) {
+        return ((((int64_t)p[ 6]) << 25) |
+                (((int64_t)p[ 7]) << 17) |
+                (((int64_t)p[ 8]) <<  9) |
+                (((int64_t)p[ 9]) <<  1) |
+                (((int64_t)p[10]) >>  7)) * PCRFACTOR +
+               (((((int)p[10]) & 0x01) << 8) |
+                ( ((int)p[11])));
+        }
+     }
+  return -1;
+}
+#endif
+
+
 //class SmartTvServer;
 class cPatPmtGenerator;
 

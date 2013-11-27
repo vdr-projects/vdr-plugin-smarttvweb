@@ -133,7 +133,9 @@ cResponseLive::cResponseLive(cHttpResource* req, string chan_id) : cResponseBase
   mPatPmtGen(NULL), mInStartPhase(true), mFrameDetector(NULL), mVpid(0), mVtype(0), mPpid(0), mStartThreshold(75*188) {
 
   mStartThreshold= mRequest->mFactory->getConfig()->getBuiltInLivePktBuf4Sd() * 188;
-  *(mLog->log()) << DEBUGPREFIX << " cResponseLive::cResponseLive - Constructor" << endl;
+  *(mLog->log()) << DEBUGPREFIX << " cResponseLive::cResponseLive - Constructor "
+		 << "mStartThreshold= " << mStartThreshold 
+		 << " (" << mStartThreshold/188 << " Pkts)" << endl;
 
   if (InitRelay(chan_id)) {
     mRelay->setNotifRequired();
@@ -181,7 +183,8 @@ bool cResponseLive::InitRelay(string channel_id) {
       //      mStartThreshold = 150 * 188;
       mStartThreshold= mRequest->mFactory->getConfig()->getBuiltInLivePktBuf4Hd() * 188;
       
-      *(mLog->log()) << DEBUGPREFIX << " cResponseLive::InitRelay H.264 detected. mStartThreshold is " << mStartThreshold << endl;
+      *(mLog->log()) << DEBUGPREFIX << " cResponseLive::InitRelay H.264 detected. mStartThreshold is " << mStartThreshold 
+		     << " (" << mStartThreshold/188 << " Pkts)" << endl;
     }
 
     mFrameDetector = new cFrameDetector(channel->Vpid(), channel->Vtype());
@@ -362,7 +365,7 @@ int cResponseLive::fillDataBlk_iframe() {
   if (mError)
     return ERROR;
 
-  int threshold = (mInStartPhase) ? mStartThreshold : (10*188);
+  int threshold = (mInStartPhase) ? mStartThreshold : (1*188);
 
   if (mRelay->mRingBuffer->Available() >= threshold) {
     
@@ -477,7 +480,7 @@ int cResponseLive::fillDataBlk_straight() {
   if (mError)
     return ERROR;
   
-  int threshold = (mInStartPhase) ? mStartThreshold : (10*188);
+  int threshold = (mInStartPhase) ? mStartThreshold : (1*188);
   
   if (mRelay->mRingBuffer->Available() >= threshold) {
     
