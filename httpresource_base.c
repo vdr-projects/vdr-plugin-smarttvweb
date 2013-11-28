@@ -22,6 +22,7 @@
 
 #include "httpresource_base.h"
 #include "log.h"
+#include <unistd.h>
 
 int cHttpResourcePipe::mPipeId = 0;
 
