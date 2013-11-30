@@ -146,6 +146,7 @@ cResponseLive::cResponseLive(cHttpResource* req, string chan_id) : cResponseBase
     sendHeaders(200, "OK", NULL, "video/mpeg", -1, -1);
   }
   else {
+    *(mLog->log()) << DEBUGPREFIX << " cResponseLive::cResponseLive - Constructor - sending Error" << endl;
     sendError(404, "Not Found.", NULL, "004 Resource Busy");
   }
 }
@@ -173,6 +174,20 @@ bool cResponseLive::InitRelay(string channel_id) {
 
   char buf [40];
   snprintf(buf, 40, "%s", *(channel->GetChannelID()).ToString());
+
+  *(mLog->log()) << DEBUGPREFIX 
+		 << " vpid= " << channel->Vpid()
+		 << " vtype= " << channel->Vtype()
+		 << " ppid= " << channel->Ppid()
+		 << endl;
+
+  if (channel->Vpid() == 0) {
+    mStartThreshold= 10 * 188;
+    
+    *(mLog->log()) << DEBUGPREFIX << " cResponseLive::InitRelay Audio Only service  detected. mStartThreshold is " << mStartThreshold 
+		   << " (" << mStartThreshold/188 << " Pkts)" << endl;
+    mInStartPhase = true;
+  }
 
   if (channel->Vpid() != 0) {
     mVpid = channel->Vpid();
@@ -252,8 +267,13 @@ int cResponseLive::fillDataBlk() {
     break;
   case 2:
     return fillDataBlk_iframe();
-    break;
+    break;    
   };
+
+  *(mLog->log()) << DEBUGPREFIX
+		 << " cResponseLive::fillDataBlk() - ERROR: should not be here " << endl;
+  
+  return ERROR;
 }
 
 int cResponseLive::fillDataBlk_pcr() {
@@ -288,8 +308,11 @@ int cResponseLive::fillDataBlk_pcr() {
 	    if (pcr != -1) {
 	      // pcr pkt found
 	      if ((r  - (offset+188)) < threshold) {
+		*(mLog->log()) << DEBUGPREFIX
+			       << " cResponseLive::fillDataBlk() - PCR found but not sufficient data " 
+			     << pcr << endl;
 		already_deleted = true;
-		mRelay->mRingBuffer->Del(offset + 188);
+		mRelay->mRingBuffer->Del(offset);
 		break;
 	      }
 	      *(mLog->log()) << DEBUGPREFIX
