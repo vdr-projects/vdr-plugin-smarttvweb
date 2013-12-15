@@ -101,8 +101,15 @@ class cResponseLive : public cResponseBase {
   int fillDataBlk();
   
   int fillDataBlk_straight();
-  int fillDataBlk_pcr();
-  int fillDataBlk_iframe();
+  //  int fillDataBlk_pcr();
+  //  int fillDataBlk_iframe();
+  int fillDataBlk_duration();
+  int fillDataBlk_iPlusDuration();
+
+  bool findIFrame(char *b, int r);
+  bool bufferData(char *b, int r);
+  bool setLowerOffset(char *b, int r);
+  void justFillDataBlk(char *b, int r);
 
  private:
   bool              InitRelay(string chan_id);
@@ -119,6 +126,18 @@ class cResponseLive : public cResponseBase {
   int               mPpid;
 
   int               mStartThreshold;
+
+  // Mode 4
+  int               mCurOffset;
+  int               mTuneInState;
+  uint64_t          mFirstPcr;
+  int               mFirstPcrOffset;
+  uint64_t          mCurPcr;
+  int               mCurPcrOffset;
+  int               mNoFrames;
+  int               mIFrameOffset;
+
+  int               mLowerOffset;
 };
 
 #endif

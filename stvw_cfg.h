@@ -60,6 +60,7 @@ class cSmartTvConfig {
   int mBuiltInLiveStartMode;
   int mBuiltInLivePktBuf4Hd;
   int mBuiltInLivePktBuf4Sd;
+  double mBuiltInLiveBufDur;
 
  public:
   cSmartTvConfig(string dir);
@@ -82,6 +83,7 @@ class cSmartTvConfig {
   int getBuiltInLiveStartMode() {return mBuiltInLiveStartMode; };
   int getBuiltInLivePktBuf4Hd() { return mBuiltInLivePktBuf4Hd; };
   int getBuiltInLivePktBuf4Sd() { return mBuiltInLivePktBuf4Sd; };
+  double getBuiltInLiveBufDur() { return mBuiltInLiveBufDur; };
 
 };
 

@@ -34,7 +34,7 @@
 cSmartTvConfig::cSmartTvConfig(string d): mConfigDir(d), mLog(NULL), mCfgFile(NULL),
   mLogFile(), mMediaFolder(), mSegmentDuration(), mHasMinBufferTime(), mHasBitrateCorrection(),
   mLiveChannels(), mGroupSep(IGNORE), mServerAddress(""), mServerPort(8000), mCmds(false), mUseStreamDev4Live(true),
-  mBuiltInLiveStartMode (2), mBuiltInLivePktBuf4Hd(150), mBuiltInLivePktBuf4Sd(75) {
+  mBuiltInLiveStartMode (2), mBuiltInLivePktBuf4Hd(150), mBuiltInLivePktBuf4Sd(75), mBuiltInLiveBufDur(0.6) {
 
 #ifndef STANDALONE
   mLogFile= "";
@@ -73,7 +73,7 @@ void cSmartTvConfig::printConfig() {
   *(mLog->log()) << " BuiltInLiveStartMode: " << mBuiltInLiveStartMode << endl;
   *(mLog->log()) << " BuiltInLivePktBuf4Hd: " << mBuiltInLivePktBuf4Hd << endl;
   *(mLog->log()) << " BuiltInLivePktBuf4Sd: " << mBuiltInLivePktBuf4Sd << endl;
-
+  *(mLog->log()) << " BuiltInLiveBufDur: " << mBuiltInLiveBufDur << endl;
 }
 
 
@@ -169,7 +169,7 @@ void cSmartTvConfig::readConfig() {
 
     if (strcmp(attr, "BuiltInLiveStartMode") == 0) {
       mBuiltInLiveStartMode = atoi(value);
-      if ((mBuiltInLiveStartMode <0) || (mBuiltInLiveStartMode > 2))
+      if ((mBuiltInLiveStartMode <0) || (mBuiltInLiveStartMode > 4))
 	mBuiltInLiveStartMode = 0;
       continue;
     }
@@ -180,6 +180,13 @@ void cSmartTvConfig::readConfig() {
     }
     if (strcmp(attr, "BuiltInLivePktBuf4Sd") == 0) {
       mBuiltInLivePktBuf4Sd = atoi(value);
+      continue;
+    }
+
+    if (strcmp(attr, "BuiltInLiveBufDur") == 0) {
+      mBuiltInLiveBufDur = atoi(value) /1000.0;
+      if (mBuiltInLiveBufDur <= 0.0)
+	mBuiltInLiveBufDur = 0.5;
       continue;
     }
     
