@@ -39,6 +39,9 @@ string cUrlEncode::doUrlSaveEncode(string in) {
     }
     num = in[idx];
     switch (num) {
+    case '"':
+      res += "%22";
+      break;
     case '&':
       res += "%26";
       break;
@@ -95,6 +98,9 @@ string cUrlEncode::doUrlSaveDecode(string input) {
       sscanf(num.c_str(), "%X", &x);
       idx+= 3;
       switch (x) {
+      case 0x22: // '"'
+	res += '"';
+	break;
       case 0x23: // '#'
 	res += "#";
 	break;
