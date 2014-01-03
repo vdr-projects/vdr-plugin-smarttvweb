@@ -47,12 +47,12 @@
 #include <dirent.h>
 #endif
 
-
 //#define MAXLEN 32768
-#define DEBUGPREFIX "mReqId= " << mRequest->mReqId << " fd= " << mRequest->mFd 
+#define DEBUGPREFIX mLog->getTimeString() << ": mReqId= " << mRequest->mReqId << " fd= " << mRequest->mFd 
 #define OKAY 0
 #define ERROR (-1)
 #define DEBUG
+
 
 class cResumeEntry {
  public:
@@ -434,6 +434,76 @@ int cResponseMemBlk::sendResumeXml () {
 }
 
 
+int cResponseMemBlk::sendMarksXml () {
+  if (isHeadRequest())
+    return OKAY;
+#ifndef STANDALONE
+
+  mResponseMessage = new string();
+  *mResponseMessage = "";
+  mResponseMessagePos = 0;
+
+  mRequest->mConnState = SERVING;
+  
+  char f[400];
+
+  cResumeEntry entry;
+  string id;
+
+  // obsolete?
+  parseResume(entry, id);
+
+  vector<sQueryAVP> avps;
+  mRequest->parseQueryLine(&avps);
+  string guid; 
+
+  if (mRequest->getQueryAttributeValue(&avps, "guid", guid) == OKAY){
+    entry.mFilename = cUrlEncode::doUrlSaveDecode(guid);
+
+    *(mLog->log() )<< DEBUGPREFIX
+		   << " Found guid: " << guid
+		   << " filename: " << entry.mFilename
+		   << endl;
+  }
+
+  cRecording *rec = Recordings.GetByName(entry.mFilename.c_str());
+  if (rec == NULL) {
+    *(mLog->log())<< DEBUGPREFIX
+		  << " ERROR in sendResume: recording not found - filename= " << entry.mFilename << endl;
+    sendError(400, "Bad Request", NULL, "007 Failed to find the recording.");
+    return OKAY;
+  }
+
+  cMarks marks;
+  marks.Load(rec->FileName(), rec->FramesPerSecond(), rec->IsPesRecording());
+
+  if (marks.Count() == 0) {
+    *(mLog->log())<< DEBUGPREFIX
+		  << " sendMark: No Mark Found "  << endl;
+    sendError(400, "Bad Request", NULL, "0xx No Mark Found.");
+    return OKAY;
+  }
+
+  *(mLog->log())<< DEBUGPREFIX
+		<< " marks request for " << entry.mFilename 
+		<< endl;
+
+  *mResponseMessage  += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+  *mResponseMessage += "<marks>";
+
+  for (const cMark *m = marks.First(); m; m = marks.Next(m)) {
+    snprintf(f, sizeof(f), "<mark>%.02f</mark>\n", m->Position() / rec->FramesPerSecond());
+    *mResponseMessage += f;
+  }
+  *mResponseMessage += "</marks>\n";
+
+  sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), -1);
+#endif
+
+  return OKAY;
+}
+
+
 
 int cResponseMemBlk::receiveDelRecReq() {
   if (isHeadRequest())
@@ -481,6 +551,7 @@ int cResponseMemBlk::receiveDelRecReq() {
   #endif
   return OKAY;
 }
+
 
 
 //***************************

@@ -60,6 +60,7 @@ class cResponseMemBlk : public cResponseBase {
   int sendRecordingsXml (struct stat *statbuf);
   int sendChannelsXml (struct stat *statbuf);
   int sendResumeXml ();
+  int sendMarksXml ();
   int sendVdrStatusXml (struct stat *statbuf);
   void sendServerNameXml ();
   int sendYtBookmarkletJs();
