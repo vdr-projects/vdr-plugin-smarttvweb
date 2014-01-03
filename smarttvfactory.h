@@ -1,7 +1,7 @@
 /*
  * smarttvfactory.h: VDR on Smart TV plugin
  *
- * Copyright (C) 2012 T. Lohmar
+ * Copyright (C) 2012 - 2014 T. Lohmar
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -30,7 +30,6 @@
 #include <list>
 #include <ctime>
 #include <sys/select.h>
-//#include "httpresource.h"
 #include "httpresource_base.h"
 #include "log.h"
 #include "stvw_cfg.h"
@@ -98,8 +97,6 @@ class SmartTvServer : public cStatus {
     cManageUrls* getUrlsObj();
 
     void pushYtVideoId(string, bool);
-    //    void pushYtVideoIdToClient(string vid_id, string peer, bool);
-
     void pushCfgServerAddressToTv( string tv_addr);
 
     string getRecCmdsMsg() { return mRecMsg; };
@@ -130,6 +127,8 @@ class SmartTvServer : public cStatus {
 
     void closeHttpResource(int rfd);
     void acceptHttpResource(int &req_id);
+
+    void logActiveSessionIds() ;
 
     pthread_t mThreadId;
     int mRequestCount;

@@ -1,7 +1,7 @@
 /*
- * log.h.h: VDR on Smart TV plugin
+ * log.h: VDR on Smart TV plugin
  *
- * Copyright (C) 2012 Thorsten Lohmar
+ * Copyright (C) 2012 - 2014 T. Lohmar
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -38,6 +38,7 @@ class Log
 
     int init(char* fileName);
     int init(string fileName);
+    string getTimeString();
     int shutdown();
     ofstream* log();
 

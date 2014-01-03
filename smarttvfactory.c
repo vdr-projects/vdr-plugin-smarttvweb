@@ -1,7 +1,7 @@
 /*
  * smarttvfactory.c: VDR on Smart TV plugin
  *
- * Copyright (C) 2012, 2013 T. Lohmar
+ * Copyright (C) 2012 - 2014 T. Lohmar
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -136,7 +136,7 @@ SmartTvServer::~SmartTvServer() {
 // Status methods
 void SmartTvServer::Recording(const cDevice *Device, const char *Name, const char *FileName, bool On) {
 #ifndef DEBUG
-  *(mLog.log()) << "SmartTvServer::Recording: Recording"  
+  *(mLog.log()) << getTimeString() << ": SmartTvServer::Recording: Recording"  
 		<< ((On) ? " started" : " stopped")
 		<< endl;
 #endif
@@ -145,12 +145,12 @@ void SmartTvServer::Recording(const cDevice *Device, const char *Name, const cha
   
   if (Name == NULL) {
     if (FileName == NULL) {
-      *(mLog.log()) << "WARNING in SmartTvServer::Recording: Name and FileName are NULL. Return.  " << endl;
+      *(mLog.log()) << mLog.getTimeString() << ": WARNING in SmartTvServer::Recording: Name and FileName are NULL. Return.  " << endl;
       return;
     }
     cRecording* rec = Recordings.GetByName(FileName);
     if (rec == NULL) {
-      *(mLog.log()) << "WARNING in SmartTvServer::Recording: No Recording Entry found. Return.  " << endl;
+      *(mLog.log()) << mLog.getTimeString() << ": WARNING in SmartTvServer::Recording: No Recording Entry found. Return.  " << endl;
       return;
     }
     name = rec->Name();
@@ -163,7 +163,8 @@ void SmartTvServer::Recording(const cDevice *Device, const char *Name, const cha
 
   msg << "{\"type\":\""+method+"\",\"name\":\"" << name << "\",\"guid\":\""+guid+"\"}";
 
-  *(mLog.log()) << "SmartTvServer::Recording: Recording"
+  *(mLog.log()) << mLog.getTimeString()
+		<< ": SmartTvServer::Recording: Recording"
 		<< ((On) ? " started" : " stopped")
 		<< " Msg=  " << msg.str() 
 		<< endl;
@@ -196,7 +197,7 @@ void SmartTvServer::pushToClients(cHttpResourceBase* resource) {
 
 void SmartTvServer::TimerChange(const cTimer *Timer, eTimerChange Change) {
  #ifndef DEBUG
-  *(mLog.log()) << "SmartTvServer::TimerChange" 
+  *(mLog.log()) << mLog.getTimeString() << ": SmartTvServer::TimerChange" 
 		<< endl;
 #endif
 
@@ -216,7 +217,7 @@ void SmartTvServer::TimerChange(const cTimer *Timer, eTimerChange Change) {
 
 
   if (Timer == NULL) {
-    *(mLog.log()) << "WARNING in SmartTvServer::TimerChange - Timer is NULL. Method= " << method << ", returning" << endl;
+    *(mLog.log()) << mLog.getTimeString() << ": WARNING in SmartTvServer::TimerChange - Timer is NULL. Method= " << method << ", returning" << endl;
     return;
   }
 
@@ -230,7 +231,7 @@ void SmartTvServer::TimerChange(const cTimer *Timer, eTimerChange Change) {
   msg << "{\"type\":\"" << method << "\",\"name\":\"" << name << "\", \"start\":" << Timer->Start() <<"}";
 
 #ifndef DEBUG
-  *(mLog.log()) << "SmartTvServer::TimerChange: Msg=  " << msg.str() << endl;
+  *(mLog.log()) << mLog.getTimeString() << ": SmartTvServer::TimerChange: Msg=  " << msg.str() << endl;
 #endif
 
   for (uint i = 0; i < mConTvClients.size(); i ++) {
@@ -244,7 +245,7 @@ void SmartTvServer::TimerChange(const cTimer *Timer, eTimerChange Change) {
 }
 
 void SmartTvServer::OsdStatusMessage(const char *Message) {
-  *(mLog.log()) << "SmartTvServer::OsdStatusMessage: Msg=  " << ((Message != NULL) ? Message : "") << endl;
+  *(mLog.log()) << mLog.getTimeString() << ": SmartTvServer::OsdStatusMessage: Msg=  " << ((Message != NULL) ? Message : "") << endl;
 
   if (Message == NULL)
     return;
@@ -287,7 +288,7 @@ void SmartTvServer::updateTvClient(string ip, string mac, time_t upd) {
   bool found = false;
   for (uint i = 0; i < mConTvClients.size(); i++) {
     if (mConTvClients[i]->mac ==  mac) {
-      *(mLog.log()) << "SmartTvServer::updateTvClient: Found Entry for Mac= " << mac
+      *(mLog.log()) << mLog.getTimeString() << ": SmartTvServer::updateTvClient: Found Entry for Mac= " << mac
 		    << endl;
       found = true;
       mConTvClients[i]->ip = ip;
@@ -296,8 +297,8 @@ void SmartTvServer::updateTvClient(string ip, string mac, time_t upd) {
     }
   }
   if (found == false) {
-      *(mLog.log()) << "SmartTvServer::updateTvClient: Append Entry for Mac= " << mac
-		    << endl;
+    *(mLog.log()) << mLog.getTimeString() << ": SmartTvServer::updateTvClient: Append Entry for Mac= " << mac
+		  << endl;
     sClientEntry * entry = new sClientEntry(mac, ip, upd);
     mConTvClients.push_back(entry);
   }
@@ -310,14 +311,14 @@ void SmartTvServer::removeTvClient(string ip, string mac, time_t upd) {
   for (iter = mConTvClients.begin() ; iter != mConTvClients.end(); ++iter)
     if ((*iter)->mac == mac) {
       found = true;
-      *(mLog.log()) << "SmartTvServer::removeTvClient: Found Entry for Mac= " << mac
+      *(mLog.log()) << mLog.getTimeString() << ": SmartTvServer::removeTvClient: Found Entry for Mac= " << mac
 		    << endl;
       iter = mConTvClients.erase(iter);
       break;
     }
       
   if (!found ) {
-    *(mLog.log()) << "SmartTvServer::removeTvClient: No entry for Mac= " << mac
+    *(mLog.log()) << mLog.getTimeString() << ": SmartTvServer::removeTvClient: No entry for Mac= " << mac
 		  << " found"
 		  << endl;
   }
@@ -363,17 +364,17 @@ void SmartTvServer::pushYtVideoId(string vid_id, bool store) {
 
 int SmartTvServer::connectToClient(string peer, time_t last_update) {
   if ((time(NULL) - last_update) > 60) {
-    *(mLog.log()) << " SmartTvServer::connectToClient: expired client= " << peer << endl;
+    *(mLog.log()) << mLog.getTimeString() << ": SmartTvServer::connectToClient: expired client= " << peer << endl;
     return -1;
   }
-  *(mLog.log()) << " SmartTvServer::connectToClient: client= " << peer << endl;
+  *(mLog.log()) << mLog.getTimeString() << ": SmartTvServer::connectToClient: client= " << peer << endl;
 
   int cfd; 
   struct sockaddr_in server; 
   cfd = socket(AF_INET, SOCK_STREAM, 0); 
 
   if (cfd <0) { 
-    *(mLog.log()) << "Error: Cannot create client socket" << endl;
+    *(mLog.log()) << mLog.getTimeString() << ": Error: Cannot create client socket" << endl;
     return -1; 
   }
   
@@ -386,11 +387,11 @@ int SmartTvServer::connectToClient(string peer, time_t last_update) {
 
   if (connect(cfd, (const struct sockaddr *) &server, sizeof(struct sockaddr_in)) <0) { 
     if (errno != EINPROGRESS) {
-      *(mLog.log()) << "Error while connecting" << endl; 
+      *(mLog.log()) << mLog.getTimeString() << ": Error while connecting" << endl; 
       return -1; 
     }
     else
-      *(mLog.log()) << "Connecting" << endl; 
+      *(mLog.log()) << mLog.getTimeString() << ": Connecting" << endl; 
   }
   return cfd;
 }
@@ -413,13 +414,13 @@ void SmartTvServer::addHttpResource(int rfd, cHttpResourceBase* resource) {
     mActiveSessions ++;
   }
   else {
-    *(mLog.log()) << "Error: clientList idx in use" << endl; 
+    *(mLog.log()) << mLog.getTimeString() << ": Error: clientList idx in use" << endl; 
     // ERROR: 
   }
 }
 
 void SmartTvServer::pushCfgServerAddressToTv( string tv_addr) {
-  *(mLog.log()) << " SmartTvServer::pushCfgServerAddressToTv TV= " << tv_addr 
+  *(mLog.log()) << mLog.getTimeString() << ": SmartTvServer::pushCfgServerAddressToTv TV= " << tv_addr 
 		<< endl;
   
   int cfd=  connectToClient(tv_addr, time(NULL));
@@ -431,7 +432,7 @@ void SmartTvServer::pushCfgServerAddressToTv( string tv_addr) {
 int SmartTvServer::runAsThread() {
   int res = pthread_create(&mThreadId, NULL, (void*(*)(void*))SmartTvServerStartThread, (void *)this);
   if (res != 0) {
-    *(mLog.log()) << " Error creating thread. res= " << res 
+    *(mLog.log()) << mLog.getTimeString() << ": Error creating thread. res= " << res 
 		  << endl;
     return 0;
   } 
@@ -439,11 +440,11 @@ int SmartTvServer::runAsThread() {
 }
 
 void SmartTvServer::threadLoop() {
-  *(mLog.log()) << " SmartTvServer Thread Started " << endl;
+  *(mLog.log()) << mLog.getTimeString() << ": SmartTvServer Thread Started " << endl;
 
   loop();
 
-  *(mLog.log()) << " SmartTvServer Thread Stopped "  << endl;
+  *(mLog.log()) << mLog.getTimeString() << ": SmartTvServer Thread Stopped "  << endl;
 }
 
 //---------------------------------------------------
@@ -454,12 +455,10 @@ void SmartTvServer::setNonBlocking(int fd) {
 }
 
 void SmartTvServer::clrWriteFlag(int fd) {
-  //  *(mLog.log()) << " clrWriteFlag fd= " << fd << endl;
   FD_CLR(fd, &mWriteState);
 }
 
 void SmartTvServer::setWriteFlag(int fd) {
-  //  *(mLog.log()) << " setWriteFlag fd= " << fd << endl;
   FD_SET(fd, &mWriteState);      
 }
 
@@ -469,7 +468,7 @@ int SmartTvServer::openPipe() {
   if (pipe2(pipefd, O_NONBLOCK) == -1) {
     return 0;
   }
-  *(mLog.log()) << "SmartTvServer::openPipe pipefd[0]= " << pipefd[0] 
+  *(mLog.log()) << mLog.getTimeString() << ": SmartTvServer::openPipe pipefd[0]= " << pipefd[0] 
 		<< " pipefd[1]= " << pipefd[1] << endl;
 
   addHttpResource(pipefd[0], new cHttpResourcePipe(pipefd[0], this));
@@ -479,13 +478,25 @@ int SmartTvServer::openPipe() {
 
 void SmartTvServer::closeHttpResource(int rfd) {
   close(rfd);
+  int req_id = clientList[rfd]->mReqId;
   delete clientList[rfd];
   clientList[rfd] = NULL;
   mActiveSessions--;
-  *(mLog.log()) << " - Check Read: mActiveSessions= " << mActiveSessions << endl;
+  *(mLog.log()) << mLog.getTimeString() << ": - Closing Session mReqId= " << req_id << endl;
+  logActiveSessionIds();
   FD_CLR(rfd, &mReadState);      /* dead client */
   FD_CLR(rfd, &mWriteState);
 
+}
+
+void SmartTvServer::logActiveSessionIds() {
+  *(mLog.log()) << mLog.getTimeString() << ": mActiveSessions= " << mActiveSessions << " Ids= [ ";
+  for (uint idx= 0; idx < clientList.size(); idx++) {
+    if (clientList[idx] != NULL) {
+      *(mLog.log()) << clientList[idx]->mReqId << " ";
+    }
+  }
+  *(mLog.log()) << "]" << endl;
 }
 
 void SmartTvServer::acceptHttpResource(int &req_id) {
@@ -497,7 +508,7 @@ void SmartTvServer::acceptHttpResource(int &req_id) {
     req_id ++;
     
 #ifndef DEBUG
-    *(mLog.log()) << "fd= " << rfd
+    *(mLog.log()) << mLog.getTimeString() << ": fd= " << rfd
 		  << " --------------------- Received connection ---------------------" << endl;
 #endif
 
@@ -513,10 +524,12 @@ void SmartTvServer::acceptHttpResource(int &req_id) {
     }
     clientList[rfd] = new cHttpResource(rfd, req_id, serverPort, this);
     mActiveSessions ++;
-    *(mLog.log()) << " + mActiveSessions= " << mActiveSessions << endl;
+    //    *(mLog.log()) << mLog.getTimeString() << ": + mActiveSessions= " << mActiveSessions << endl;
+    *(mLog.log()) << mLog.getTimeString() << ": + New Session mReqId= " << req_id << endl;
+    logActiveSessionIds();
   }
   else{
-    *(mLog.log()) << "Error accepting " <<  errno << endl;
+    *(mLog.log()) << mLog.getTimeString() << ": Error accepting " <<  errno << endl;
   }    
   
 }
@@ -539,7 +552,7 @@ void SmartTvServer::loop() {
   FD_SET(mServerFd, &mReadState);
   mMaxFd = mServerFd;
 
-  *(mLog.log()) << "mServerFd= " << mServerFd << endl;
+  *(mLog.log()) << mLog.getTimeString() << ": mServerFd= " << mServerFd << endl;
 
   int handeled_fds = 0;
 
@@ -551,24 +564,8 @@ void SmartTvServer::loop() {
 
     if (ret != handeled_fds) {
       // Only ok, when the server has closed a handing HTTP connection
-      *(mLog.log()) << "WARNING: Select-ret= " << ret 
+      *(mLog.log()) << mLog.getTimeString() << ": WARNING: Select-ret= " << ret 
 		    << " != handeled_fds= " << handeled_fds << endl;
-      /*      FD_ZERO(&mReadState);
-      FD_ZERO(&mWriteState);
-      FD_SET(mServerFd, &mReadState);
-      maxfd = mServerFd;
-
-      read_set = mReadState;
-      write_set = mWriteState;
-      for (uint idx= 0; idx < clientList.size(); idx++) {
-	if (clientList[idx] != NULL) {
-	  close(idx);
-	  delete clientList[idx];
-	  clientList[idx] = NULL;
-	}
-      }
-      mActiveSessions = 0;
-*/
     }
 
     handeled_fds = 0;
@@ -582,15 +579,16 @@ void SmartTvServer::loop() {
       for (uint idx= 0; idx < clientList.size(); idx++) {
 	if (clientList[idx] != NULL)
 	  if (clientList[idx]->checkStatus() == ERROR) {
+	    *(mLog.log()) << mLog.getTimeString() << ": WARNING: Timeout - Dead Client fd=" <<  idx  
+			  << " mReqId= " << clientList[idx]->mReqId << endl;
 	    closeHttpResource(idx);
-	    *(mLog.log()) << "WARNING: Timeout - Dead Client fd=" <<  idx  << endl;
 	  }
       } 
       continue;
     } // timeout
 
     if (ret < 0){
-      *(mLog.log()) << "ERROR: select error errno= " <<  errno << endl;
+      *(mLog.log()) << mLog.getTimeString() << ": ERROR: select error errno= " <<  errno << endl;
       continue;
     } // Error
 
@@ -608,7 +606,7 @@ void SmartTvServer::loop() {
 	handeled_fds ++;
 	// HandleRead
 	if (clientList[rfd] == NULL) {
-	  *(mLog.log()) << "ERROR in Check Read: oops - no cHttpResource anymore fd= " << rfd << endl;
+	  *(mLog.log()) << mLog.getTimeString() << ": ERROR in Check Read: oops - no cHttpResource anymore fd= " << rfd << endl;
 	  close(rfd);
           FD_CLR(rfd, &mReadState);      /* remove dead client */
 	  FD_CLR(rfd, &mWriteState);
@@ -618,14 +616,19 @@ void SmartTvServer::loop() {
 	int n = 0;
 	ioctl(rfd, FIONREAD, &n);
 	if ( n == 0) {
+	  //	  int req_id = clientList[rfd]->mReqId;
 	  closeHttpResource(rfd);
-	  *(mLog.log()) << "fd= " << rfd << " ------ Check Read: Closing (n=0)-------" 
+	  /*	  *(mLog.log()) << mLog.getTimeString() << ": fd= " << rfd << " mReqId= " << req_id
+			<< " ------ Check Read: Closing (n=0)-------" 
 			<< endl;
+	  */
 	  continue;
 	}
 	if ( clientList[rfd]->handleRead() < 0){
 #ifndef DEBUG
-	  *(mLog.log()) << "fd= " << rfd << " --------------------- Check Read: Closing ---------------------" 
+	  *(mLog.log()) << mLog.getTimeString() << ": fd= " << rfd 
+			<< " mReqId= " << clientList[rfd]->mReqId 
+			<< " --------------------- Check Read: Closing ---------------------" 
 			<< endl;
 #endif
 	  closeHttpResource(rfd);
@@ -648,7 +651,9 @@ void SmartTvServer::loop() {
 	}
 	if ( clientList[rfd]->handleWrite() < 0){
 #ifndef DEBUG
-	  *(mLog.log()) << "fd= " << rfd << " --------------------- Check Write: Closing ---------------------" << endl;
+	  *(mLog.log()) << mLog.getTimeString() << ": fd= " << rfd 
+			<< " mReqId= " << clientList[rfd]->mReqId 
+			<< " --------------------- Check Write: Closing ---------------------" << endl;
 #endif
 	  closeHttpResource(rfd);
 	}
@@ -684,12 +689,12 @@ void SmartTvServer::loop() {
 } // org bracket
 
 int SmartTvServer::isServing() {
-  *(mLog.log()) << "SmartTvServer::isServing: mActiveSessions= " << mActiveSessions << endl;
+  *(mLog.log()) << mLog.getTimeString() << ": SmartTvServer::isServing: mActiveSessions= " << mActiveSessions << endl;
   time_t now = time(NULL);
   bool connected_tv = false;
   for (uint i = 0; i < mConTvClients.size(); i++) {
     if ( (now - mConTvClients[i]->lastKeepAlive) < 60) {
-      *(mLog.log()) << "SmartTvServer::isServing: Found a connected TV: mac= " << mConTvClients[i]->mac 
+      *(mLog.log()) << mLog.getTimeString() << ": SmartTvServer::isServing: Found a connected TV: mac= " << mConTvClients[i]->mac 
 		    << " ip=" << mConTvClients[i]->ip  << endl;
       connected_tv = true;
       break;
@@ -728,7 +733,7 @@ void SmartTvServer::initRecCmds() {
   mRecMsg += processNestedItemList("", &RecordingCommands, &mRecCmds);
   mRecMsg += "</reccmds>\n";
 
-  *(mLog.log()) << "reccmds.conf parsed" << endl;
+  *(mLog.log()) << mLog.getTimeString() << ": reccmds.conf parsed" << endl;
 }
 
 void SmartTvServer::initCmdCmds() {
@@ -737,7 +742,7 @@ void SmartTvServer::initCmdCmds() {
   mCmdMsg += processNestedItemList("", &Commands, &mCmdCmds);
   mCmdMsg += "</cmdcmds>\n";
 
-  *(mLog.log()) << "commands.conf parsed" << endl;
+  *(mLog.log()) << mLog.getTimeString() << ": commands.conf parsed" << endl;
 }
 
 
@@ -759,7 +764,7 @@ void SmartTvServer::initServer(string dir) {
     string msg = "SmartTvWeb: Logfile created File= " + mConfig->getLogFile();
     esyslog("%s", msg.c_str());
   }
-  *(mLog.log()) << "LogFile= " << mConfig->getLogFile() << endl;
+  *(mLog.log()) << mLog.getTimeString() << ": LogFile= " << mConfig->getLogFile() << endl;
 
   initRecCmds();
   initCmdCmds();
@@ -779,17 +784,17 @@ void SmartTvServer::initServer(string dir) {
   mHasMinBufferTime= mConfig->getHasMinBufferTime();
   mLiveChannels = mConfig->getLiveChannels();
 
-  *(mLog.log()) <<"HTTP server listening on port " <<  serverPort << endl;
+  *(mLog.log()) << mLog.getTimeString() <<": HTTP server listening on port " <<  serverPort << endl;
 
   mServerFd = socket(PF_INET, SOCK_STREAM, 0);
   if (mServerFd <0) {
-    *(mLog.log()) << "Error: Cannot create serving socket, exit" << endl;
+    *(mLog.log()) << mLog.getTimeString() << ": Error: Cannot create serving socket, exit" << endl;
     exit(1); 
   }
 
   ret = setsockopt(mServerFd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
   if (ret <0) {
-    *(mLog.log()) << "Error: Cannot set sockopts on serving socket, exit" << endl;
+    *(mLog.log()) << mLog.getTimeString() << ": Error: Cannot set sockopts on serving socket, exit" << endl;
     exit(1); 
   }
 
@@ -799,14 +804,14 @@ void SmartTvServer::initServer(string dir) {
   if (mConfig->getServerAddress() == "")
     sock.sin_addr.s_addr = htonl(INADDR_ANY);
   else {
-    *(mLog.log()) << "Binding Server to " << mConfig->getServerAddress() << endl;
+    *(mLog.log()) << mLog.getTimeString() << ": Binding Server to " << mConfig->getServerAddress() << endl;
     sock.sin_addr.s_addr = inet_addr(mConfig->getServerAddress().c_str());
   }
   sock.sin_port = htons(serverPort);
 
   ret = bind(mServerFd, (struct sockaddr *) &sock, sizeof(sock));
   if (ret !=0) {
-    *(mLog.log()) << "Error: Cannot bind serving socket, exit" << endl;
+    *(mLog.log()) << mLog.getTimeString() << ": Error: Cannot bind serving socket, exit" << endl;
     exit(1); 
   }
   
@@ -822,7 +827,7 @@ void SmartTvServer::initServer(string dir) {
 
   ret = listen(mServerFd, 5);
   if (ret <0) {
-    *(mLog.log()) << "Error: Cannot set listening on serving socket, exit" << endl;
+    *(mLog.log()) << mLog.getTimeString() << ": Error: Cannot set listening on serving socket, exit" << endl;
     exit(1); 
   }
 

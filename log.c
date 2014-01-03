@@ -1,7 +1,7 @@
 /*
  * log.c: VDR on Smart TV plugin
  *
- * Copyright (C) 2012 Thorsten Lohmar
+ * Copyright (C) 2012 - 2014 T. Lohmar
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -23,6 +23,7 @@
 
 #include "log.h"
 #include <time.h>
+#include <sys/time.h> 
 #include <cstring>
 
 Log* Log::instance = NULL;
@@ -72,6 +73,18 @@ int Log::init(char* fileName) {
     mLogFile = new ofstream("/dev/null");
   return 0;
 }
+
+string Log::getTimeString() {
+  char timebuf[128];
+  char buf[128];
+
+  timeval now;
+  gettimeofday(&now, NULL);
+  strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", gmtime(&now.tv_sec));
+
+  snprintf(buf, sizeof(buf), "%s.%ld", timebuf, (now.tv_usec / 1000));
+  return string(buf);
+};
 
 int Log::shutdown() {
   if (mLogFile) 

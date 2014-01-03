@@ -68,7 +68,7 @@
 #define OKAY 0
 #define ERROR (-1)
 #define DEBUG_REGHEADERS
-#define DEBUGPREFIX "mReqId= " << mReqId << " fd= " << mFd 
+#define DEBUGPREFIX mLog->getTimeString() << ": mReqId= " << mReqId << " fd= " << mFd 
 #define DEBUGHDR " " <<  __PRETTY_FUNCTION__ << " (" << __LINE__ << ") "
 
 #define DEBUG
@@ -347,6 +347,12 @@ int cHttpResource::processRequest() {
   if (mPath.compare("/getResume.xml") == 0) {
     mResponse = new cResponseMemBlk(this);
     ((cResponseMemBlk*)mResponse)->sendResumeXml();
+    return OKAY;
+  }
+
+  if (mPath.compare("/getMarks.xml") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->sendMarksXml();
     return OKAY;
   }
 
@@ -634,8 +640,9 @@ int cHttpResource::handlePost() {
   mConnState = SERVING;
 
   if (mPath.compare("/log") == 0) {
-    *(mLog->log())<< mPayload
-		  << endl;
+    *(mLog->log()) << mLog->getTimeString() << ": "
+		   << mPayload
+		   << endl;
 
     mResponse = new cResponseOk(this, 200, "OK", NULL, NULL, -1, -1);
     //    ((cResponseError*)mResponse)->sendHeaders(200, "OK", NULL, NULL, -1, -1);

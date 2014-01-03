@@ -26,7 +26,7 @@
 #include "smarttvfactory.h"
 #include "log.h"
 
-#define DEBUGPREFIX "mReqId= " << mRequest->mReqId << " fd= " << mRequest->mFd 
+#define DEBUGPREFIX mLog->getTimeString() << ": mReqId= " << mRequest->mReqId << " fd= " << mRequest->mFd 
 #define OKAY 0
 #define ERROR (-1)
 #define DEBUG
