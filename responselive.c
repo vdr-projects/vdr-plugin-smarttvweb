@@ -82,12 +82,12 @@ void cLiveRelay::Activate(bool On) {
   // this method is called by vdr
   if (On) {
     //    Start();
-    *(Log::getInstance()->log()) << "mReqId= " << mReqId 
+    *(Log::getInstance()->log()) << DEBUGPREFIX
 				 << " cLiveRelay::Activate called by VDR for chan_id= " << mChannelId <<endl;
   }
   else {
     //    Cancel();
-    *(Log::getInstance()->log()) << "mReqId= " << mReqId 
+    *(Log::getInstance()->log()) << DEBUGPREFIX
 				 << " cLiveRelay::Deactivate for chan_id= " << mChannelId <<endl;
   }
 }
