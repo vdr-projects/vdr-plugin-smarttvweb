@@ -198,6 +198,7 @@ int cHttpResource::handleRead() {
     if (mPayload.size() == mReqContentLength) {
       //Done
       mConnState = SERVING;
+      mFactory->setWriteFlag(mFd);
       return processRequest();
     }
   }
@@ -239,11 +240,13 @@ int cHttpResource::handleRead() {
 	  return OKAY;
 	else {
 	  mConnState = SERVING;
+	  mFactory->setWriteFlag(mFd);
 	  return processRequest();
 	}
       } // if(content_length != 0)
       else {
 	mConnState = SERVING;
+	mFactory->setWriteFlag(mFd);
 	return processRequest();
       }
     } // if (header end)
@@ -638,6 +641,7 @@ int cHttpResource::handleWrite() {
 
 int cHttpResource::handlePost() {
   mConnState = SERVING;
+  mFactory->setWriteFlag(mFd);
 
   if (mPath.compare("/log") == 0) {
     *(mLog->log()) << mLog->getTimeString() << ": "

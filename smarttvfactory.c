@@ -513,7 +513,7 @@ void SmartTvServer::acceptHttpResource(int &req_id) {
 #endif
 
     FD_SET(rfd, &mReadState);       
-    FD_SET(rfd, &mWriteState);      
+    //FD_SET(rfd, &mWriteState);      
     
     if (rfd > mMaxFd) {
       mMaxFd = rfd;
