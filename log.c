@@ -45,7 +45,7 @@ Log* Log::getInstance() {
 int Log::init(string fileName) {
   char timebuf[128];
   time_t now  = time(NULL);
-  strftime(timebuf, sizeof(timebuf), "%a, %d %b %Y %H:%M:%S GMT", localtime(&now));
+  strftime(timebuf, sizeof(timebuf), "%a, %d %b %Y %H:%M:%S (%Z)", localtime(&now));
 
   if (fileName != "") {
     mLogFile = new ofstream();
