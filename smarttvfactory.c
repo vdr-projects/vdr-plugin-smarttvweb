@@ -465,9 +465,13 @@ void SmartTvServer::setWriteFlag(int fd) {
 int SmartTvServer::openPipe() {
   int pipefd[2];
 
-  if (pipe2(pipefd, O_NONBLOCK) == -1) {
+  //  if (pipe2(pipefd, O_NONBLOCK) == -1) {
+  if (pipe(pipefd) == -1) {
     return 0;
   }
+  setNonBlocking(pipefd[0]);
+  setNonBlocking(pipefd[1]);
+
   *(mLog.log()) << mLog.getTimeString() << ": SmartTvServer::openPipe pipefd[0]= " << pipefd[0] 
 		<< " pipefd[1]= " << pipefd[1] << endl;
 
