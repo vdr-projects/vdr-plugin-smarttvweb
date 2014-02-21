@@ -1886,6 +1886,10 @@ int cResponseMemBlk::sendVdrStatusXml (struct stat *statbuf) {
   snprintf(f, sizeof(f), "<percent>%d</percent>", percent);
   *mResponseMessage += f;
   *mResponseMessage += "</diskspace>\n";
+
+  snprintf(f, sizeof(f), "<cmds>%s</cmds>\n", ((mRequest->mFactory->getConfig()->getCmds()) ? "true" : "false"));
+  *mResponseMessage += f;
+
   
   *mResponseMessage += "</vdrstatus>\n";
 
