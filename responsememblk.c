@@ -1876,10 +1876,13 @@ int cResponseMemBlk::sendVdrStatusXml (struct stat *statbuf) {
   *mResponseMessage += "<vdrstatus>\n";
 
   now = time(NULL);
+  snprintf(f, sizeof(f), "<vdrUtcTime>%ld</vdrUtcTime>\n", now);
+  *mResponseMessage += f;
+
   strftime(timebuf, sizeof(timebuf), "%Y-%m-%dT%H:%M:%S", localtime(&now));   // ISO 8601
   snprintf(f, sizeof(f), "<vdrTime>%s</vdrTime>\n", timebuf);
   *mResponseMessage += f;
- 
+
   *mResponseMessage += "<diskspace>\n";  
   snprintf(f, sizeof(f), "<free>%d</free>", free);
   *mResponseMessage += f;
