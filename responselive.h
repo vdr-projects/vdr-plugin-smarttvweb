@@ -130,9 +130,9 @@ class cResponseLive : public cResponseBase {
   // Mode 4
   int               mCurOffset;
   int               mTuneInState;
-  uint64_t          mFirstPcr;
+  int64_t           mFirstPcr;
   int               mFirstPcrOffset;
-  uint64_t          mCurPcr;
+  int64_t           mCurPcr;
   int               mCurPcrOffset;
   int               mNoFrames;
   int               mIFrameOffset;

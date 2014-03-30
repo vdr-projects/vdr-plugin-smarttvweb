@@ -1,7 +1,7 @@
 /*
  * responselive.c: VDR on Smart TV plugin
  *
- * Copyright (C) 2013 T. Lohmar
+ * Copyright (C) 2013, 2014 T. Lohmar
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -19,11 +19,7 @@
  * Or, point your browser to http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
  *
  */
-/*
- *
- * TODO: Stop, when the channel is unavailable
- *
-*/
+
 #include "responselive.h"
 #include "httpresource.h"
 #include "smarttvfactory.h"
@@ -56,14 +52,9 @@ cLiveRelay::cLiveRelay(cChannel* channel, cDevice* device, string chan_id, int r
 
   SetPids(channel);
 
-  //  AddPid(channel->Tpid()); 
-  //  AddPid(channel->Vpid()); 
-  //  AddPid(channel->Apid(0)); 
-
   device->SwitchChannel(channel, false);
   device->AttachReceiver(this);
 
-  //  mRingBuffer = new cRingBufferLinear(60000*188, MIN_TS_PACKETS_FOR_FRAME_DETECTOR * TS_SIZE, true, "responselive");
   mRingBuffer = new cRingBufferLinear(60000*188);
   mRingBuffer->SetTimeouts(0, 100);
 
@@ -129,24 +120,26 @@ void cLiveRelay::Receive(uchar* data, int length) {
 //----------------------------------------------
 //----------------------------------------------
 
-cResponseLive::cResponseLive(cHttpResource* req, string chan_id) : cResponseBase(req), mChannelId(chan_id), 
+cResponseLive::cResponseLive(cHttpResource* req, string chan_id) : cResponseBase(req), mChannelId(chan_id), mRelay(NULL),
   mPatPmtGen(NULL), mInStartPhase(true), mFrameDetector(NULL), mVpid(0), mVtype(0), mPpid(0), mStartThreshold(75*188),
   mCurOffset (0), mTuneInState(0), mFirstPcr (-1), mFirstPcrOffset(0), mCurPcr(-1), mCurPcrOffset(0), mNoFrames(0) ,
   mIFrameOffset(-1), mLowerOffset(0) {
 
   mStartThreshold= mRequest->mFactory->getConfig()->getBuiltInLivePktBuf4Sd() * 188;
+
+#ifndef DEBUG
   *(mLog->log()) << DEBUGPREFIX << " cResponseLive - Constructor "
 		 << "mStartThreshold= " << mStartThreshold/188 << " Pkts" 
 		 << " Mode= " << mRequest->mFactory->getConfig()->getBuiltInLiveStartMode()
 		 << endl;
+#endif
 
   if (InitRelay(chan_id)) {
     mRelay->setNotifRequired();
     mRequest->mFactory->clrWriteFlag(mRequest->mFd);
   }
-
-  if (mRelay == NULL) {
-    *(mLog->log()) << DEBUGPREFIX << " cResponseLive::cResponseLive - Constructor - sending Error" << endl;
+  else {
+    *(mLog->log()) << DEBUGPREFIX << " cResponseLive::cResponseLive - sending Error" << endl;
     sendError(404, "Not Found.", NULL, "004 Resource Busy");
   }
 }
@@ -164,7 +157,6 @@ cResponseLive::~cResponseLive() {
 bool cResponseLive::InitRelay(string channel_id) {
   cChannel * channel = Channels.GetByChannelID(tChannelID::FromString(channel_id.c_str()));
 
-  int priority = 99;
   if (!channel ){
     *(mLog->log()) << DEBUGPREFIX 
 		   << " " << channel_id << " No channel found! " << endl;
@@ -175,11 +167,13 @@ bool cResponseLive::InitRelay(string channel_id) {
   char buf [40];
   snprintf(buf, 40, "%s", *(channel->GetChannelID()).ToString());
 
+#ifndef DEBUG
   *(mLog->log()) << DEBUGPREFIX 
 		 << " vpid= " << channel->Vpid()
 		 << " vtype= " << channel->Vtype()
 		 << " ppid= " << channel->Ppid()
 		 << endl;
+#endif
 
   if (channel->Vpid() == 0) {
     mStartThreshold= 10 * 188;
@@ -197,8 +191,10 @@ bool cResponseLive::InitRelay(string channel_id) {
     if (mVtype == 27) {
       mStartThreshold= mRequest->mFactory->getConfig()->getBuiltInLivePktBuf4Hd() * 188;
       
+#ifndef DEBUG
       *(mLog->log()) << DEBUGPREFIX << " cResponseLive::InitRelay H.264 detected. mStartThreshold is " << mStartThreshold 
 		     << " (" << mStartThreshold/188 << " Pkts)" << endl;
+#endif
     }
 
     mFrameDetector = new cFrameDetector(channel->Vpid(), channel->Vtype());
@@ -208,8 +204,8 @@ bool cResponseLive::InitRelay(string channel_id) {
     mInStartPhase = false;
   }
 
-  *(mLog->log()) << DEBUGPREFIX << " cResponseLive::InitRelay channel " << buf << " found" << endl;
 #ifndef DEBUG
+  *(mLog->log()) << DEBUGPREFIX << " cResponseLive::InitRelay channel " << buf << " found" << endl;
   *(mLog->log()) << DEBUGPREFIX << " vpid= " << channel->Vpid() << " vtype= " << channel->Vtype() << endl;
 
   for (int n = 0; channel->Apid(n); n++) {
@@ -225,26 +221,26 @@ bool cResponseLive::InitRelay(string channel_id) {
   }
 #endif
 
-  cDevice* device = cDevice::GetDevice(channel, priority, true); // last param is live-view
-
-  if (!device) {
-    *(mLog->log()) << DEBUGPREFIX << " cLiveRelay::create: No device found to receive this channel at this priority. chan_id= " 
-		   << channel_id << endl;
+  int priority = 0;  
+  cDevice* device  = NULL;
+  if (cDevice::GetDevice(channel, priority, false, true)) {
+    device = cDevice::GetDevice(channel, priority, false); // last param is live-view
+  }
+  else {
+    *(mLog->log()) << DEBUGPREFIX << " cLiveRelay::create: No device found to receive this channel ("
+		   << channel_id <<") at this priority. " 
+		   << endl;
 
     return false;
   }
 
-  mRelay = new cLiveRelay(channel, device, channel_id, mRequest->mReqId, mRequest);
-  
+  mRelay = new cLiveRelay(channel, device, channel_id, mRequest->mReqId, mRequest);  
   mPatPmtGen = new cPatPmtGenerator(channel);
 
   return true;
 }
 
-void cResponseLive::WritePatPmt() {
-  //  mBlkPos = 0;
-  //  mBlkLen = 0;
-  
+void cResponseLive::WritePatPmt() {  
   uchar* ptr = mPatPmtGen->GetPat();
   memcpy(mBlkData + mBlkLen, ptr, 188);
   mBlkLen += 188;
@@ -313,6 +309,7 @@ int cResponseLive::fillDataBlk_straight() {
       WritePatPmt();
       int len = (r > (MAXLEN - mBlkLen)) ? (MAXLEN - mBlkLen): r;
       
+#ifndef DEBUG
       if (r > (MAXLEN - mBlkLen)) {
 	*(mLog->log()) << DEBUGPREFIX 
 		       << " cResponseLive::fillDataBlk() mInStartPhase = false - ((r - offset ) > (MAXLEN - mBlkLen)) len= " << len 
@@ -320,6 +317,7 @@ int cResponseLive::fillDataBlk_straight() {
 		       << " mBlkLen= " << mBlkLen
 		       << endl; 
       }
+#endif
       memcpy(mBlkData + mBlkLen, b, len);
       
       mBlkLen += len;
@@ -361,28 +359,30 @@ int cResponseLive::fillDataBlk_duration() {
 	*(mLog->log()) << DEBUGPREFIX << " ERROR: r= " << r << " %188 = " << (r%188) << endl;	
       }
       
+#ifndef DEBUG
       *(mLog->log()) << DEBUGPREFIX 
 		     << " --------------- pkts= " << r / 188 << endl;
-
+#endif
       while ((mCurOffset +188) <= r) {
-	//      while ((offset +188) <= r) {
 	if (TsPid((const uchar*) (b+mCurOffset)) == mPpid){    
 	  int64_t pcr = TsGetPcr((const uchar*) (b+mCurOffset));
 	  if (pcr != -1) {
 	    // pcr found	    
-	    //	    *(mLog->log()) << DEBUGPREFIX << " pcr found offset= " << offset << " pcr= " <<pcr << " pkt= " << offset / 188<< endl;
 	    
-	    if (mCurPcr == -1){
+	    if (mCurPcr == -1) {
 	      mCurPcr = pcr;
-
+#ifndef DEBUG
 	      *(mLog->log()) << DEBUGPREFIX
 			     << " cResponseLive::fillDataBlk_duration() - first_pcr= " << mCurPcr
 			     << " pkt= " << mCurOffset / 188 << endl;
+#endif
 	      if (mCurOffset != 0) {
 		// deleting the packets before the pcr packet.
+#ifndef DEBUG
 		*(mLog->log()) << DEBUGPREFIX
 			       << " cResponseLive::fillDataBlk_duration() - deleting packets " << mCurOffset 
 			       << " pkt= " << mCurOffset / 188 << endl;
+#endif
 		mRelay->mRingBuffer->Del(mCurOffset);
 
 		pthread_mutex_unlock(&(mRelay->processedRingLock));
@@ -407,7 +407,6 @@ int cResponseLive::fillDataBlk_duration() {
 	      continue; // process next packet
 	      
 	    }
-	    //	    if ((pcr - first_pcr) > (0.8 * 27000000.0)) {
 	    if ((pcr - mCurPcr) > (mRequest->mFactory->getConfig()->getBuiltInLiveBufDur()  * 27000000.0)) {
 	      
 	      // ok start now
@@ -424,6 +423,7 @@ int cResponseLive::fillDataBlk_duration() {
 	      WritePatPmt();
 	      int len = (r > (MAXLEN - mBlkLen)) ? (MAXLEN - mBlkLen): r;
       
+#ifndef DEBUG
 	      if (r > (MAXLEN - mBlkLen)) {
 		*(mLog->log()) << DEBUGPREFIX 
 			       << " cResponseLive::fillDataBlk_duration() mInStartPhase = false - ((r - offset ) > (MAXLEN - mBlkLen)) len= " << len 
@@ -431,6 +431,7 @@ int cResponseLive::fillDataBlk_duration() {
 			       << " mBlkLen= " << mBlkLen
 			       << endl; 
 	      }
+#endif
 	      memcpy(mBlkData + mBlkLen, b, len);
 	      
 	      mBlkLen += len;
@@ -449,8 +450,10 @@ int cResponseLive::fillDataBlk_duration() {
     
     if (mInStartPhase) {
       // still in start Phase, so wait
+#ifndef DEBUG
       *(mLog->log()) << DEBUGPREFIX
 		     << " cResponseLive::fillDataBlk_duration() - still in start phase, so wait" << endl;
+#endif
       mRequest->mFactory->clrWriteFlag(mRequest->mFd);
       mRelay->setNotifRequired();
     }
@@ -479,6 +482,7 @@ int cResponseLive::fillDataBlk_duration() {
       WritePatPmt();
       int len = (r > (MAXLEN - mBlkLen)) ? (MAXLEN - mBlkLen): r;
       
+#ifndef DEBUG
       if (r > (MAXLEN - mBlkLen)) {
 	*(mLog->log()) << DEBUGPREFIX 
 		       << " cResponseLive::fillDataBlk_duration() mInStartPhase = false - ((r - offset ) > (MAXLEN - mBlkLen)) len= " << len 
@@ -486,6 +490,7 @@ int cResponseLive::fillDataBlk_duration() {
 		       << " mBlkLen= " << mBlkLen
 		       << endl; 
       }
+#endif
       memcpy(mBlkData + mBlkLen, b, len);
       
       mBlkLen += len;
@@ -513,10 +518,11 @@ bool cResponseLive::findIFrame(char *b, int r) {
   // return true, when found
 
   cFrameDetector frame_detector(mVpid, mVtype);
+#ifndef DEBUG
   *(mLog->log()) << DEBUGPREFIX
 		 << " fillDataBlk_iPlusDuration findIFrame continue in state " << mTuneInState << " at ts " << mCurOffset/188
 		 << endl;
-
+#endif
   // run here only if mTuneInState is ZERO
   if (mTuneInState != 0) 
     return true;
@@ -534,9 +540,11 @@ bool cResponseLive::findIFrame(char *b, int r) {
 
 	  mFirstPcr = pcr;
 	  mFirstPcrOffset = mCurOffset;
+#ifndef DEBUG
 	  *(mLog->log()) << DEBUGPREFIX
 			 << " fillDataBlk_iPlusDuration - setting mFirstPcr " << mFirstPcr
 			 << endl;
+#endif
 	}
 	mCurPcr = pcr;
 	mCurPcrOffset = mCurOffset;
@@ -567,10 +575,12 @@ bool cResponseLive::findIFrame(char *b, int r) {
 		       << " fillDataBlk_iPlusDuration iframe found at " << mCurOffset/188 
 		       << " pkts r= " << r/188 << " mCurPcr= " << mCurPcr
 		       << " at " << (mCurPcrOffset/188) <<  endl;
+#ifndef DEBUG
 	*(mLog->log()) << DEBUGPREFIX 
 		       << " fillDataBlk_iPlusDuration mFirstPcr= " << mFirstPcr
 		       << " (mCurPcr - mFirstPcr) / 27MHz= " << (mCurPcr - mFirstPcr) / 27000000.0
 		       << endl;
+#endif
 	mIFrameOffset = mCurOffset;
 
 	mTuneInState = 1;
@@ -592,11 +602,12 @@ bool cResponseLive::findIFrame(char *b, int r) {
 
 bool cResponseLive::bufferData(char* b, int r) {
   // buffer additional data, after the iframe.
+#ifndef DEBUG
   *(mLog->log()) << DEBUGPREFIX
 		 << " fillDataBlk_iPlusDuration bufferData continue in state " << mTuneInState << " at ts "<< mCurOffset/188
 		 << " with mCurPcr= " << mCurPcr 
 		 << endl;
-  
+#endif  
   while ((mCurOffset +188) <= r) {
     if (TsPid((const uchar*) (b+mCurOffset)) == mPpid){    
       int64_t pcr = TsGetPcr((const uchar*) (b+mCurOffset));
@@ -630,7 +641,6 @@ bool cResponseLive::bufferData(char* b, int r) {
 	  mCurOffset += 188;
 	  continue; // process next packet
 	}
-	//	    if ((pcr - first_pcr) > (0.8 * 27000000.0)) {
 	if ((pcr - mCurPcr) > (mRequest->mFactory->getConfig()->getBuiltInLiveBufDur() * 27000000.0)) {
 	  // OK, sufficient data to start
 	  *(mLog->log()) << DEBUGPREFIX 
@@ -641,6 +651,7 @@ bool cResponseLive::bufferData(char* b, int r) {
 			 << (pcr - mCurPcr) / 27000000.0
 			 << endl ;
 	  
+#ifndef DEBUG
 	  *(mLog->log()) << DEBUGPREFIX 
 			 << " fillDataBlk_iPlusDuration --- " 
 			 << " pcr= " << pcr
@@ -658,7 +669,7 @@ bool cResponseLive::bufferData(char* b, int r) {
 			 << " ts pkts= " << ((mCurOffset +188)/ 188)
 			 << " offset= " << mCurOffset
 			 << endl;
-
+#endif
 
 	  mInStartPhase = false;
 	  mTuneInState = 2; 
@@ -688,15 +699,18 @@ bool cResponseLive::setLowerOffset(char *b, int r) {
       if (TsPid((const uchar*) (b+idx)) == mPpid){
 	int64_t pcr = TsGetPcr((const uchar*) (b+idx));
 	if (pcr != -1) {
+#ifndef DEBUG
 	  *(mLog->log()) << DEBUGPREFIX
 			 << " fillDataBlk_iPlusDuration find lower_offset pkt= " << idx / 188
 			 << " pcr= " << pcr
 			 << " ((mCurPcr - pcr) / 27000000.0)= " << ((mCurPcr - pcr) / 27000000.0)
 			 << endl;
+#endif
 	  if (((mCurPcr - pcr) / 27000000.0) < 0.55) {
 	    if (((mCurPcr - pcr) / 27000000.0) > 0.48) {			
 	      // from here.
 	      mLowerOffset = idx;
+#ifndef DEBUG
 	      *(mLog->log()) << DEBUGPREFIX
 			     << " fillDataBlk_iPlusDuration - lower_offset= " << mLowerOffset
 			     << " pcr= " << pcr 
@@ -706,7 +720,7 @@ bool cResponseLive::setLowerOffset(char *b, int r) {
 			     << " fillDataBlk_iPlusDuration - lower_offset= "
 			     << " ((mCurPcr - pcr ) / 27MHz)= " << (( mCurPcr - pcr ) / 27000000.0)
 			     << endl;
-			
+#endif			
 	    }
 	    break;
 	  }
@@ -721,21 +735,21 @@ bool cResponseLive::setLowerOffset(char *b, int r) {
 void cResponseLive::justFillDataBlk(char *b, int r) {
   int len = ((r - mLowerOffset) > (MAXLEN - mBlkLen)) ? (MAXLEN - mBlkLen): (r - mLowerOffset);
       
+#ifndef DEBUG
   if (( r - mLowerOffset) > (MAXLEN - mBlkLen)) {
     *(mLog->log()) << DEBUGPREFIX 
 		   << " fillDataBlk_iPlusDuration - mInStartPhase = false - ((r - offset ) > (MAXLEN - mBlkLen)) len= " << len 
 		   << " MAXLEN= " << MAXLEN
 		   << " mBlkLen= " << mBlkLen
 		   << endl; 
-      }
+  }
+#endif
   memcpy(mBlkData + mBlkLen, (b + mLowerOffset), len);
   
   mBlkLen += len;
   mRelay->mRingBuffer->Del(mLowerOffset + len);
-
 };
 
-// new method: 200ms after the IFrame
 int cResponseLive::fillDataBlk_iPlusDuration() {
   //TODO: Prapably, I need to delete some data before the i_frame offset
 
@@ -756,9 +770,10 @@ int cResponseLive::fillDataBlk_iPlusDuration() {
 		       << " fillDataBlk_iPlusDuration - ERROR: r= " << r << " %188 = " << (r%188) << endl;	
       }
 
+#ifndef DEBUG
       *(mLog->log()) << DEBUGPREFIX 
 		     << " fillDataBlk_iPlusDuration --------------- pkts= " << r / 188 << endl;
-
+#endif
       if((r / 188) > 40000) {	
 	*(mLog->log()) << DEBUGPREFIX 
 		       << " fillDataBlk_iPlusDuration Risk an overrun, so starting " << r / 188 << endl;
@@ -790,11 +805,6 @@ int cResponseLive::fillDataBlk_iPlusDuration() {
 	mRequest->mFactory->clrWriteFlag(mRequest->mFd);
 	mRelay->setNotifRequired();
 	return OKAY;
-      }
-      else {
-	// have all data now!
-	//    pthread_mutex_unlock(&(mRelay->processedRingLock));
-	//	return OKAY;
       }
 
       // here I have all data.
@@ -830,6 +840,7 @@ int cResponseLive::fillDataBlk_iPlusDuration() {
       WritePatPmt();
       int len = (r > (MAXLEN - mBlkLen)) ? (MAXLEN - mBlkLen): r;
       
+#ifndef DEBUG
       if (r > (MAXLEN - mBlkLen)) {
 	*(mLog->log()) << DEBUGPREFIX 
 		       << " fillDataBlk_iPlusDuration - mInStartPhase = false - ((r - offset ) > (MAXLEN - mBlkLen)) len= " << len 
@@ -837,6 +848,7 @@ int cResponseLive::fillDataBlk_iPlusDuration() {
 		       << " mBlkLen= " << mBlkLen
 		       << endl; 
       }
+#endif
       memcpy(mBlkData + mBlkLen, b, len);
       
       mBlkLen += len;
