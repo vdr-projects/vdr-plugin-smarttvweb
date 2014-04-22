@@ -112,7 +112,6 @@ void cCmd::trim(string &t) {
 
 
 
-
 SmartTvServer::SmartTvServer(): cStatus(), mRequestCount(0), isInited(false), serverPort(PORT), mServerFd(-1),
   mSegmentDuration(10), mHasMinBufferTime(40),  mLiveChannels(20), 
   clientList(), mConTvClients(), mRecCmds(), mCmdCmds(), mRecMsg(), mCmdMsg(), mActiveSessions(0), mHttpClientId(0), 
@@ -264,12 +263,11 @@ void SmartTvServer::OsdStatusMessage(const char *Message) {
 
 void SmartTvServer::cleanUp() {
   // close listening ports
-  for (uint idx= 0; idx < clientList.size(); idx++) {
-    if (clientList[idx] != NULL) {
-      close(idx);
-      delete clientList[idx];
-      clientList[idx] = NULL;
-    }
+  
+  for (list<cHttpResourceBase*>::iterator iter = clientList.begin(); iter != clientList.end();) {
+    close((*iter)->mFd);
+    delete *iter;
+    iter = clientList.erase(iter);
   }
 
   // close server port
@@ -399,24 +397,15 @@ int SmartTvServer::connectToClient(string peer, time_t last_update) {
 
 void SmartTvServer::addHttpResource(int rfd, cHttpResourceBase* resource) {
 
-  if (clientList.size() < (rfd+1)) {
-    clientList.resize(rfd+1, NULL); // Check.
-  }
-  if (clientList[rfd] == NULL) {
-    FD_SET(rfd, &mReadState);       
-    FD_SET(rfd, &mWriteState);      
-    clientList[rfd] = resource;
-
-    mHttpClientId++;
-    if (rfd > mMaxFd) {
-      mMaxFd = rfd;
-    }    
-    mActiveSessions ++;
-  }
-  else {
-    *(mLog.log()) << mLog.getTimeString() << ": Error: clientList idx in use" << endl; 
-    // ERROR: 
-  }
+  FD_SET(rfd, &mReadState);       
+  FD_SET(rfd, &mWriteState);      
+  clientList.push_back(resource);
+  
+  mHttpClientId++;
+  if (rfd > mMaxFd) {
+    mMaxFd = rfd;
+  }    
+  mActiveSessions ++;
 }
 
 void SmartTvServer::pushCfgServerAddressToTv( string tv_addr) {
@@ -479,26 +468,30 @@ int SmartTvServer::openPipe() {
   return pipefd[1];
 }
 
+list<cHttpResourceBase*>::iterator SmartTvServer::closeHttpResource(list<cHttpResourceBase*>::iterator to_close) {
+  int req_id = (*to_close)->mReqId;
+  int rfd = (*to_close)->mFd;
+  
 
-void SmartTvServer::closeHttpResource(int rfd) {
-  close(rfd);
-  int req_id = clientList[rfd]->mReqId;
-  delete clientList[rfd];
-  clientList[rfd] = NULL;
+  close((*to_close)->mFd);
+  delete *to_close;
+  list<cHttpResourceBase*>::iterator iter = clientList.erase(to_close);
   mActiveSessions--;
   *(mLog.log()) << mLog.getTimeString() << ": - Closing Session mReqId= " << req_id << endl;
   logActiveSessionIds();
-  FD_CLR(rfd, &mReadState);      /* dead client */
-  FD_CLR(rfd, &mWriteState);
 
+  FD_CLR(rfd, &mReadState);     
+  FD_CLR(rfd, &mWriteState);
+  return iter;
 }
 
+
 void SmartTvServer::logActiveSessionIds() {
-  *(mLog.log()) << mLog.getTimeString() << ": mActiveSessions= " << mActiveSessions << " Ids= [ ";
-  for (uint idx= 0; idx < clientList.size(); idx++) {
-    if (clientList[idx] != NULL) {
-      *(mLog.log()) << clientList[idx]->mReqId << " ";
-    }
+  *(mLog.log()) << mLog.getTimeString() << ": mActiveSessions= " << mActiveSessions 
+		<< " size= " << clientList.size() << " ReqIds= [ ";
+
+  for (list<cHttpResourceBase*>::iterator iter = clientList.begin(); iter != clientList.end(); ++iter) {
+    *(mLog.log()) << (*iter)->mReqId << " ";
   }
   *(mLog.log()) << "]" << endl;
 }
@@ -523,12 +516,8 @@ void SmartTvServer::acceptHttpResource(int &req_id) {
       mMaxFd = rfd;
     }
     
-    if (clientList.size() < (rfd+1)) {
-      clientList.resize(rfd+1, NULL); // Check.
-    }
-    clientList[rfd] = new cHttpResource(rfd, req_id, serverPort, this);
+    clientList.push_back(new cHttpResource(rfd, req_id, serverPort, this));
     mActiveSessions ++;
-    //    *(mLog.log()) << mLog.getTimeString() << ": + mActiveSessions= " << mActiveSessions << endl;
     *(mLog.log()) << mLog.getTimeString() << ": + New Session mReqId= " << req_id << endl;
     logActiveSessionIds();
   }
@@ -539,7 +528,6 @@ void SmartTvServer::acceptHttpResource(int &req_id) {
 }
 
 void SmartTvServer::loop() {
-  unsigned int rfd;
   int req_id = 0;
   int ret = 0;
   struct timeval timeout;
@@ -580,14 +568,15 @@ void SmartTvServer::loop() {
     
     if (ret == 0) {
       // timeout: Check for dead TCP connections
-      for (uint idx= 0; idx < clientList.size(); idx++) {
-	if (clientList[idx] != NULL)
-	  if (clientList[idx]->checkStatus() == ERROR) {
-	    *(mLog.log()) << mLog.getTimeString() << ": WARNING: Timeout - Dead Client fd=" <<  idx  
-			  << " mReqId= " << clientList[idx]->mReqId << endl;
-	    closeHttpResource(idx);
-	  }
-      } 
+      for (list<cHttpResourceBase*>::iterator iter = clientList.begin(); iter != clientList.end();) {
+	if ((*iter)->checkStatus() == ERROR) {
+	    *(mLog.log()) << mLog.getTimeString() << ": WARNING: Timeout - Dead Client fd=" <<  (*iter)->mFd  
+			  << " mReqId= " << (*iter)->mReqId << endl;
+	    iter = closeHttpResource(iter);
+	}
+	else
+	  ++iter;
+      }
       continue;
     } // timeout
 
@@ -603,92 +592,53 @@ void SmartTvServer::loop() {
     }
 
     // Check for data on already accepted connections
-    for (rfd = 0; rfd < clientList.size(); rfd++) {
-      if (clientList[rfd] == NULL)
-	continue;
-      if (FD_ISSET(rfd, &read_set)) {
+    for (list<cHttpResourceBase*>::iterator iter = clientList.begin(); iter != clientList.end(); ) {
+      if (FD_ISSET((*iter)->mFd, &read_set)) {
 	handeled_fds ++;
-	// HandleRead
-	if (clientList[rfd] == NULL) {
-	  *(mLog.log()) << mLog.getTimeString() << ": ERROR in Check Read: oops - no cHttpResource anymore fd= " << rfd << endl;
-	  close(rfd);
-          FD_CLR(rfd, &mReadState);      /* remove dead client */
-	  FD_CLR(rfd, &mWriteState);
+	int n = 0;
+	ioctl((*iter)->mFd, FIONREAD, &n);
+	if ( n == 0) {
+	  // Nothing to read, so client has killed the connection
+	  *(mLog.log()) << mLog.getTimeString() << ": fd= " << (*iter)->mFd << " mReqId= " << (*iter)->mReqId
+			<< " ------ Check Read: Closing (n=0)-------" 
+			<< endl;
+	  
+	  iter = closeHttpResource(iter);
+	  continue;
+	}
+	if ( (*iter)->handleRead() < 0){
+	  //#ifndef DEBUG
+	  *(mLog.log()) << mLog.getTimeString() << ": fd= " << (*iter)->mFd 
+			<< " mReqId= " << (*iter)->mReqId 
+			<< " --------------------- Check Read: Closing ---------------------" 
+			<< endl;
+	  //#endif
+	  iter = closeHttpResource(iter);
 	  continue;
 	}
 
-	int n = 0;
-	ioctl(rfd, FIONREAD, &n);
-	if ( n == 0) {
-	  //	  int req_id = clientList[rfd]->mReqId;
-	  closeHttpResource(rfd);
-	  /*	  *(mLog.log()) << mLog.getTimeString() << ": fd= " << rfd << " mReqId= " << req_id
-			<< " ------ Check Read: Closing (n=0)-------" 
-			<< endl;
-	  */
-	  continue;
-	}
-	if ( clientList[rfd]->handleRead() < 0){
-#ifndef DEBUG
-	  *(mLog.log()) << mLog.getTimeString() << ": fd= " << rfd 
-			<< " mReqId= " << clientList[rfd]->mReqId 
-			<< " --------------------- Check Read: Closing ---------------------" 
-			<< endl;
-#endif
-	  closeHttpResource(rfd);
-	}
-      }
+      } // if (FD_ISSET)
+      ++iter;
     }
 
     // Check for write
-    for (rfd = 0; rfd < clientList.size(); rfd++) {
-      if (clientList[rfd] == NULL)
-	continue;
-      if (FD_ISSET(rfd, &write_set)) {
+    for (list<cHttpResourceBase*>::iterator iter = clientList.begin(); iter != clientList.end();) {
+      if (FD_ISSET((*iter)->mFd, &write_set)) {
 	handeled_fds++;
 	// HandleWrite
-	if (clientList[rfd] == NULL) {
-	  close(rfd);
-          FD_CLR(rfd, &mReadState);     
-	  FD_CLR(rfd, &mWriteState);
-	  continue;
-	}
-	if ( clientList[rfd]->handleWrite() < 0){
-#ifndef DEBUG
-	  *(mLog.log()) << mLog.getTimeString() << ": fd= " << rfd 
-			<< " mReqId= " << clientList[rfd]->mReqId 
+	if ( (*iter)->handleWrite() < 0){
+	  //#ifndef DEBUG
+	  *(mLog.log()) << mLog.getTimeString() << ": fd= " << (*iter)->mFd 
+			<< " mReqId= " << (*iter)->mReqId 
 			<< " --------------------- Check Write: Closing ---------------------" << endl;
-#endif
-	  closeHttpResource(rfd);
-	}
-      }
+	  //#endif
+	  iter = closeHttpResource(iter);
+	  continue;
+	}	
+      } // if (FD_ISSET)
+      ++iter;
     }
 
-    // selfcheck
-    /*    *(mLog.log()) << "Select Summary: ret= " << ret
-      		  << " handeled_fds=" << handeled_fds 
-		  << " mActiveSessions= " << mActiveSessions
-		  << " clientList.size()= " << clientList.size() 
-		  << endl;
-*/
-    //Check for active sessions
-    /*
-    *(mLog.log()) << "checking number of active sessions clientList.size()= " << clientList.size() << endl;
-
-    int act_ses = 0;
-    for (uint idx= 0; idx < clientList.size(); idx++) {
-      if (clientList[idx] != NULL)
-	act_ses++;
-    } 
-    if (act_ses != mActiveSessions) {
-      *(mLog.log()) << "ERROR: Lost somewhere a session: "
-		    << "mActiveSessions= " << mActiveSessions
-		    << "act_ses= " << act_ses
-		    << endl;
-      mActiveSessions = act_ses;
-    }
-    *(mLog.log()) << "checking number of active sessions - done mActiveSessions= " << mActiveSessions << endl;
-*/
   } // for (;;) 
 } // org bracket
 

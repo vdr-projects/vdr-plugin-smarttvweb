@@ -125,7 +125,7 @@ class SmartTvServer : public cStatus {
 
     string processNestedItemList(string, cList<cNestedItem> *, vector<cCmd*>*);
 
-    void closeHttpResource(int rfd);
+    list<cHttpResourceBase*>::iterator closeHttpResource(list<cHttpResourceBase*>::iterator);
     void acceptHttpResource(int &req_id);
 
     void logActiveSessionIds() ;
@@ -139,8 +139,10 @@ class SmartTvServer : public cStatus {
     int mHasMinBufferTime;
     int mLiveChannels;
 
-    vector<cHttpResourceBase*> clientList;
+    /* vector<cHttpResourceBase*> clientList; */
+    list<cHttpResourceBase*> clientList;
     vector<sClientEntry*> mConTvClients;
+    //    list<sClientEntry*> mConTvClients;
 
     vector<cCmd*> mRecCmds;
     vector<cCmd*> mCmdCmds;
