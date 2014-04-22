@@ -82,7 +82,7 @@ bool cPluginSmartTvWeb::Start(void) {
   if (mConfigDir.compare("") == 0) {
     const char* dir_name = cPlugin::ConfigDirectory(Name());
     if (!dir_name)  {
-      dsyslog("SmartTvWeb: Could not get config dir from VDR");      
+      esyslog("SmartTvWeb: Could not get config dir from VDR. Using default values!");      
     }
     else
       mConfigDir = string(dir_name);
