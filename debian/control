@@ -1,0 +1,14 @@
+Source: vdr-plugin-smarttvweb
+Section: video
+Priority: extra
+Maintainer: T. Lohmar <smarttv640@gmail.com>
+Build-Depends: debhelper (>= 8.0.0), pkg-config
+Standards-Version: 3.9.2
+Homepage: http://projects.vdr-developer.org/projects/plg-smarttvweb
+#Vcs-Git: git://git.debian.org/collab-maint/vdr-plugin-smarttvweb.git
+#Vcs-Browser: http://git.debian.org/?p=collab-maint/vdr-plugin-smarttvweb.git;a=summary
+
+Package: vdr-plugin-smarttvweb
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: VDR on SmartTV

@@ -1,5 +1,6 @@
-PACKAGE (VERSION) UNRELEASED; urgency=medium
+vdr-plugin-smarttvweb (0.9.9-1) unstable; urgency=low
 
-  * Initial release. (Closes: #XXXXXX)
+  * Initial Debianize configuration
+  * Install configuration files
 
- -- thlo <thlo@teefax>  Sat, 15 Jun 2013 15:44:43 +0200
+ -- T. Lohmar <smarttv640@gmail.com>  Wed, 23 Apr 2014 10:03:18 +0200

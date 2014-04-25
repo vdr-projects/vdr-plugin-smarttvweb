@@ -1,5 +1,10 @@
 This VDR Project contains a server plugin and a Smart TV Widget.
 
+Install:
+* Manual: http://projects.vdr-developer.org/projects/plg-smarttvweb/wiki#Plugin-installation
+* Debian package
+  - dpkg-buildpackage -uc -us
+
 History:
 
 Widget Version 0.9.5:
