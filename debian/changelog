@@ -1,6 +1,12 @@
+vdr-plugin-smarttvweb (1.0.0) precise; urgency=low
+
+  * First release candidate
+
+ -- T. Lohmar <smarttv640@gmail.com>  Sat, 26 Apr 2014 09:21:41 +0200
+
 vdr-plugin-smarttvweb (0.9.9-1) unstable; urgency=low
 
   * Initial Debianize configuration
   * Install configuration files
 
- -- T. Lohmar <smarttv640@gmail.com>  Wed, 23 Apr 2014 10:03:18 +0200
+ -- T. Lohmar <smarttv640@gmail.com>  Sat, 26 Apr 2014 09:20:04 +0200
