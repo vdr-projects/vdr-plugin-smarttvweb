@@ -106,13 +106,13 @@ $(SOFILE): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared $(OBJS) -o $@
 
 install-lib: $(SOFILE)
+	@echo "Installing conf in "$(DESTDIR)$(CONFDIR)/plugins/smarttvweb;
 	@if [ ! -d $(DESTDIR)$(CONFDIR)/plugins/smarttvweb ]; then \
-	@echo "Creating plugin conf dir in "$(DESTDIR)$(CONFDIR); \
 	mkdir -p $(DESTDIR)$(CONFDIR)/plugins/smarttvweb; \
-	cp widget.conf $(DESTDIR)$(CONFDIR)/smarttvweb; \
-	cp -r web/ $(DESTDIR)$(CONFDIR)/smarttvweb; \
-	cp smarttvweb.conf $(DESTDIR)$(CONFDIR)/smarttvweb; \
-	chown -R vdr:vdr $(DESTDIR)$(CONFDIR)/smarttvweb; \
+	cp widget.conf $(DESTDIR)$(CONFDIR)/plugins/smarttvweb; \
+	cp -r web/ $(DESTDIR)$(CONFDIR)/plugins/smarttvweb; \
+	cp smarttvweb.conf $(DESTDIR)$(CONFDIR)/plugins/smarttvweb; \
+	chown -R vdr:vdr $(DESTDIR)$(CONFDIR)/plugins/smarttvweb; \
 	fi
 	install -D $^ $(DESTDIR)$(LIBDIR)/$^.$(APIVERSION)
 
