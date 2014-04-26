@@ -20,6 +20,7 @@ PKGCFG = $(if $(VDRDIR),$(shell pkg-config --variable=$(1) $(VDRDIR)/vdr.pc),$(s
 LIBDIR = $(call PKGCFG,libdir)
 LOCDIR = $(call PKGCFG,locdir)
 PLGCFG = $(call PKGCFG,plgcfg)
+CONFDIR = $(call PKGCFG,configdir)
 #
 TMPDIR ?= /tmp
 
@@ -105,6 +106,14 @@ $(SOFILE): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared $(OBJS) -o $@
 
 install-lib: $(SOFILE)
+	@if [ ! -d $(DESTDIR)$(CONFDIR)/plugins/smarttvweb ]; then \
+	@echo "Creating plugin conf dir in "$(DESTDIR)$(CONFDIR); \
+	mkdir -p $(DESTDIR)$(CONFDIR)/plugins/smarttvweb; \
+	cp widget.conf $(DESTDIR)$(CONFDIR)/smarttvweb; \
+	cp -r web/ $(DESTDIR)$(CONFDIR)/smarttvweb; \
+	cp smarttvweb.conf $(DESTDIR)$(CONFDIR)/smarttvweb; \
+	chown -R vdr:vdr $(DESTDIR)$(CONFDIR)/smarttvweb; \
+	fi
 	install -D $^ $(DESTDIR)$(LIBDIR)/$^.$(APIVERSION)
 
 install: install-lib install-i18n
