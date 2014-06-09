@@ -1,7 +1,8 @@
 var OverlayMenu = {
 	menu : [],
 	scrollDur : 300,
-	scrollFlip : 100
+	scrollFlip : 100,
+	returnCallback : null
 };
 
 OverlayMenu.init = function () {
@@ -42,7 +43,7 @@ OverlayMenu.hide = function() {
 	$(this.inputElm).blur();
 	$("#ovlTable").remove();
 	Main.enableKeys();
-
+	
 };
 
 OverlayMenu.createStyleSheet = function () {
@@ -210,6 +211,7 @@ OverlayMenu.createHelpItem = function(url, msg) {
 
 
 OverlayMenu.reset = function () {
+	this.returnCallback = null;
 	this.btnSelected = 0;
 	for (var i =0; i <= OverlayMenu.menu.length; i++) {
 		$(this.elmName + i).removeClass('ovlmn-itm-selected').addClass('ovl-itm'); 
@@ -295,8 +297,13 @@ OverlayMenu.onInput = function () {
 		case tvKey.KEY_RETURN:
 		case tvKey.KEY_EXIT:
 			OverlayMenu.hide();
-			if (this.returnCallback  != null)
-				this.returnCallback(); 	    	
+			Main.log("OverlayMenu.onInput -> Exit");
+
+			if (Main.state == Main.eCMDS)
+				Main.changeState(0);
+
+			if (OverlayMenu.returnCallback  != null)
+				OverlayMenu.returnCallback(); 	    	
 			break;
 
 	}
@@ -372,5 +379,59 @@ RecCmdHandler.selectCallback = function (idx) {
 	else {
 		Main.logToServer("RecCmdHandler.selectCallback idx= " + idx + " cmd= " + RecCmds.getCurrentItem().childs[idx].payload.cmd);
 		Server.execRecCmd(RecCmds.getCurrentItem().childs[idx].payload.cmd, RecCmdHandler.guid);
+	}
+};
+
+
+//-----------------------------------------------------------------------
+var CmdHandler = {
+	guid : ""
+};
+
+
+CmdHandler.showMenu = function (guid) {
+	this.guid = guid;
+	RecCmds.reset();
+	Server.fetchCmdsList();   // calls RecCmdHandler.createRecCmdOverlay() when finished
+	OverlayMenu.reset();
+	OverlayMenu.menu = [];		
+	
+};
+
+CmdHandler.fillMenuArray = function () {
+	for (var i = 0; i < RecCmds.getVideoCount(); i++) {
+		var self = this;
+		OverlayMenu.menu.push ({title: RecCmds.getCurrentItem().childs[i].title, func : function (idx) { self.selectCallback(idx); } });
+	}
+	
+};
+
+CmdHandler.createCmdOverlay = function () {
+	//called, when Server.fetchRecCmdsList() is finished.
+	Main.log("CmdHandler.createCmdOverlay for guid " + CmdHandler.guid);
+	Main.logToServer("CmdHandler.createCmdOverlay for guid " + CmdHandler.guid);
+	if (RecCmds.getVideoCount()== 0) {
+		Main.log("CmdHandler.createCmdOverlay: RecCmds is empty" );
+		Main.logToServer("CmdHandler.createCmdOverlay: RecCmds is empty" );
+		return;		
+	}
+	CmdHandler.fillMenuArray();
+	
+	OverlayMenu.show();
+};
+	
+CmdHandler.selectCallback = function (idx) {
+	Main.logToServer("CmdHandler.selectCallback idx= " + idx + " t= " + RecCmds.getCurrentItem().childs[idx].title);
+	if (RecCmds.getCurrentItem().childs[idx].isFolder == true) {
+		Main.logToServer("CmdHandler.selectCallback isFolder");
+		RecCmds.selectFolder(idx, 0);
+
+		OverlayMenu.reset();
+		OverlayMenu.menu = [];		
+		CmdHandler.fillMenuArray();	
+	}
+	else {
+		Main.logToServer("CmdHandler.selectCallback idx= " + idx + " cmd= " + RecCmds.getCurrentItem().childs[idx].payload.cmd);
+		Server.execCmd(RecCmds.getCurrentItem().childs[idx].payload.cmd);
 	}
 };

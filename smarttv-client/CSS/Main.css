@@ -289,46 +289,58 @@ body {
     position: absolute;
 	display: none;
 	left: 0px; top: 0px;
-    width: 960px; height: 162px;
+    width: 940px; height: 162px;
     border-style:solid;
 	z-index:50;	
-	padding-top:20px;
-    padding-left:20px;
-    padding-right:20px;
-	background-color: darkblue;
-	background-color: rgba(0, 0, 139, 0.5);
-	background-color: -webkit-linear-gradient(-45deg, rgba(167,207,223,1) 0%,rgba(35,83,138,1) 100%);
+	padding-top:10px;
+	padding-bottom:10px;
+    padding-left:10px;
+    padding-right:10px;
+	background: darkblue;
+	background: rgba(0, 0, 139, 0.5);
 }
 
 #infoTitle{
     position: absolute;
-	left: 2px; top: 0px;
-    width: 960px; height: 26px;	
+	left: 0px; top: 0px;
+    width: 98%; height: 26px;	
     overflow:hidden; 
     text-overflow:ellipsis; 
     white-space:nowrap;
+	padding-top: 0.5%;
+	padding-left: 1%;
+	padding-right: 1%;
 }
 
 #infoDuration{
     position: absolute;
-	left: 2px; top: 26px;
-    width: 960px; height: 21px;	
+	left: 0px; top: 26px;
+    width: 98%; height: 21px;	
     font-size:14px;
+	padding-left: 1%;
+	padding-right: 1%;
 }
 
 #infoDesc{
     position: absolute;
-	left: 2px; top: 47px;
-    width: 960px; height: 90px;	
+	left: 0px; top: 45px;
+    width: 98%; height: 85px;	
     font-size:14px;
     overflow:hidden; 
+	padding-top: 0.5%;
+	padding-left: 1%;
+	padding-right: 1%;
+	border-radius: 5px;
+	background: rgba(0, 0, 139, 0.5);
 }
 
 #infoAudio {
     position: absolute;
-	left: 2px; top: 141px;
-    width: 960px; height: 21px;	
+	left: 0px; top: 141px;
+    width: 98%; height: 21px;	
     font-size:14px;
+	padding-left: 1%;
+	padding-right: 1%;
 }
 #popup{
     position: absolute;

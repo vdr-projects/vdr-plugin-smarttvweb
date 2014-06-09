@@ -15,12 +15,16 @@ Comm.init = function () {
 	if (Config.deviceType != 0)
 		return;
 	
-	Comm.customMgr = webapis.customdevice || {};
-	
-	Comm.customMgr.registerManagerCallback(Comm.onDeviceStatusChange);
-	
-	// >> Initializes custom device profile and gets available devices
-	Comm.customMgr.getCustomDevices(Comm.onCustomObtained);    
+	try {
+		Comm.customMgr = webapis.customdevice || {};
+		
+		Comm.customMgr.registerManagerCallback(Comm.onDeviceStatusChange);
+		
+		// >> Initializes custom device profile and gets available devices
+		Comm.customMgr.getCustomDevices(Comm.onCustomObtained);    		
+	}
+	catch (e) {	
+	}
 	Main.log("curWidget.id= " + curWidget.id);
 	Main.logToServer("curWidget.id= (" + curWidget.id+")");
 };
@@ -123,29 +127,43 @@ Comm.onMessageReceived = function(message, context) {
 		Main.logToServer("INFO: type= " + msg.payload.type + " val= " + msg.payload.name);
 		switch(msg.payload.type) {
 		case "RECSTART":
-			Notify.showNotify("Recording started: '" + msg.payload.name +"'", true);
 			if (Main.state == Main.eREC) {
 				Server.updateEntry(msg.payload.guid);
 			}		
+
+			if (Config.showInfoMsgs == true)
+				Notify.showNotify("Recording started: '" + msg.payload.name +"'", true);
 			break;
 		case "RECSTOP":
-			Notify.showNotify("Recording finished: " + msg.payload.name+"'", true);
+			if (Config.showInfoMsgs == true)
+				Notify.showNotify("Recording finished: " + msg.payload.name+"'", true);
 			break;
 		case "TCADD":
-			Notify.showNotify("Timer added: '" + msg.payload.name+"'", true);
 			if (Main.state == Main.eTMR) {
 				Timers.resetView();
+				Notify.showNotify("Timer added: '" + msg.payload.name+"'", true);
 			}
+			else
+				if (Config.showInfoMsgs == true)
+					Notify.showNotify("Timer added: '" + msg.payload.name+"'", true);
+
 			break;
 		case "TCMOD":
-			Notify.showNotify("Timer modified: '" + msg.payload.name+"'", true);
 			if (Main.state == Main.eTMR) {
-				Timers.resetView();			}
+				Timers.resetView();			
+				Notify.showNotify("Timer modified: '" + msg.payload.name+"'", true);
+			}
+			else if (Config.showInfoMsgs == true)
+				Notify.showNotify("Timer modified: '" + msg.payload.name+"'", true);
+
 			break;
 		case "TCDEL":
-			Notify.showNotify("Timer deleted: '" + msg.payload.name+"'", true);
 			if (Main.state == Main.eTMR) {
-				Timers.resetView();			}
+				Timers.resetView();			
+				Notify.showNotify("Timer deleted: '" + msg.payload.name+"'", true);
+			}
+			else if (Config.showInfoMsgs == true)
+				Notify.showNotify("Timer deleted: '" + msg.payload.name+"'", true);
 			break;
 
 		}

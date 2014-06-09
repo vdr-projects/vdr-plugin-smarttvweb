@@ -48,7 +48,8 @@ Epg.startEpgUpdating = function() {
 	this.isActive = true;
 	var res = Data.findEpgUpdateTime(); 
 	
-	var now = Display.GetEpochTime();
+	var now = Display.GetUtcTime();
+//	var now = (new MyDate()).getTimeSec(); 
 	var delay = Math.round(res.min - now) *1000;
 	this.curGuid = res.guid;
 
@@ -136,8 +137,8 @@ Epg.handleError = function (XHR, textStatus, errorThrown) {
 
 Epg.insertFakeEntry = function (guid) {
 //	Main.logToServer("Epg.insertFakeEntry for guid= " + guid + " (" + Epg.guidErrors[guid] +")");
-	var now = Display.GetEpochTime();
-
+	var now = Display.GetUtcTime();
+//	var now = (new MyDate()).getTimeSec() ;
 	entry={};
 	entry.prog = "Unknown";
 	entry.desc = "Empty";
@@ -174,7 +175,9 @@ Epg.parseResponse = function (message,text, XHR) {
 			// the updated record is either playing or in Menu
 			if (Player.state != Player.STOPPED) {
 				Main.logToServer("Updating Progress Bar");
-				Display.updateOlForLive (entry.start, entry.dur, Display.GetEpochTime()); // Updates the progress bar
+				
+				Display.updateOlForLive (entry.start, entry.dur, Display.GetUtcTime()); // Updates the progress bar
+//				Display.updateOlForLive (entry.start, entry.dur, (new MyDate()).getTimeSec() ); // Updates the progress bar
 			}
 			else {
 				Main.logToServer("Updating Right Half");

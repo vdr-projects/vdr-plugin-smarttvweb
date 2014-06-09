@@ -28,9 +28,13 @@ SelectScreen.init = function() {
 		parent.append($("<div>", {id : "selectItem"+idx, text:idx+": You Tube", class : "style_menuItem"}));
 //		Main.selectMenuKeyHndl.selectMax++;
 	}
-	
+	if (Config.haveCmds) {
+		this.keyToStateMap[++idx] = Main.eCMDS;
+		parent.append($("<div>", {id : "selectItem"+idx, text:idx+": Commands", class : "style_menuItem"}));
+	}
 	this.keyToStateMap[++idx] = Main.eSRVR;
 	parent.append($("<div>", {id : "selectItem"+idx, text:idx+": Select Server", class : "style_menuItem"}));
+
 	this.keyToStateMap[++idx] = Main.eOPT;
 	parent.append($("<div>", {id : "selectItem"+idx, text:idx+": Options", class : "style_menuItem"}));
 
@@ -122,7 +126,24 @@ cSelectMenuKeyHndl.prototype.handleKeyDown = function (keyCode) {
 
  case tvKey.KEY_6:
  	Main.log("KEY_6 pressed");
+	if (SelectScreen.keyToStateMap.length < 6)
+		return;
  	this.select = 6;
+     Main.changeState (SelectScreen.keyToStateMap[this.select]);
+ 	break;
+ case tvKey.KEY_7:
+ 	Main.log("KEY_7 pressed");
+	if (SelectScreen.keyToStateMap.length < 7)
+		return;
+ 	this.select = 7;
+     Main.changeState (SelectScreen.keyToStateMap[this.select]);
+ 	break;
+	
+ case tvKey.KEY_8:
+ 	Main.log("KEY_8 pressed");
+	if (SelectScreen.keyToStateMap.length < 8)
+		return;
+ 	this.select = 8;
      Main.changeState (SelectScreen.keyToStateMap[this.select]);
  	break;
 

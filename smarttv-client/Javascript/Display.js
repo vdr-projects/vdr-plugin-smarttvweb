@@ -103,24 +103,6 @@ Display.putInnerHTML = function (elm, val) {
 	
 };
 
-Display.GetEpochTime = function() {
-	var res = 0;
-	switch (Config.deviceType) {
-	case 0:
-		// Samsung specific UTC time function
-//		res = Display.pluginTime.GetEpochTime();
-		var now_millis = ((new Date).getTime());
-		res =   ((now_millis /1000.0) - (Config.tzCorrection * 60));
-
-		break;
-	default:
-		var now_millis = ((new Date).getTime());
-		res =   ((now_millis /1000.0) - (Config.tzCorrection * 60));
-	break;
-	}
-
-	return res;
-};
 
 Display.durationString = function(time) {
     var timeHour = 0; 
@@ -183,9 +165,7 @@ Display.selectItem = function (item) {
 };
 
 Display.unselectItem = function (item) {
-//	item.setAttribute("class", "style_menuItem");
 	item.style.color = "white";
-//	item.style.backgroundColor = "transparent";
 	item.style.background = "transparent";
 	item.style.borderRadius= "0px";
 	item.style["-webkit-box-shadow"] = "";
@@ -236,7 +216,6 @@ Display.updateWidgetVersion = function (ver) {
  
 Display.addHeadline = function (name) {
 // Add the headline to first element
-//	Main.log("Display.addHeadline " + name);
 	Display.setVideoItem(document.getElementById("video0"), {c1: "", c2: name, c3: ""});
 	Display.FIRSTIDX= 1;
 	
@@ -250,7 +229,6 @@ Display.addHeadline = function (name) {
 };
  
 Display.removeHeadline = function () {
-//	Main.log("Display.removeHeadline ");
 	Display.FIRSTIDX= 0;
 	
 	var item = document.getElementById("video0");
@@ -319,13 +297,9 @@ Display.setVideoList = function(selected, first) {
 
     var first_item = first; //thlo	
 
-//	Main.log("Display.setVideoList  selected= " +  selected + " first= " + first + " curWin= " + this.currentWindow + " NoOfItems= " + Display.getNumberOfVideoListItems());
-
 	tab_style = Display.tuneLeftSide();
     var i=0;
 	var max_idx = (Data.getVideoCount() < Display.getNumberOfVideoListItems()) ? Data.getVideoCount() :(Display.getNumberOfVideoListItems()) ;
-//	Main.log("Display.setVideoList  max_idx= " +  max_idx + " NoOfItems= " + Display.getNumberOfVideoListItems());
-//    Main.log("Display.setVideoList title= " +Data.getCurrentItem().childs[selected].title + " selected= " + selected + " first_item= " + first_item + " FIRSTIDX= " + this.FIRSTIDX);
     this.handleDescription(selected);
 
 	
@@ -338,7 +312,6 @@ Display.setVideoList = function(selected, first) {
             res = Display.getDisplayTitle (Data.getCurrentItem().childs[(first_item+i) + Data.getVideoCount()]); 
     	}
     	else if ((first_item+i) >= Data.getVideoCount()) {
-//			Main.log ("first_item= " + first_item + " i= " + i + " VideoCount()= " +Data.getVideoCount() );
 			idx = (first_item+i) - Data.getVideoCount();
             res = Display.getDisplayTitle (Data.getCurrentItem().childs[(first_item+i) - Data.getVideoCount()]); 
 		}
@@ -434,18 +407,18 @@ Display.handleDescription =function (selected) {
     	var desc = itm.payload.desc;
     	var length = itm.payload.dur;
     	
-    	var digi = new Date(parseInt(itm.payload.start*1000));
+    	var digi = new MyDate(parseInt(itm.payload.start*1000));
     	var mon = Display.getNumString ((digi.getMonth()+1), 2);
     	var day = Display.getNumString (digi.getDate(), 2);
     	var hour = Display.getNumString (digi.getHours(), 2);
     	var min = Display.getNumString (digi.getMinutes(), 2);
 
     	var d_str ="";
-//    	var msg = "";
 		switch (Main.state) {
 		case Main.eLIVE:
-    		var now = Display.GetEpochTime();
-
+    		var now = Display.GetUtcTime();
+//    		var now = (new MyDate()).getTimeSec();
+    		
         	d_str = hour + ":" + min;
 
 			$("#descProg").show();
@@ -473,11 +446,9 @@ Display.handleDescription =function (selected) {
 
 			break;
 		case Main.eMED:
-//        	msg += "<b>" + title + "</b>";
 			$("#descTitle").text(title);
 		break;
 		case Main.eURLS:
-//        	msg += "<b>" + title + "</b>";
 			$("#descTitle").text(title);
 			$("#descDuration").text("Duration: " + Display.durationString(length) + "h");
 			$("#descDesc").text(desc);
@@ -507,7 +478,6 @@ Display.resetDescription = function () {
  * this.currentWindow: Cursor (selected item)
  */
 Display.setVideoListPosition = function(position, move) {   
-//	Main.log("Display.setVideoListPosition position= " + position );
     this.handleDescription(position);
     
 	$("#videoCount").text((position + 1) + " / " + Data.getVideoCount());
@@ -538,7 +508,6 @@ Display.setVideoListPosition = function(position, move) {
     }
     else if(this.currentWindow == (this.LASTIDX -this.FIRSTIDX)&& move == Main.DOWN) {
     	// Next Page
-//		Main.log("Display.setVideoListPosition: next page. position= " + position);
 		var c_pos = position - this.currentWindow;
 		if (c_pos < 0) 
 			c_pos += Data.getVideoCount();
@@ -574,7 +543,7 @@ Display.getDisplayTitle = function(item) {
 			res.c2 = item.title;
 			if(item.payload.start>0) 
 			{
-				var epg_start_time=new Date(item.payload.start*1000);
+				var epg_start_time=new MyDate(item.payload.start*1000);
 				var epg_start_hour=epg_start_time.getHours();
 				if(epg_start_hour<10)
 				{
@@ -599,7 +568,7 @@ Display.getDisplayTitle = function(item) {
 			res.c2 = item.title; 			
 		}
 		else {
-			var digi = new Date(parseInt(item.payload.start*1000));
+			var digi = new MyDate(parseInt(item.payload.start*1000));
 			var mon = Display.getNumString ((digi.getMonth()+1), 2);
 			var day = Display.getNumString (digi.getDate(), 2);
 			var hour = Display.getNumString (digi.getHours(), 2);
@@ -676,11 +645,7 @@ Display.updateOlForLive = function (start_time, duration, now) {
 	Display.setOlTitle(Data.getCurrentItem().childs[Main.selectedVideo].title + " - " +Data.getCurrentItem().childs[Main.selectedVideo].payload.prog);
 	Display.setStartStop (start_time, (start_time + duration));
 	Player.setDuration();
-//thlo	Player.totalTime = Data.getCurrentItem().childs[Main.selectedVideo].payload.dur * 1000;
-//thlo	Player.totalTimeStr =Display.durationString(Player.totalTime / 1000.0);
 
-//	var digi = new Date((Data.getCurrentItem().childs[Main.selectedVideo].payload.start*1000));
-//	Main.log (" Date(): StartTime= " + digi.getHours() + ":" + digi.getMinutes() + ":" + digi.getSeconds());
 	Player.setCurrentPlayTimeOffset((now - Data.getCurrentItem().childs[Main.selectedVideo].payload.start) * 1000);
 	Player.OnCurrentPlayTime(0);   // updates the HTML elements of the Progressbar 
 }; 
@@ -691,7 +656,6 @@ Display.setOlTitle = function (title) {
 };
 
 Display.resetStartStop = function () {
-//	Main.log("Display.resetStartStop");
 	Display.olStartStop = "";
 	Display.hideOlStartStop();
 	$("#olStartStop").text("");
@@ -701,14 +665,14 @@ Display.setStartStop = function(start, stop) {
 	this.olStartStop = "";
 	Display.showOlStartStop();
 	
-	var digi =new Date(start * 1000);
+	var digi =new MyDate(start * 1000);
     var hours=digi.getHours();
     var minutes=digi.getMinutes();
     if (minutes<=9)
     	   minutes='0'+minutes;
     this.olStartStop = hours + ":" + minutes + " - ";
 
-	digi =new Date(stop * 1000);
+	digi =new MyDate(stop * 1000);
     hours=digi.getHours();
     minutes=digi.getMinutes();
     if (minutes<=9)
@@ -720,7 +684,6 @@ Display.setStartStop = function(start, stop) {
 };
 
 Display.setSkipDuration = function(duration) {
-//	Main.log("Display.setSkipDuration: duration= " +duration);
 	this.olStartStop = "";
 //	if (this.olStartStop == "")
 		Display.showOlStartStop();
@@ -743,18 +706,17 @@ Display.setTrickplay = function(direction, multiple) {
 
 // Player.OnCurrentPlayTime
 Display.updatePlayTime = function() {
-//	$("#olTimeInfo").text(Player.curPlayTimeStr + " / " + Player.totalTimeStr);
 	$("#olTimeInfo").text(Player.curPlayTimeStr + " / " + Player.getDurationStr());
 };
 
 Display.updateProgressBar = function () {
-//thlo	var timePercent = (Player.curPlayTime *100)/ Player.totalTime;
 	var timePercent = (Player.curPlayTime *100)/ Player.getDuration();
 	$("#olProgressBar").css("width", (Math.round(timePercent) + "%"));
 };
 
 Display.updateRecBar = function (start_time, duration){
-	var now = Display.GetEpochTime();
+	var now = Display.GetUtcTime();
+//	var now = (new MyDate()).getTimeSec();
 
 	var remaining = Math.round(((start_time + duration) - now) * 100/ duration);
 	$("#olRecProgressBar").show();
@@ -764,7 +726,6 @@ Display.updateRecBar = function (start_time, duration){
 
 
 Display.status = function(status) {
-//    Main.log("Display.status: " +status);
     Display.putInnerHTML(this.statusDiv, status);
     Display.putInnerHTML(this.statusPopup, status);
 };
@@ -833,7 +794,7 @@ Display.showInfo = function(selected) {
     var desc = itm.payload.desc;
     var length = itm.payload.dur;
     	
-    var digi = new Date(parseInt(itm.payload.start*1000));
+    var digi = new MyDate(parseInt(itm.payload.start*1000));
     var mon = Display.getNumString ((digi.getMonth()+1), 2);
     var day = Display.getNumString (digi.getDate(), 2);
     var hour = Display.getNumString (digi.getHours(), 2);
@@ -842,7 +803,8 @@ Display.showInfo = function(selected) {
     var d_str ="";
 	switch (Main.state) {
 	case Main.eLIVE:
-    	var now = Display.GetEpochTime();
+    	var now = Display.GetUtcTime();
+//		var now = (new MyDate()).getTimeSec();
 			
         d_str = hour + ":" + min;
 
@@ -856,7 +818,12 @@ Display.showInfo = function(selected) {
 		$("#infoTitle").text(title);
 		$("#infoDuration").text(d_str + " Duration: " + Display.durationString(length) + "h");
 		$("#infoDesc").text(desc);
-		$("#infoAudio").text("Audio Tracks: " + Player.getNumOfAudioTracks() + " Subtitle Tracks: " + Player.getNumOfSubtitleTracks());
+		try {
+			$("#infoAudio").text("Audio Tracks: " + Player.getNumOfAudioTracks() + " Subtitle Tracks: " + Player.getNumOfSubtitleTracks());
+		}
+		catch (e) {
+			$("#infoAudio").text("Audio Tracks: " + 0 + " Subtitle Tracks: " + 0);
+		}
 		break;
 	case Main.eMED:
 		$("#infoTitle").text(title);
@@ -868,18 +835,6 @@ Display.showInfo = function(selected) {
 		$("#infoDuration").text("Duration: " + Display.durationString(length) );
 		$("#infoDesc").text(desc);
 
-/*		var tgt_height = $("#infoDesc").height();
-		var temp = desc;
-
-		Main.log("tgt_height= " +tgt_height + " outerHeight= " + $('#infoDesc').outerHeight());
-		if( tgt_height < $('#infoDesc').outerHeight() ) {
-		    while(tgt_height < $('#infoDesc').outerHeight()) {
-		    	$('#infoDesc').text( temp = temp.substr(0, temp.length-1) );
-		    }
-		    $('#infoDesc').text( temp = temp.substr(0, temp.length-3) );
-		    $('#infoDesc').append('...');
-		}
-		*/
 		$("#infoAudio").text("Audio Tracks: " + Player.getNumOfAudioTracks() + " Subtitle Tracks: " + Player.getNumOfSubtitleTracks());
 		break;
 	default:
@@ -894,12 +849,10 @@ Display.showInfo = function(selected) {
 };
 
 Display.handlerShowInfo = function() {
-//	$("#infoOverlay").show();
 	$("#infoOverlay").slideDown(300);
 };
 
 Display.handlerHideInfo = function() {
-//	$("#infoOverlay").hide();
 	$("#infoOverlay").slideUp(300);
 };
 
@@ -908,8 +861,6 @@ Display.handlerHideInfo = function() {
  * Popup handlers
  */
 Display.showPopup = function(text) {
-//	var oldHTML = document.getElementById("popup").innerHTML;
-//	Display.putInnerHTML(document.getElementById("popup"), oldHTML + "<br>" + text);
 	
 	Main.log("Display.showPopup text= " + text);
 	if (text == "")
@@ -972,7 +923,9 @@ Display.handlerShowProgress = function() {
 		if ((Player.startTime + Player.getDuration())  >  now) {
 			// not done
 			$("#olRecProgressBar").show();
-			var now = Display.GetEpochTime();
+			var now = Display.GetUtcTime();
+//    		var now = (new MyDate()).getTimeSec();
+
 			var remaining_px = ((Player.startTime + Player.getDuration()) - now) * bar_width/ Player.getDuration();
 			var elm = document.getElementById("olRecProgressBar");
 			elm.style.display="block";
@@ -990,8 +943,8 @@ Display.handlerShowProgress = function() {
 
 	$("#olTimeInfo").text(Player.curPlayTimeStr + " / " + Player.getDurationStr());
 
-    var Digital=new Date();
-    var hours= (Digital.getHours()- Config.tzCorrection ) ;
+    var Digital=new MyDate();
+    var hours= Digital.getHours() ;
     var minutes=Digital.getMinutes();
     if (minutes<=9)
     	   minutes='0'+minutes;
@@ -1015,8 +968,17 @@ ClockHandler.start = function(elm){
 };
 
 ClockHandler.update = function() {
-	var date = new Date();
-    var hours= (date.getHours() - Config.tzCorrection);
+	var date = new MyDate();
+//	Main.log("ClockHandler.update "+ date.getHours());
+
+	if (Config.useVdrTime) {
+		if (Config.deviceType == 0)
+			Main.logToServer("Display.GetUtcTime: uvtUtcTime= " + Config.uvtUtcTime + " locRef= " + Config.uvtlocRefTime + " d= " + (Config.uvtUtcTime - Config.uvtlocRefTime) +" plgUtc= " + Display.pluginTime.GetEpochTime());
+		else
+			Main.logToServer("Display.GetUtcTime: uvtUtcTime= " + Config.uvtUtcTime + " locRef= " + Config.uvtlocRefTime + " d= " + (Config.uvtUtcTime - Config.uvtlocRefTime) +" plgUtc= " + new Date().getTime());
+	}
+
+    var hours= date.getHours() ;
     var minutes= date.getMinutes();
     if (minutes<=9)
     	   minutes='0'+minutes;
@@ -1038,7 +1000,6 @@ ClockHandler.stop = function(){
  * 
  */
 function OverlayHandler (n) {
-//	this.pluginTime = null;
 	this.active = false;
 	this.startTime = 0;
 	this.hideTime = 0;
@@ -1054,20 +1015,15 @@ OverlayHandler.prototype.init = function(showcb, hidecb) {
 	var success = true;
 	this.showCallback = showcb;
 	this.hideCallback = hidecb;
-/*	this.pluginTime = document.getElementById("pluginTime");
-	if (!this.pluginTime) {
-        Main.log(this.handlerName + " cannot aquire time plugin :  " + success);    
-        success = false;
-	}
-*/
 	return success;
 };
 
 OverlayHandler.prototype.checkHideCallback = function () {
-	var now = Display.GetEpochTime();
+	var now = Display.GetUtcTime();
+//	var now = (new MyDate()).getTimeSec();
+
 	if (now >= this.hideTime) {
 
-//		this.olDelay = 3000;
 		if (this.hideCallback) {
 			this.hideCallback();			
 		}
@@ -1086,7 +1042,8 @@ OverlayHandler.prototype.checkHideCallback = function () {
 
 OverlayHandler.prototype.show = function() {
 	if (!this.active ) {
-		this.startTime = Display.GetEpochTime();
+		this.startTime = Display.GetUtcTime();
+//		this.startTime = (new MyDate()).getTimeSec();
 		
 		this.hideTime = this.startTime + (this.olDelay / 1000);
 
@@ -1101,7 +1058,8 @@ OverlayHandler.prototype.show = function() {
 			Main.log(this.handlerName + ": No showCallback defined - ignoring " );
 	}
 	else {
-		this.hideTime = Display.GetEpochTime() + (this.olDelay /1000);
+		this.hideTime = Display.GetUtcTime() + (this.olDelay /1000);
+//		this.hideTime = (new MyDate()).getTimeSec() + (this.olDelay /1000);
 	}
 };
 
@@ -1118,4 +1076,121 @@ OverlayHandler.prototype.cancel = function () {
 	
 	this.active = false;
 	window.clearTimeout(this.timeoutObj);
+};
+
+
+Display.GetUtcTime = function() {
+	var res = 0;
+	switch (Config.deviceType) {
+	case 0:
+		if (Config.useVdrTime == false) 
+			// Samsung specific UTC time function
+			res = Display.pluginTime.GetEpochTime(); // always in UTC
+		else {
+			// In case the Samsung does not have a TV input
+			res = (Config.uvtUtcTime - Config.uvtlocRefTime) + Display.pluginTime.GetEpochTime() ;
+		}
+
+		break;
+	default:
+		var now_millis = ((new Date()).getTime());
+		res =   (now_millis /1000.0) ;
+	break;
+	}
+
+	return res;
+};
+
+
+function MyDate (input) {
+	this.date = null;
+	
+	switch(arguments.length) {
+	case 0:
+		// Should only be used by clock function, otherwise use Display.pluginTime.GetEpochTime() !!!!
+		if (Config.deviceType == 0) {
+//			var cor = Display.GetEpochTime()*1000 - (Config.tzCorrection * 3600000);
+			var cor = Display.GetUtcTime()*1000 - (Config.tzCorrection * 3600000);
+			
+			this.date = new Date(cor);			
+		}
+		else 
+			// Browser
+			this.date = new Date();			
+		break;
+	case 1:
+		// in millisec or string
+		if (typeof arguments[0] == "number") {
+			if (Config.tzCorrection == 0) {
+				this.date = new Date(arguments[0]);				
+			}
+			else {
+				Main.log("MyDate arg[0]= " + arguments[0] + " cor= " + (Config.tzCorrection * 3600000) + " args= " + MyDate.arguments.length );
+				this.date = new Date(arguments[0] - (Config.tzCorrection * 3600000));				
+			}
+			
+		}
+		else {
+			Main.log("MyDate - ERROR not handled correctly - type String");
+			Main.logToServer("MyDate - ERROR not handled correctly - type String");
+			this.date = new Date(arguments[0]);
+		}
+		break;
+	default:
+		Main.log("MyDate - ERROR not handled correctly - args= " + MyDate.arguments.length );
+		Main.logToServer("MyDate - ERROR not handled correctly - args= " + MyDate.arguments.length );
+		if (MyDate.arguments.length == 3)
+			this.date = new Date(arguments[0], arguments[1], arguments[2]);
+		else
+			this.date = new Date(arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5]);
+		break;
+	}
+
+};
+
+// in millis. Not a UTC time due to TZ correction
+MyDate.prototype.getTime = function() {
+	return this.date.getTime();
+};
+
+// in seconds. Not a UTC time due to TZ correction
+MyDate.prototype.getTimeSec = function () {
+	return (this.date.getTime() / 1000.0)  ;
+//	return ((this.date.getTime() / 1000.0) - (Config.tzCorrection * 60)) ;
+
+//	var now_millis = ((new MyDate()).getTime());
+//	res =   ((now_millis /1000.0) - (Config.tzCorrection * 60));
+
+};
+
+MyDate.prototype.getHours = function () {
+	return this.date.getHours();
+};
+
+MyDate.prototype.getMinutes = function () {
+	return this.date.getMinutes();
+};
+
+MyDate.prototype.getSeconds = function () {
+	return this.date.getSeconds();
+};
+
+MyDate.prototype.getTimezoneOffset = function () {
+	return this.date.getTimezoneOffset();
+};
+
+MyDate.prototype.getDate = function () {
+	return this.date.getDate();
+};
+
+MyDate.prototype.getDay = function () {
+	return this.date.getDay();
+};
+
+MyDate.prototype.getMonth = function () {
+	return this.date.getMonth();
+};
+
+MyDate.prototype.getFullYear = function () {
+	return this.date.getFullYear();
 };

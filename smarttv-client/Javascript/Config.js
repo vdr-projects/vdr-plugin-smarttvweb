@@ -7,23 +7,40 @@ var Config = {
 	serverAddr : "",
 	serverName : "", 
 	serverAddrDefault: "192.168.1.122:8000", 
+	haveCmds : false,
 	format :"has",
 	tgtBufferBitrate : 6000, // kbps
+	useDefaultBuffer : true,
 	totalBufferDuration : 30, // sec
 	initialBuffer : 10, // in percent
 	pendingBuffer: 40, // in percent
-	initialTimeOut: 3, // sec
+	//--- for debugging purpose
+	totalBufferSize : 1024,
+	initialBufferSize : 1024,
+	pendingBufferSize : 1024,
+	//------
 	skipDuration : 30, // sec
 	liveChannels : 30, 
 	firstLaunch : false,
 	debug : false,
 	usePdlForRecordings : true,
-	uploadJsFile : "",
+	uploadJsFile : false,
+	uploadJsFilename : "",
 	directAcessTimeout : 1500,
 	infoTimeout : 3000,
+	smartTouchTimeout : 300,
+	showInfoMsgs : true,
+	sortType : 0,
+	curSortType : 0,
+	
 	preferredQuality : 2,
 	widgetVersion : "unknown",
+//-- time
 	tzCorrection : 0,
+	useVdrTime : false,
+	uvtUtcTime : 0,
+	uvtlocRefTime : 0,
+//---
 	recSortType : 0,
 	playKeyBehavior : 0,
 	haveYouTube : false,
@@ -162,30 +179,42 @@ Config.fetchConfig = function () {
         	Main.logToServer("Parsing config XML now");
         	Config.format = $(data).find('format').text();
 
-        	Config.tgtBufferBitrate = parseFloat($(data).find('tgtBufferBitrate').text());
-        	Config.totalBufferDuration = parseFloat($(data).find('totalBufferDuration').text());
-        	Config.initialBuffer = parseFloat($(data).find('initialBuffer').text());
-        	Config.pendingBuffer = parseFloat($(data).find('pendingBuffer').text());
+			Config.useDefaultBuffer = ($(data).find('useDefaultBuffer').text() == "false") ? false : true;
+ 
+			Config.totalBufferSize = parseInt($(data).find('totalBufferSize').text());
+			Config.initialBufferSize = parseInt($(data).find('initialBufferSize').text());
+			Config.pendingBufferSize = parseInt($(data).find('pendingBufferSize').text());
+			if (isNaN(Config.totalBufferSize)) Config.totalBufferSize = 1024;
+			if (isNaN(Config.initialBufferSize)) Config.initialBufferSize = 1024;
+			if (isNaN(Config.pendingBufferSize)) Config.pendingBufferSize = 1024;
+			
         	Config.skipDuration = parseFloat($(data).find('skipDuration').text());
-        	Config.initialTimeOut = parseFloat($(data).find('initialTimeOut').text());
         	Config.liveChannels = parseInt($(data).find('liveChannels').text());
 
         	Config.debug = ($(data).find('widgetdebug').text() == "true") ? true : false;
         	Config.usePdlForRecordings = ($(data).find('usePdlForRecordings').text() == "false") ? false : true;
-        	Config.uploadJsFile = $(data).find('uploadJsFile').text();
+        	Config.uploadJsFile = ($(data).find('uploadJsFile').text() == "true") ? true : false;        	
+        	Config.uploadJsFilename = $(data).find('uploadJsFilename').text();
         	Config.directAcessTimeout = $(data).find('directAcessTimeout').text();
 
+        	Config.smartTouchTimeout = parseInt($(data).find('smartTouchTimeout').text());
+        	Config.smartTouchTimeout = isNaN(Config.smartTouchTimeout) ? 300 : Config.smartTouchTimeout;
+        	
         	Config.infoTimeout = parseInt( $(data).find('infoTimeout').text());
         	Config.infoTimeout = isNaN(Config.infoTimeout) ? 3000 : Config.infoTimeout;
+        	Config.showInfoMsgs = ($(data).find('showInfoMsgs').text() == "false") ? false : true;
         	
         	Config.preferredQuality = $(data).find('preferredQuality').text();
         	Config.sortType= parseInt($(data).find('sortType').text());
         	if ((Config.sortType < 0) || (Config.sortType > Data.maxSort) || isNaN(Config.sortType)) {
         		Config.sortType = 0;
         	}
+        	Config.curSortType = Config.sortType;
+        	Data.sortType = Config.sortType;
+        	
         	Config.playKeyBehavior = parseInt($(data).find('playKeyBehavior').text());
         	Config.playKeyBehavior = isNaN(Config.playKeyBehavior) ? 0 : Config.playKeyBehavior;
-			Config.haveYouTube = ($(data).find('youtubemenu').text() == "true") ? true : false
+			Config.haveYouTube = ($(data).find('youtubemenu').text() == "true") ? true : false;
 			
         	Player.skipDuration = Config.skipDuration;
         	if (Config.directAcessTimeout != "") {
@@ -194,12 +223,11 @@ Config.fetchConfig = function () {
         	Main.log("**** Config ****");
         	Main.log("serverUrl= " + Config.serverUrl);
         	Main.log("format= " + Config.format);
-        	Main.log("tgtBufferBitrate= " + Config.tgtBufferBitrate);
-        	Main.log("totalBufferDuration= " + Config.totalBufferDuration);
-        	Main.log("initialBuffer= " + Config.initialBuffer);
-        	Main.log("pendingBuffer= " + Config.pendingBuffer);
+			Main.log("useDefaultBuffer= " + (Config.useDefaultBuffer) ? "true" : "false");
+        	Main.log("totalBufferSize= " + Config.totalBufferSize);
+        	Main.log("initialBufferSize= " + Config.initialBufferSize);
+        	Main.log("pendingBufferSize= " + Config.pendingBufferSize);
         	Main.log("skipDuration= " + Config.skipDuration);
-        	Main.log("initialTimeOut= " + Config.initialTimeOut);
         	Main.log("liveChannels= " + Config.liveChannels);
         	Main.log("debug= " + Config.debug);
         	Main.log("usePdlForRecordings= " + Config.usePdlForRecordings);
@@ -389,7 +417,7 @@ VdrServers.prototype.handleResponse = function () {
 		switch (this.activeServers.length) {
 		case 0:
 			this.retries ++;
-			if (this.retries <2) {
+			if (this.retries <5) {
 				this.checkServers();
 			}
 			else
@@ -400,6 +428,7 @@ VdrServers.prototype.handleResponse = function () {
 	    	Config.serverAddr = this.activeServers[0].addr;
 	    	Config.serverUrl = "http://" + Config.serverAddr;
 	    	Config.serverName = this.activeServers[0].name;
+			Config.haveCmds = this.activeServers[0].cmds;
 			Notify.showNotify("Only " + Config.serverName + " found", true);
 
 	    	$("#selectTitle").text(Config.serverName  );
@@ -426,6 +455,7 @@ VdrServers.prototype.selectCallback = function (idx) {
 	Config.serverAddr = this.activeServers[idx].addr;
 	Config.serverUrl = "http://" + Config.serverAddr;
 	Config.serverName = this.activeServers[idx].name;
+	Config.haveCmds = this.activeServers[0].cmds;
 
 	Main.log ("vdrServers.selectCallback idx= " + idx + " Config.serverUrl= " + Config.serverUrl); 
 	
@@ -451,12 +481,14 @@ VdrServerChecker.prototype.checkServer = function (addr) {
 		url: url,
 		type : "GET",
 		context : this,
-		timeout : 400,
+		timeout : 1000,
 		success : function(data, status, XHR ) {
         	var name =  $(data).find('hostname').text();
         	var ip = $(data).find('ipaddress').text();
+        	var cmds = ($(data).find('cmds').text() == "true") ? true : false;
+
 	    	Main.log ("checkServer Success Inst= " + this.ipaddr + " "  + name + " " + ip);
-	    	this.parent.activeServers.push({name : name, addr : ip});
+	    	this.parent.activeServers.push({name : name, addr : ip, cmds : cmds});
 	    	this.parent.handleResponse();
 		},
 		error : function (XHR, status, error) {

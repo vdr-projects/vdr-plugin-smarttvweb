@@ -148,7 +148,7 @@ Timers.createMenu= function () {
 };
 
 Timers.getPrintDate = function (day) {
-	var d = new Date (day * 1000);
+	var d = new MyDate (day * 1000);
 	return d.getDate() + "." + (d.getMonth() +1) + "." + d.getFullYear();	 
 };
 

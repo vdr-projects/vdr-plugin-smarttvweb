@@ -26,6 +26,7 @@ Server.setSort = function (val) {
 };
 //---------------------------------------------
 Server.fetchVideoList = function(url) {
+//Server.retries is set to zero in Main!
 
 	$.ajax({
 		url: url,
@@ -67,8 +68,15 @@ Server.fetchVideoList = function(url) {
 			
 		},
 		error : function (jqXHR, status, error) {
+			this.statusCode = jqXHR.status; 
+			this.status = status;
+			this.errno =  Number(jqXHR.responseText.slice(0, 3));
+			var res = Server.getErrorText(jqXHR.status, jqXHR.responseText); 
 			Main.logToServer("Server.fetchVideoList Error Response - status= " + status + " error= "+ error);
-			Display.showPopup("Error with XML File: " + status);
+
+			Notify.showNotify( res, true);
+			Main.changeState(0);
+			
 			Server.retries ++;
 		},
 		parsererror : function () {
@@ -87,31 +95,51 @@ Server.fetchVideoList = function(url) {
 //---------------------------------------------
 
 Server.updateVdrStatus = function (){
-	Main.log ("get VDR Status");
+	Main.log ("get VDR Status from " + Config.serverUrl + "/vdrstatus.xml");
 	$.ajax({
 		url: Config.serverUrl + "/vdrstatus.xml",
 		type : "GET",
 		success : function(data, status, XHR){
 			var ts_vdr = $(data).find('vdrTime').text();
+			var ts_vdr_utc =  parseInt($(data).find('vdrUtcTime').text());
+			Main.log("ts_vdr= " + ts_vdr+ " vdr_utc= " + ts_vdr_utc + " locUtc= " + Display.GetUtcTime());
+//			Main.logToServer("ts_vdr= " + ts_vdr+ " vdr_utc= " + ts_vdr_utc + " locUtc= " + Display.GetUtcTime());
+			Config.useVdrTime = false;
 			
-			try {
-				var ts = ts_vdr.split("T")[1];
-				var s = ts.split(":");
-				if (s.length == 3) {
-					var now = ((new Date).getHours());
-					Config.tzCorrection = now - s[0];	
-					// if Config.tzCorrection larger zero, then TV is ahead
-					// thus, I need to substract Config.tzCorrection from the TV time
-//					Config.tzCorrection = 1;	
-					Main.logToServer("Server.updateVdrStatus: tzCor= " + Config.tzCorrection);
-				}
+			if (isNaN(ts_vdr_utc)) {
+				ts_vdr_utc = -1;
+			}
+			else {
+				if (Math.abs(Display.GetUtcTime() - ts_vdr_utc) > 30) {
+					// use Vdr Time
+					Config.uvtUtcTime = ts_vdr_utc;
+					// Safer
+					if (Config.deviceType == 0)
+						Config.uvtlocRefTime = Display.pluginTime.GetEpochTime();
+					else 
+						Config.uvtlocRefTime = ((new Date()).getTime()) / 1000.0;
+					Config.useVdrTime = true;
+					Main.log("using Vdr Time  uvtUtcTime= " + Config.uvtUtcTime + " uvtlocRefTime= " + Config.uvtlocRefTime + " d= " + (Config.uvtUtcTime - Config.uvtlocRefTime));
+					Main.logToServer("using Vdr Time  uvtUtcTime= " + Config.uvtUtcTime + " uvtlocRefTime= " + Config.uvtlocRefTime + " d= " + (Config.uvtUtcTime - Config.uvtlocRefTime));
+				}			
 				else
-					Main.logToServer("tzCor WARNING");
-
+					Config.useVdrTime = false;
+			}
+			
+			var bits = ts_vdr.split(/[-T:]/g);
+			try {
+				var now = ((new Date(Display.GetUtcTime()*1000)).getHours());
+				Config.tzCorrection = now - bits[3];	
+				// if Config.tzCorrection larger zero, then TV is ahead
+				// thus, I need to substract Config.tzCorrection from the TV time
+//					Config.tzCorrection = 1;	
+				Main.logToServer("Server.updateVdrStatus: tzCor= " + Config.tzCorrection);
+				Main.log("Server.updateVdrStatus: tzCor= " + Config.tzCorrection);
 			}
 			catch (e) {
 				Main.log ("ERROR in tzCor (Old plugin?): " + e);
 			}
+			
 
 			var free = $(data).find('free').text() / 1024.0;
 //			var used = $(data).find('used').text() / 1024.0;
@@ -181,9 +209,44 @@ Server.fetchRecCmdsList = function() {
 	});
 };
 
+Server.fetchCmdsList = function() {
+	var url = Config.serverUrl + "/cmds.xml";
+	$.ajax({
+		url: url,
+		type : "GET",
+		success : function(data, status, XHR ) {
+			Main.logToServer("Server.fetchCmdsList Success Response - status= " + status + " mime= " + XHR.responseType + " data= "+ data);
+
+			$(data).find("item").each(function () {
+				var title = $(this).text();
+				var confirm = (($(this).attr("confirm") == "true") ? true : false);
+				var cmd = parseInt($(this).attr("cmd"));
+
+				var title_list = title.split("~");
+                RecCmds.addItem( title_list, {cmd : cmd, confirm: confirm });              	
+				}); // each
+
+//			RecCmds.dumpFolderStruct();
+			RecCmds.completed();
+			CmdHandler.createCmdOverlay();
+		},
+		error : function (jqXHR, status, error) {
+			Main.logToServer("Server.fetchCmdsList Error Response - status= " + status + " error= "+ error);
+			Display.showPopup("Error with XML File: " + status);
+			Main.changeState(0);
+			Main.enableKeys();
+		},
+		parsererror : function () {
+			Main.logToServer("Server.fetchCmdsList parserError  " );
+			Display.showPopup("Error in XML File");
+			Main.changeState(0);
+			Main.enableKeys();
+		}
+	});
+};
+
+
 Server.getErrorText = function (status, input) {
-//	var errno_str = input.slice(0, 3);
-//	var errno = parseInt(errno_str, 10);
 	var errno = Number(input.slice(0, 3));
 
 	var res = "";
@@ -360,6 +423,10 @@ Server.execRecCmd = function (cmd, guid) {
 	var obj = new execRestCmd(RestCmds.CMD_ExecRecCmd, guid, { cmd:cmd });
 };
 
+Server.execCmd = function (cmd) {
+	var obj = new execRestCmd(RestCmds.CMD_ExecCmd, 0, { cmd:cmd });
+};
+
 Server.deleteMedFile = function(guid) {
 	var obj = new execRestCmd(RestCmds.CMD_DelMedFile, guid);
 };
@@ -379,9 +446,10 @@ var RestCmds = {
 	CMD_GetResume : 5,
 	CMD_GetRecCmds : 6,
 	CMD_ExecRecCmd : 7,
-	CMD_ActTimer : 8,
-	CMD_DelTimer : 9,
-	CMD_UpdateEntry : 10
+	CMD_ExecCmd : 8,
+	CMD_ActTimer : 9,
+	CMD_DelTimer : 10,
+	CMD_UpdateEntry : 11
 };
 
 
@@ -594,7 +662,27 @@ function execRestCmd(cmd, guid, args) {
 
 			this.parms.success = function(data, status, XHR ) {
 				Main.logToServer("Server.execRecCmd OK" ) ;
+				Notify.showNotify("Ok.", true);
 				Display.handleDescription(Main.selectedVideo);
+			};
+			break;
+
+		case RestCmds.CMD_ExecCmd :
+			// Execute a command
+		
+			Main.logToServer("Server.execCmd cmd="+this.args.cmd);
+
+			this.cmd = cmd;
+			this.parms.url = Config.serverUrl + "/execcmd?cmd="+this.args.cmd;
+			this.parms.type = "GET";
+//			this.parms.timeout = 500;
+
+			this.parms.success = function(data, status, XHR ) {
+				Main.logToServer("Server.execCmd OK" ) ;
+				//TODO: What to do on success?
+//				Display.handleDescription(Main.selectedVideo);
+				Notify.showNotify("Ok.", true);
+				Main.changeState(0);
 			};
 			break;
 

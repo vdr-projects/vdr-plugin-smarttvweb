@@ -9,10 +9,11 @@
     <BigThumbIcon>Images/icon/SmartTvWeb_115.png</BigThumbIcon>
     <ListIcon>Images/icon/SmartTvWeb_85.png</ListIcon>
     <BigListIcon>Images/icon/SmartTvWeb_95.png</BigListIcon>
-    <ver>0.95</ver>
+    <ver>1.00.0</ver>
     <mgrver></mgrver>
     <fullwidget>y</fullwidget>
 	<movie>y</movie>
+	<mouse>y</mouse>
     <srcctl>y</srcctl>
     <ticker>n</ticker>
     <childlock>n</childlock>

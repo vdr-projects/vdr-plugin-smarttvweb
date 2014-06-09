@@ -1,3 +1,28 @@
+/*
+function onYouTubePlayerReady(playerId) {
+    Yt.ytPlyr = document.getElementById(playerId);
+
+    Main.debug("onYouTubePlayerReady() playerId: " + playerId + ", player: " + Main.ytPlyr);
+    player.addEventListener("onStateChange", "onPlayerStateChange");
+    player.addEventListener("onError", "onPlayerError");
+    player.setSize(960, 540);
+//    player.cueVideoById(videoId);
+    //player.loadVideoById(videoId);
+
+};
+
+var Yt = {
+	ytPlyr : null
+};
+Yt.onPlayerError= function (error) {
+	
+};
+
+Yt.onPlayerStateChange = function (state) {
+
+};
+*/
+
 var UrlsFetcher = {
 	qualities : {17 : "144p", 36 : "240p", 18 : "360p", 22 : "720p", 37 : "1080p" },
 	preference : [36, 18, 22, 37],

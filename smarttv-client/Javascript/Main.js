@@ -26,10 +26,22 @@ catch (e) {
  *  Display.GetEpochTime: returns the current time (UTC) in seconds
  * 
  *  Player: All operations to get the video playing
- *   
+ * 
+ *   URL suffix handling should be in Player
+ *   mFormat should be in Config or Main
  */
 
-
+/*
+ * TODO:
+ * Audio Track Errors should be rendered differently
+ * Comm Error, when a new recording is added
+ * Clean Player APIs
+ * Keep State of Recording Sortings
+ * Issue, whether is a "_" folder
+ * Use Flash Player for YT
+ * Check that getBuffer is only used for PDL recordings and Live...
+ * Consider ? in reccmds and commands
+ */
  
 var Main = {
 	state : 0,  // selectScreen
@@ -54,14 +66,16 @@ var Main = {
     eMED : 3, // State Media Select Screen / Video Playing
 	eTMR : 4, // State Timer Screen
     eURLS : 5, // State Urls
-    eSRVR : 6, // State Select Server
-    eOPT : 7, // Options
+	eCMDS : 6, // Command Conf
+    eSRVR : 7, // State Select Server
+    eOPT : 8, // Options
     
     defKeyHndl : null,
     selectMenuKeyHndl : null,
     playStateKeyHndl : null,
     livePlayStateKeyHndl : null,
-    menuKeyHndl : null
+    menuKeyHndl : null,
+    
 };
 
 $(document).unload(function(){
@@ -94,7 +108,6 @@ Main.onLoad = function() {
 
 		Config.serverUrl = "http://" + Config.serverAddrDefault;
 		Main.log("Not a Samsung Smart TV" );
-//		Display.showPopup("Not a Samsung Smart TV. Lets see, how far we come");
 	}
 
 	$.ajaxSetup ({  
@@ -102,7 +115,6 @@ Main.onLoad = function() {
     });  
 	
 	Display.init();
-//    Display.selectItem(document.getElementById("selectItem1"));
 	Notify.init();
     Spinner.init();
 	Helpbar.init();
@@ -198,14 +210,11 @@ Main.init = function () {
 
 	Timers.init();
 	ImgViewer.init();
-//	Timers.show();
 	
 	//set popup to normal timeout duration
 	Display.popupOlHandler.olDelay = 3*1000;
 
 	Config.verboseStart = false;
-//	Display.scrollPopup ();
-	// end
 	
 	if (Config.deviceType == 0){
 	Main.log("ProductInfo= " + deviceapis.tv.info.getProduct());
@@ -222,16 +231,20 @@ Main.init = function () {
     /*
      * Fetch JS file
 	 */
-/*	if (Config.uploadJsFile != "undefined") {
-		Main.logToServer ("Upload: " + Config.uploadJsFile );
-		xhttp=new XMLHttpRequest();
-		xhttp.open("GET",Config.uploadJsFile,false);
-		xhttp.send("");
-		xmlDoc=xhttp.responseText;
-		Main.logToServer (xmlDoc);
-	
+	if (Config.uploadJsFile == true) {
+		Main.logToServer ("Upload: " + Config.uploadJsFilename );
+		try {
+			xhttp=new XMLHttpRequest();
+			xhttp.open("GET","$MANAGER_WIDGET/Common/webapi/1.0/webapis.js", false);
+			xhttp.send("");
+			xmlDoc=xhttp.responseText;
+			Main.logToServer (xmlDoc);				
+		}
+		catch (e) {
+			Main.logToServer ("Upload Error!");				
+		};
 	}
-*/	
+
 //	 Read widget conf. find the file to log
 
 	/*
@@ -340,6 +353,10 @@ Main.changeState = function (state) {
 		Main.urlsSelected();
 
 		break;
+	case Main.eCMDS:
+		CmdHandler.showMenu();
+
+		break;
 	case Main.eTMR:
 		$("#selectScreen").hide();
 		ClockHandler.start("#logoNow");
@@ -384,7 +401,9 @@ Main.recordingsSelected = function() {
 
     Server.errorCallback = Main.serverError;
     Server.setSort(true);
-/*    if (Config.format == "") {
+    Data.sortType =  Config.curSortType;
+
+    /*    if (Config.format == "") {
         Server.fetchVideoList(Config.serverUrl + "/recordings.xml?model=samsung"); 
         Main.log("fetchVideoList from: " + Config.serverUrl + "/recordings.xml?model=samsung");
     }
@@ -398,7 +417,8 @@ Main.recordingsSelected = function() {
 	*/
     Spinner.show();
 	Server.fetchVideoList(Config.serverUrl + "/recordings.xml"); /* Request video information from server */
-    Main.log("fetchVideoList from: " + Config.serverUrl + "/recordings.xml");
+
+	Main.log("fetchVideoList from: " + Config.serverUrl + "/recordings.xml");
 };
 
 
@@ -419,7 +439,17 @@ Main.mediaSelected = function() {
 
 Main.urlsSelected = function() {
 	Server.retries = 0;
-    Player.stopCallback = function() {
+
+/*
+	var plyr = $("<object>", {type : "application/x-shockwave-flash", id : "ytplayer", width : "960", height : "540", 
+			style : "position: absolute; left: 0px; top:0px; z-index: 0; display: none"});
+	plyr.append($("<param>", {name : "movie", value : "http://www.youtube.com/apiplayer?&enablejsapi=1&version=2&playerapiid=ytplayer"}));
+	plyr.append($("<param>", {name : "allowFullScreen", value : "true"}));
+	plyr.append($("<param>", {name : "allowScriptAccess", value : "always"}));
+	$('body').append(plyr);
+*/
+
+	Player.stopCallback = function() {
     	// 
     	Display.show();
     };
@@ -438,13 +468,43 @@ Main.optionsSelected = function() {
 
 
 Main.serverError = function(errorcode) {
-	if (Server.retries < 2) {
-		switch (this.state) {
-		case this.eLIVE: // live
+	Main.logToServer("Main.serverError state= " + Main.state + " retries= " + Server.retries);
+	switch (Server.retries) {
+	case 0:
+	case 1:
+	case 2:
+		switch (Main.state) {
+		case Main.eLIVE: // live
+		    Server.fetchVideoList( Config.serverUrl + "/channels.xml"); /* Request video information from server */
+			break;
+		case Main.eRECE: 
+		    Server.fetchVideoList( Config.serverUrl + "/recordings.xml"); /* Request video information from server */
+			break;
+		}		
+		break;
+	case 3:
+	case 4:
+		switch (Main.state) {
+		case Main.eLIVE: // live
 		    Server.fetchVideoList( Config.serverUrl + "/channels.xml?mode=nodesc"); /* Request video information from server */
 			break;
-		case this.eRECE: 
+		case Main.eRECE: 
 		    Server.fetchVideoList( Config.serverUrl + "/recordings.xml?mode=nodesc"); /* Request video information from server */
+			break;
+		}		
+		break;
+	default:
+		Display.showPopup(msg);
+		Main.changeState(0);		
+		break;
+	};
+/*	if (Server.retries < 2) {
+		switch (this.state) {
+		case Main.eLIVE: // live
+		    Server.fetchVideoList( Config.serverUrl + "/channels.xml?mode=nodesc"); 
+			break;
+		case Main.eRECE: 
+		    Server.fetchVideoList( Config.serverUrl + "/recordings.xml?mode=nodesc");
 			break;
 		}		
 	}
@@ -452,12 +512,12 @@ Main.serverError = function(errorcode) {
 		Display.showPopup(msg);
 		Main.changeState(0);		
 	}
-
+*/
 };
 
 
 Main.enableKeys = function() {
-	Main.log("Main.enableKeys");
+	Main.logToServer("Main.enableKeys");
     document.getElementById("anchor").focus();
 };
 
@@ -513,9 +573,10 @@ Main.playItem = function (url) {
 	Main.log(Main.state + " playItem for " +Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
 	var start_time = Data.getCurrentItem().childs[Main.selectedVideo].payload.start;
 	var duration = Data.getCurrentItem().childs[Main.selectedVideo].payload.dur;
-	var now = Display.GetEpochTime();
-	
-//	document.getElementById("olRecProgressBar").style.display="none";
+	var now = Display.GetUtcTime();
+//	var now = (new MyDate()).getTimeSec();
+
+	//	document.getElementById("olRecProgressBar").style.display="none";
 //	Player.mFormat = Player.eUND; // default val
 	
 	switch (this.state) {
@@ -528,8 +589,8 @@ Main.playItem = function (url) {
 		Player.isLive = true;
  
 		Display.updateOlForLive (start_time, duration, now);
-		Main.log ("Live now= " +  now + " StartTime= " + Data.getCurrentItem().childs[Main.selectedVideo].payload.start + " offset= " +Player.cptOffset );
-		Main.log("Live Content= " + Data.getCurrentItem().childs[Main.selectedVideo].title + " dur= " + Data.getCurrentItem().childs[Main.selectedVideo].payload.dur);
+		Main.logToServer ("Live now= " +  now + " StartTime= " + Data.getCurrentItem().childs[Main.selectedVideo].payload.start + " offset= " +Player.cptOffset );
+		Main.logToServer("Live Content= " + Data.getCurrentItem().childs[Main.selectedVideo].title + " dur= " + Data.getCurrentItem().childs[Main.selectedVideo].payload.dur);
 
 		Player.guid = Data.getCurrentItem().childs[Main.selectedVideo].payload.guid;
 
@@ -538,8 +599,9 @@ Main.playItem = function (url) {
 	break;
 	case Main.eREC: 
 
-		var url_ext = "";
-		Player.mFormat = Player.ePDL;
+		Player.setPdl();
+//		var url_ext = "";
+//		Player.mFormat = Player.ePDL;
 //		Server.getResume(Player.guid);
 		
     	Main.log(" playItem: now= " + now + " start_time= " + start_time + " dur= " + duration + " (Start + Dur - now)= " + ((start_time + duration) -now));
@@ -556,12 +618,14 @@ Main.playItem = function (url) {
 			if ((Data.getCurrentItem().childs[Main.selectedVideo].payload.fps <= 30) && (Data.getCurrentItem().childs[Main.selectedVideo].payload.ispes == "false")) {
 				// in case fps is smaller than 30 and ts recording use HLS or HAS
 				if (Config.format == "hls") {
-					Player.mFormat = Player.eHLS;
-					url_ext = "/manifest-seg.m3u8|COMPONENT=HLS";
+					Player.setHls();
+//					Player.mFormat = Player.eHLS;
+//					url_ext = "/manifest-seg.m3u8|COMPONENT=HLS";
 				}
-				Player.mFormat = Player.eHAS;
 				if (Config.format == "has") {
-					url_ext = "/manifest-seg.mpd|COMPONENT=HAS";
+					Player.setHas();
+//					Player.mFormat = Player.eHAS;
+//					url_ext = "/manifest-seg.mpd|COMPONENT=HAS";
 				}
 			}
 	    }
@@ -578,8 +642,9 @@ Main.playItem = function (url) {
 			Display.updateRecBar(start_time, duration);
 
 // New recording in progress handling
-			url_ext = "";
-			Player.mFormat = Player.ePDL;
+			Player.setPdl();
+//			url_ext = "";
+//			Player.mFormat = Player.ePDL;
 
 /*			if ((Data.getCurrentItem().childs[Main.selectedVideo].payload.fps <= 30) && (Data.getCurrentItem().childs[Main.selectedVideo].payload.ispes == "false")) {
 				// HLS only works for framerate smaller 30fps
@@ -595,7 +660,8 @@ Main.playItem = function (url) {
 			}
 */
 		}
-		Player.setVideoURL( Data.getCurrentItem().childs[Main.selectedVideo].payload.link + url_ext);
+//		Player.setVideoURL( Data.getCurrentItem().childs[Main.selectedVideo].payload.link + url_ext);
+		Player.setVideoURL( Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
 		Player.guid = Data.getCurrentItem().childs[Main.selectedVideo].payload.guid;
 		Main.log("Main.playItem - Player.guid= " +Player.guid);
 
@@ -619,7 +685,17 @@ Main.playItem = function (url) {
 
 			Display.setOlTitle(Data.getCurrentItem().childs[Main.selectedVideo].title);
 
-			Player.setVideoURL( Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
+			var url = Data.getCurrentItem().childs[Main.selectedVideo].payload.link;
+			var ext = url.split('.').pop();
+			if ((ext == "M3U8") || (ext == "m3u8") )
+				Player.setHls();
+//				url += "|COMPONENT=HLS";
+			if ((ext == "MPD") || (ext == "mpd") )
+				Player.setHas();
+//				url += "|COMPONENT=HAS";
+			Main.log ("Url= " + url);
+			Player.setVideoURL( url);
+//			Player.setVideoURL( Data.getCurrentItem().childs[Main.selectedVideo].payload.link);
 			Player.playVideo(-1);
 
 			Player.guid = "unknown";
@@ -628,7 +704,8 @@ Main.playItem = function (url) {
 	case Main.eURLS:
 		Display.hide();
     	Display.showProgress();
-		Player.mFormat = Player.ePDL;
+    	Player.setPdl();
+//		Player.mFormat = Player.ePDL;
     	
     	Main.log(" playItem: now= " + now + " start_time= " + start_time + " dur= " + duration + " (Start + Dur - now)= " + ((start_time + duration) -now));
 
@@ -717,7 +794,10 @@ function cPlayStateKeyHndl(def_hndl) {
 	this.defaultKeyHandler = def_hndl;
 	this.handlerName = "PlayStateKeyHanlder";
 	Main.log(this.handlerName + " created");
-
+	this.lastDragRightUp = 0;
+	this.lastDragRightDn = 0;
+	this.lastDragTopRt = 0;
+	this.lastDragTopLt = 0;
 };
 
 
@@ -729,65 +809,66 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (keyCode) {
     	return;
     }
 
+	var smart_touch_timeout = Config.smartTouchTimeout / 1000;
 //    Main.log(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
 //    Main.logToServer(this.handlerName+": Key pressed: " + Main.getKeyCode(keyCode));
-    
-    switch(keyCode) {
+	if ((keyCode >= 50100001) && (keyCode <= 50400050)) {
+		if ((keyCode >= 50400001) && (keyCode <= 50400025))			// Smart Touch, polierter Steg oben, nach rechts, langsam
+			keyCode = 50400001;
+		if ((keyCode >= 50400025) && (keyCode <= 50400050))	{		// Smart Touch, polierter Steg oben, nach rechts, langsam
+			keyCode = 50400001;
+			smart_touch_timeout = Config.smartTouchTimeout / 2000;
+		}
+		if ( (keyCode >= 50300001) && (keyCode <= 50300025) ) // Smart Touch, polierter Steg oben, nach links
+			keyCode = 50300001;
+		if ( (keyCode >= 50300025) && (keyCode <= 50300050) ){ // Smart Touch, polierter Steg oben, nach links
+			keyCode = 50300001;
+			smart_touch_timeout = Config.smartTouchTimeout / 2000;
+		}
+		if ((keyCode >= 50100001) && (keyCode <= 50100050)) // Smart Touch, polierter Steg rechts & links, nach oben
+			keyCode = 50100001;
+		if ((keyCode >= 50200001) && (keyCode <= 50200050)) // Smart Touch, polierter Steg rechts & links, nach oben
+			keyCode = 50200001;
+    Main.logToServer(this.handlerName+": SmartTouch: " +keyCode + " to= " + smart_touch_timeout);
+	}
+	switch(keyCode) {
     	case tvKey.KEY_TOOLS:
     		Helpbar.showHelpbar();
     	break;
         case tvKey.KEY_1:
         	Main.log("KEY_1 pressed");
-//        	Display.showProgress();
-//        	Player.jumpToVideo(10);
         	Player.numKeyJump(1);
         	break;
         case tvKey.KEY_2:
         	Main.log("KEY_2 pressed");
-//        	Display.showProgress();
-//        	Player.jumpToVideo(20);
         	Player.numKeyJump(2);
         	break;
         case tvKey.KEY_3:
         	Main.log("KEY_3 pressed");
-//        	Display.showProgress();
-//        	Player.jumpToVideo(30);
         	Player.numKeyJump(3);
         	break;
         case tvKey.KEY_4:
         	Main.log("KEY_4 pressed");
-//        	Display.showProgress();
-//        	Player.jumpToVideo(40);
         	Player.numKeyJump(4);
         	break;
         case tvKey.KEY_5:
         	Main.log("KEY_5 pressed");
-//        	Display.showProgress();
-//        	Player.jumpToVideo(50);
         	Player.numKeyJump(5);
         	break;
         case tvKey.KEY_6:
         	Main.log("KEY_6 pressed");
-//        	Display.showProgress();
-//        	Player.jumpToVideo(60);
         	Player.numKeyJump(6);
         	break;
         case tvKey.KEY_7:
         	Main.log("KEY_7 pressed");
-//        	Display.showProgress();
-//        	Player.jumpToVideo(70);
         	Player.numKeyJump(7);
         	break;
         case tvKey.KEY_8:
         	Main.log("KEY_8 pressed");
-//        	Display.showProgress();
-//        	Player.jumpToVideo(80);
         	Player.numKeyJump(8);
         	break;
         case tvKey.KEY_9:
         	Main.log("KEY_9 pressed");
-//        	Display.showProgress();
-//        	Player.jumpToVideo(90);
         	Player.numKeyJump(9);
         	break;
            
@@ -812,6 +893,14 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (keyCode) {
             break;
 
 /* Works only for progressive streams, not Adaptive HTTP */
+		
+		case 50400001: // Smart Touch, polierter Steg oben, nach rechts
+        	var now = Display.GetUtcTime();
+//        	var now = (new MyDate()).getTimeSec();
+    		if ((now - this.lastDragTopRt) < smart_touch_timeout) {
+    			return;    			
+    		} 
+    		this.lastDragTopRt = now;        
         case tvKey.KEY_FF:
             Main.log("FF");
             Display.showProgress();
@@ -820,12 +909,21 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (keyCode) {
 			}
 			else */
 //            if (Player.mFormat != Player.ePDL )
-            if (Player.mFormat == Player.eHLS )
+//          if (Player.mFormat == Player.eHLS )
+            if (Player.isHls())
 				Notify.showNotify("Not supported", true);
 			else
 				Player.fastForwardVideo();
 
             break;
+            
+        case 50300001: // Smart Touch, polierter Steg oben, nach links
+        	var now = Display.GetUtcTime();
+//        	var now = (new MyDate()).getTimeSec();
+    		if ((now - this.lastDragTopLt) < smart_touch_timeout) {
+    			return;    			
+    		} 
+    		this.lastDragTopLt = now;        
         case tvKey.KEY_RW:
             Main.log("RW");
             Display.showProgress();
@@ -834,12 +932,20 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (keyCode) {
 			}
 			else */
 //            if (Player.mFormat != Player.ePDL )
-            if (Player.mFormat == Player.eHLS )
+//            if (Player.mFormat == Player.eHLS )
+            if (Player.isHls())           	
 				Notify.showNotify("Not supported", true);
 			else
 				Player.RewindVideo();
             break;
            
+        case 50100001 : // Smart Touch, polierter Steg rechts & links, nach oben
+        	var now = Display.GetUtcTime();
+//        	var now = (new MyDate()).getTimeSec();
+    		if ((now - this.lastDragRightUp) < smart_touch_timeout) {
+    			return;    			
+    		} 
+    		this.lastDragRightUp = now;        
         case tvKey.KEY_ENTER:
         case tvKey.KEY_PLAY:
         case tvKey.KEY_PANEL_ENTER:
@@ -861,9 +967,20 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (keyCode) {
         case tvKey.KEY_STOP:
         	Main.log("STOP");
         	Player.stopVideo();
-			widgetAPI.blockNavigation(event);
-
+			try {
+				widgetAPI.blockNavigation(event);
+			}
+			catch (e) {
+			}
             break;           
+            
+        case 50200001: // Smart Touch, polierter Steg rechts & links, nach oben
+        	var now = Display.GetUtcTime();
+//        	var now = (new MyDate()).getTimeSec();
+    		if ((now - this.lastDragRightDn) < smart_touch_timeout) {
+    			return;    			
+    		} 
+    		this.lastDragRightDn = now;
         case tvKey.KEY_PAUSE:
             Main.log("PAUSE");
             if(Player.getState() == Player.PAUSED) {
@@ -884,6 +1001,7 @@ cPlayStateKeyHndl.prototype.handleKeyDown = function (keyCode) {
 		case tvKey.KEY_INFO:
 			Display.showInfo(Main.selectedVideo);
 			break;
+		case tvKey.KEY_RED:                // for Smart Touch FBs
 		case tvKey.KEY_ASPECT:
 			Player.toggleAspectRatio();
 			break;
@@ -1091,6 +1209,7 @@ cLivePlayStateKeyHndl.prototype.handleKeyDown = function (keyCode) {
      case tvKey.KEY_INFO: 
 			Display.showInfo(Main.selectedVideo);
 			break;
+     case tvKey.KEY_RED:                // for Smart Touch FBs
      case tvKey.KEY_ASPECT:
     	 Player.toggleAspectRatio();
     	 break;
@@ -1127,6 +1246,10 @@ cMenuKeyHndl.prototype.handleKeyDown = function (keyCode) {
 // var keyCode = event.keyCode;
  
  switch(keyCode) {
+	case 65:
+		Main.logToServer("a pressed");
+		Display.showInfo(Main.selectedVideo);
+	break;
 	case tvKey.KEY_TOOLS:
 		Helpbar.showHelpbar();
 	break;

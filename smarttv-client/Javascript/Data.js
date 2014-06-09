@@ -5,7 +5,7 @@ var Data =
 	createAccessMap : false,
 	directAccessMap : {},
 	sortType : 0,
-	maxSort : 3
+	maxSort : 4
 };
 
 Array.prototype.remove = function(from, to) {
@@ -19,28 +19,31 @@ Data.reset = function() {
 	this.assets = new Item;
 	this.folderList = [];		
 	this.createAccessMap = false;
-	this.sortType = Config.sortType;
+	Data.sortType = Config.curSortType;
 //	this.folderList.push({item : this.assets, id: 0});
 	Main.log("Data.reset: folderList.push. this.folderList.length= " + this.folderList.length);
 };
 
 Data.completed= function(sort) {
+	this.folderList.push({item : this.assets, id: 0});
+	
 	if (sort == true) {
-		this.assets.sortPayload(Data.sortType);
+		Data.assets.sortPayload(Data.sortType);
 		if (this.createAccessMap == true) {
 			Main.log("ERROR: access map does not match anymore");
 		}
 	}
 	
-	this.folderList.push({item : this.assets, id: 0});
     Main.log("---------- completed ------------");    
 	Main.log("Data.completed: Data.folderList.length= " + this.folderList.length);
+    Main.log("Data.completed sort= " + ((sort)? "true" : "false") + ((sort) ? " sortType= " + Data.sortType : ""));    
 	Main.log("Data.completed(): createAccessMap= " + ((this.createAccessMap == true) ? "true": "false"));
 };
 
 Data.nextSortType = function () {
 	Data.sortType = (Data.sortType +1) % Data.maxSort;
 	this.assets.sortPayload(Data.sortType);	
+	Config.curSortType = Data.sortType;
 };
 
 Data.selectFolder = function (idx, first_idx) {
@@ -93,7 +96,8 @@ Data.dumpDirectAccessMap = function(){
 };
 
 Data.findEpgUpdateTime = function() {
-	return this.assets.findEpgUpdateTime(Display.GetEpochTime() + 10000, "", 0);
+	return this.assets.findEpgUpdateTime(Display.GetUtcTime() + 10000, "", 0);
+//	return this.assets.findEpgUpdateTime((new MyDate()).getTimeSec() + 10000, "", 0);
 	// min, guid, level
 };
 
@@ -258,16 +262,12 @@ Item.prototype.findEpgUpdateTime = function (min, guid, level) {
     		guid = res.guid;
     	}
     	else {
-    		var digi =new Date(this.childs[i].payload['start']  * 1000);
-    		var str = digi.getHours() + ":" + digi.getMinutes();
+//    		var digi =new MyDate(this.childs[i].payload['start']  * 1000);
+//    		var str = digi.getHours() + ":" + digi.getMinutes();
    		
-//			Main.log(prefix + "min= " + min+ " start= " + this.childs[i].payload['start'] + " (" + str+ ") title= " + this.childs[i].title);
-    		
     		if ((this.childs[i].payload['start'] != 0) && ((this.childs[i].payload['start'] + this.childs[i].payload['dur']) < min)) {
     			min = this.childs[i].payload['start'] + this.childs[i].payload['dur'];
     			guid = this.childs[i].payload['guid'] ;
-//    			Main.log(prefix + "New Min= " + min + " new id= " + guid + " title= " + this.childs[i].title);
-//    			Main.logToServer(prefix + "New Min= " + min + " new id= " + guid + " title= " + this.childs[i].title);
     		}
     	}
     }  
@@ -314,14 +314,9 @@ Item.prototype.print = function(level) {
 };
 
 Item.prototype.sortPayload = function(sel) {
-	for (var i = 0; i < this.childs.length; i++) {
-		if (this.childs[i].isFolder == true) {
-			this.childs[i].sortPayload(sel);
-		}
-	}
 
 	switch (sel) {
-	case 1:
+	case 2:
 		// Dy Date
 		this.childs.sort(function(a,b) { 
 			if (a.payload.start == b.payload.start) {
@@ -332,7 +327,7 @@ Item.prototype.sortPayload = function(sel) {
 			}
 		});
 		break;
-	case 2:
+	case 3:
 		// Dy Date
 		this.childs.sort(function(a,b) { 
 			if (a.payload.start == b.payload.start) {
@@ -343,7 +338,7 @@ Item.prototype.sortPayload = function(sel) {
 			}
 		});
 		break;
-	case 3:
+	case 1:
 	    this.childs.sort(function(a,b) { 
 	    	if (a.title == b.title) {
 	    		return (b.payload.start -a.payload.start);
@@ -368,4 +363,11 @@ Item.prototype.sortPayload = function(sel) {
 
 		break;
 	}
+	
+	for (var i = 0; i < this.childs.length; i++) {
+		if (this.childs[i].isFolder == true) {
+			this.childs[i].sortPayload(sel);
+		}
+	}
+
 };

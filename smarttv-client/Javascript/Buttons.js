@@ -357,7 +357,7 @@ ButtonHandler.prototype.show = function () {
 };
 
 ButtonHandler.prototype.hide = function () {
-	Main.log(this.hndlName + ".hide(): masterElm= " +this.masterElm + " inputElm= " + this.inputElm);
+	Main.logToServer(this.hndlName + ".hide(): masterElm= " +this.masterElm + " inputElm= " + this.inputElm);
 	$(this.masterElm).hide();
 	$(this.inputElm).blur();
 	Main.enableKeys();

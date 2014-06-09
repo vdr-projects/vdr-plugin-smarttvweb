@@ -87,9 +87,12 @@ DirectAccess.show = function (val) {
 	$("#directAccessText").text(val);
 	$("#directChanAccess").show();
 	$("#directAccessAnchor").focus();
-	DirectAccess.timeout = Display.GetEpochTime() + (DirectAccess.delay / 1000.0);
+	
+	DirectAccess.timeout = Display.GetUtcTime() + (DirectAccess.delay / 1000.0);
+//	DirectAccess.timeout = (new MyDate()).getTimeSec() + (DirectAccess.delay / 1000.0);
 	DirectAccess.timeoutObj = window.setTimeout( function() {DirectAccess.handleTimeout();}, DirectAccess.delay);
-	Main.log("DirectAccess.show: now= "+ Display.GetEpochTime() +" timeout= " + DirectAccess.timeout +" delta= " + (DirectAccess.timeout -Display.GetEpochTime()));
+	Main.log("DirectAccess.show: now= "+ Display.GetUtcTime() +" timeout= " + DirectAccess.timeout +" delta= " + (DirectAccess.timeout -Display.GetUtcTime()));
+//	Main.log("DirectAccess.show: now= "+ (new MyDate()).getTimeSec() +" timeout= " + DirectAccess.timeout +" delta= " + (DirectAccess.timeout -(new MyDate()).getTimeSec()));
 	};
 
 
@@ -110,10 +113,14 @@ DirectAccess.hide = function () {
 DirectAccess.handleTimeout = function () {
 	Main.log("DirectAccess.handleTimeout");
 	DirectAccess.timeoutObj = null;
-	if (Display.GetEpochTime() < DirectAccess.timeout) {
-		var delta = (DirectAccess.timeout -Display.GetEpochTime()) *1000.0;
+	
+	if (Display.GetUtcTime() < DirectAccess.timeout) {
+//	if ((new MyDate()).getTimeSec() < DirectAccess.timeout) {
+		var delta = (DirectAccess.timeout -Display.GetUtcTime()) *1000.0;
+//		var delta = (DirectAccess.timeout -(new MyDate()).getTimeSec()) *1000.0;
 		DirectAccess.timeoutObj = window.setTimeout( DirectAccess.handleTimeout, delta);
-		DirectAccess.timeout = Display.GetEpochTime() + (delta / 1000.0);
+		DirectAccess.timeout = Display.GetUtcTime() + (delta / 1000.0);
+//		DirectAccess.timeout = (new MyDate()).getTimeSec() + (delta / 1000.0);
 		Main.log("DirectAccess.timeout: " + DirectAccess.timeout);
 	}
 	else {
@@ -123,7 +130,8 @@ DirectAccess.handleTimeout = function () {
 };
 
 DirectAccess.extendTimer = function () {
-	DirectAccess.timeout = Display.GetEpochTime() + (DirectAccess.delay / 1000.0);
+	DirectAccess.timeout = Display.GetUtcTime() + (DirectAccess.delay / 1000.0);
+//	DirectAccess.timeout = (new MyDate()).getTimeSec() + (DirectAccess.delay / 1000.0);
 	Main.log("DirectAccess.extendTimer: " + DirectAccess.timeout);
 };
 
