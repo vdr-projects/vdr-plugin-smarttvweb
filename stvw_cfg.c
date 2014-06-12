@@ -34,7 +34,7 @@
 cSmartTvConfig::cSmartTvConfig(string d): mConfigDir(d), mLog(NULL), mCfgFile(NULL),
   mLogFile(), mMediaFolder(), mSegmentDuration(), mHasMinBufferTime(), mHasBitrateCorrection(),
   mLiveChannels(), mGroupSep(IGNORE), mServerAddress(""), mServerPort(8000), mCmds(false), mUseStreamDev4Live(true),
-  mBuiltInLiveStartMode (2), mBuiltInLivePktBuf4Hd(150), mBuiltInLivePktBuf4Sd(75), mBuiltInLiveBufDur(0.6) {
+  mBuiltInLiveStartMode (4), mBuiltInLivePktBuf4Hd(150), mBuiltInLivePktBuf4Sd(75), mBuiltInLiveBufDur(0.6) {
 
 #ifndef STANDALONE
   mLogFile= "";
@@ -70,9 +70,9 @@ void cSmartTvConfig::printConfig() {
   *(mLog->log()) << " GroupSeparators: " << ((mGroupSep==IGNORE)? "Ignore" : ((mGroupSep==EMPTYIGNORE)? "EmptyIgnore": "EmptyFolderDown")) << endl;
   *(mLog->log()) << " ServerAddress: " << mServerAddress << endl;
   *(mLog->log()) << " UseStreamDev4Live: " << ((mUseStreamDev4Live) ? "true" :"false") << endl;
-  *(mLog->log()) << " BuiltInLiveStartMode: " << mBuiltInLiveStartMode << endl;
-  *(mLog->log()) << " BuiltInLivePktBuf4Hd: " << mBuiltInLivePktBuf4Hd << endl;
-  *(mLog->log()) << " BuiltInLivePktBuf4Sd: " << mBuiltInLivePktBuf4Sd << endl;
+  //  *(mLog->log()) << " BuiltInLiveStartMode: " << mBuiltInLiveStartMode << endl;
+  //  *(mLog->log()) << " BuiltInLivePktBuf4Hd: " << mBuiltInLivePktBuf4Hd << endl;
+  //  *(mLog->log()) << " BuiltInLivePktBuf4Sd: " << mBuiltInLivePktBuf4Sd << endl;
   *(mLog->log()) << " BuiltInLiveBufDur: " << mBuiltInLiveBufDur << endl;
 }
 
@@ -167,13 +167,12 @@ void cSmartTvConfig::readConfig() {
       continue;
     }
 
-    if (strcmp(attr, "BuiltInLiveStartMode") == 0) {
+    /*    if (strcmp(attr, "BuiltInLiveStartMode") == 0) {
       mBuiltInLiveStartMode = atoi(value);
       if ((mBuiltInLiveStartMode <0) || (mBuiltInLiveStartMode > 4))
 	mBuiltInLiveStartMode = 0;
       continue;
     }
-
     if (strcmp(attr, "BuiltInLivePktBuf4Hd") == 0) {
       mBuiltInLivePktBuf4Hd = atoi(value);
       continue;
@@ -182,6 +181,7 @@ void cSmartTvConfig::readConfig() {
       mBuiltInLivePktBuf4Sd = atoi(value);
       continue;
     }
+*/
 
     if (strcmp(attr, "BuiltInLiveBufDur") == 0) {
       mBuiltInLiveBufDur = atoi(value) /1000.0;
