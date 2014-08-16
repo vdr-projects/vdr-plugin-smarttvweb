@@ -2440,7 +2440,7 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
   vector<sTimerEntry> act_rec;
   /*#ifndef DEBUG*/
   *(mLog->log())<< DEBUGPREFIX
-		<< " checking avtive timer"
+		<< " checking active timer"
 		<< endl;
   /*#endif*/
   for (cTimer * ti = Timers.First(); ti; ti = Timers.Next(ti)){
