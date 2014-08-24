@@ -26,6 +26,8 @@
 
 #include <vector>
 #include <sys/stat.h>
+#include <errno.h>
+#include <cstring>
 
 //#define MAXLEN 4096
 #define DEBUGPREFIX mLog->getTimeString() << ": mReqId= " << mRequest->mReqId << " fd= " << mRequest->mFd 
@@ -39,8 +41,6 @@ cResponseFile::cResponseFile(cHttpResource* req) : cResponseBase(req), mFile(NUL
 
 cResponseFile::~cResponseFile() {
   if (mFile != NULL) {
-    *(mLog->log())<< DEBUGPREFIX
-		  << " ERROR: mFile still open. Closing now..." << endl;
     fclose(mFile);
     mFile = NULL;
   }  
@@ -113,9 +113,9 @@ int cResponseFile::openFile(const char *name) {
   mFile = fopen(name, "r");
   if (!mFile) {
     *(mLog->log())<< DEBUGPREFIX
-	 << " fopen failed pathbuf= " << name 
-	 << endl;
-    //    sendError(403, "Forbidden", NULL, "Access denied.");
+		  << " fopen failed pathbuf= " << name 
+		  << " errno= " << errno 
+		  << " " << strerror(errno) << endl;
     return ERROR;
   }
   return OKAY;
