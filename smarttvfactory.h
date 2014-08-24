@@ -47,8 +47,8 @@ class cStatus {
 
 using namespace std;
 
-#define PLG_VERSION "1.0.0"
-#define SERVER "SmartTvWeb/1.0.0" 
+#define PLG_VERSION "1.0.1"
+#define SERVER "SmartTvWeb/1.0.1" 
 class cLiveRelay;
 
 struct sClientEntry {

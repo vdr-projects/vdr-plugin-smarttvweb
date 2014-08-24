@@ -53,6 +53,7 @@ string cUrlEncode::doUrlSaveEncode(string in) {
       break;
     case '#':
       //      break;
+      /*
       if (in.compare(idx, 3, "#3F") == 0) {
 	res += "%3F";
 	idx +=3;
@@ -68,6 +69,7 @@ string cUrlEncode::doUrlSaveEncode(string in) {
 	idx += 3;
 	continue;
       }
+*/
       res += "%23"; // just a '#' char
       break;
     default:
