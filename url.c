@@ -109,6 +109,9 @@ string cUrlEncode::doUrlSaveDecode(string input) {
       case 0x25: // '%'
 	res += "%";
 	break;
+      case 0x26: // '&'
+	res += "&";
+	break;
       case 0x2f: // '/'
 	res += "#2F";
 	break;
