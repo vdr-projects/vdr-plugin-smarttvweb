@@ -2349,7 +2349,6 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
   mResponseMessage = new string();
   *mResponseMessage = "";
   mResponseMessagePos = 0;
-  //  mRequest->mContentType = MEMBLOCK;
 
   mRequest->mConnState = SERVING;
 
@@ -2367,13 +2366,16 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
   bool add_desc = true; 
   string guid = "";
   bool single_item = false;
-  
+
+  // allows creating a TV Model specific recordings.xml, i.e. HLS or HAS only for ts recordings with fps < 30
+  // see type field evaluation for defails
   if (mRequest->getQueryAttributeValue(&avps, "model", model) == OKAY){
     *(mLog->log())<< DEBUGPREFIX
 		  << " Found a Model Parameter: " << model
 		  << endl;
   }
 
+  // allows requesting the recordings information for a single file only
   if (mRequest->getQueryAttributeValue(&avps, "guid", guid) == OKAY){
     guid = cUrlEncode::doUrlSaveDecode(guid);
     *(mLog->log())<< DEBUGPREFIX
@@ -2383,6 +2385,7 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
     single_item = true;
   }
 
+  // allows requesting Urls with HLS or HAS type of manifest
   if (mRequest->getQueryAttributeValue(&avps, "type", type) == OKAY){
     *(mLog->log())<< DEBUGPREFIX
 		  << " Found a Type Parameter: " << type
@@ -2401,6 +2404,7 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
     }
   }
 
+  // allows tuning the recordings file, e.g. without any descriptions (size reduction)
   if (mRequest->getQueryAttributeValue(&avps, "mode", mode) == OKAY){
     if (mode == "nodesc") {
       add_desc = false;
@@ -2410,6 +2414,7 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
     }
   }
 
+  // when set to false, the type=hls or type=has fields are ignored for content with fps>=30
   if (mRequest->getQueryAttributeValue(&avps, "has4hd", has_4_hd_str) == OKAY){
     *(mLog->log())<< DEBUGPREFIX
 		  << " Found a Has4Hd Parameter: " << has_4_hd_str
@@ -2418,14 +2423,12 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
       has_4_hd = false;
   }
 
-
 #ifndef DEBUG
   *(mLog->log())<< DEBUGPREFIX
 		<< " generating /recordings.xml" 
 		<< endl;
 #endif
 
-  //--------------------
   char f[600];
 
 #ifndef DEBUG
@@ -2438,11 +2441,13 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
   time_t now = time(NULL);
 
   vector<sTimerEntry> act_rec;
-  /*#ifndef DEBUG*/
+#ifndef DEBUG
   *(mLog->log())<< DEBUGPREFIX
 		<< " checking active timer"
 		<< endl;
-  /*#endif*/
+#endif
+  // looking for recordings with active timer in order to determine, whether the recording is currently running
+  // the recording length needs to be determined from the EPG data in that case.
   for (cTimer * ti = Timers.First(); ti; ti = Timers.Next(ti)){
     ti->Matches();
 
@@ -2463,7 +2468,6 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
 		<< " running timers"
 		<< endl;
 #endif
-
 
   string hdr = "";
   hdr += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
@@ -2488,7 +2492,6 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
   else {
     recording = Recordings.First();
   }
-  //  for (cRecording *recording = Recordings.First(); recording; recording = Recordings.Next(recording)) {
   while (recording != NULL) {
     hdr = "";
 
@@ -2496,7 +2499,6 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
       snprintf(f, sizeof(f), "http://%s:%d%s", own_ip.c_str(), mRequest->mServerPort, 
 	       cUrlEncode::doUrlSaveEncode(recording->FileName()).c_str());
     else
-      //      snprintf(f, sizeof(f), "http://%s:%d%s%s", mServerAddr.c_str(), mServerPort, 
       snprintf(f, sizeof(f), "http://%s:%d%s%s", own_ip.c_str(), mRequest->mServerPort, 
 	       cUrlEncode::doUrlSaveEncode(recording->FileName()).c_str(), link_ext.c_str());
 
@@ -2508,8 +2510,7 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
 
     for (uint x = 0; x < act_rec.size(); x++) {
       if (act_rec[x].name == name) {
-
-	// *(mLog->log())<< DEBUGPREFIX << " !!!!! Found active Recording !!! " << endl;
+	// Active Recording, correct recording duration with EPG info
 	rec_dur +=  (act_rec[x].startTime + act_rec[x].duration - now);
       }
     } // for
@@ -2530,8 +2531,6 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
       return OKAY;
     }
     item_count ++;
-    //    if (!single_item)
-    //      recording = Recordings.Next(recording);
     recording = (!single_item) ? Recordings.Next(recording) : NULL;
   }
 
