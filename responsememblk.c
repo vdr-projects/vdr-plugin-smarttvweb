@@ -25,6 +25,8 @@
 #include "url.h"
 #include "smarttvfactory.h"
 
+#include "mp4.h"
+
 #include <sstream>
 #include <cstdio>
 
@@ -433,6 +435,65 @@ int cResponseMemBlk::sendResumeXml () {
   return OKAY;
 }
 
+int cResponseMemBlk::sendMp4Covr() {
+  if (isHeadRequest())
+    return OKAY;
+#ifndef STANDALONE
+  mResponseMessage = new string();
+  *mResponseMessage = "";
+  mResponseMessagePos = 0;
+
+  mRequest->mConnState = SERVING;
+
+  char f[400];
+
+  cResumeEntry entry;
+  string id;
+  vector<sQueryAVP> avps;
+  mRequest->parseQueryLine(&avps);
+  string guid;
+
+  if (mRequest->getQueryAttributeValue(&avps, "guid", guid) == OKAY){
+    entry.mFilename = cUrlEncode::doUrlSaveDecode(guid);
+    *(mLog->log() )<< DEBUGPREFIX
+                   << " Found guid: " << guid
+                   << " filename: " << entry.mFilename
+                   << endl;
+  }
+
+  if (guid == "") {
+    *(mLog->log())<< DEBUGPREFIX
+                  << " ERROR in sendMp4Covr: GUID is required= " << endl;
+    sendError(400, "Bad Request", NULL, "002 No guid in query line");
+    return OKAY;
+  }
+
+  struct stat statbuf;
+
+  if (stat(guid.c_str(), &statbuf) < 0) {
+    // error
+    *(mLog->log() )<< DEBUGPREFIX << " Not found Error" << endl;
+      
+    sendError(404, "Not Found", NULL, "003 File not found.");
+    return OKAY;
+  }
+
+  cMp4Metadata meta(guid, statbuf.st_size);
+  meta.parseMetadata();
+
+  if (! meta.mHaveCovrPos) {
+    // error
+    sendError(400, "Bad Request", NULL, "023 No covr image within the file.");
+    return OKAY;
+  }
+
+  *mResponseMessage = string(meta.mCovr, meta.mCovrSize) ;
+  // read bytestream
+  sendHeaders(200, "OK", NULL, "image/png", mResponseMessage->size(), -1);
+
+#endif
+  return OKAY;
+}
 
 int cResponseMemBlk::sendMarksXml () {
   if (isHeadRequest())
@@ -480,7 +541,7 @@ int cResponseMemBlk::sendMarksXml () {
   if (marks.Count() == 0) {
     *(mLog->log())<< DEBUGPREFIX
 		  << " sendMark: No Mark Found "  << endl;
-    sendError(400, "Bad Request", NULL, "0xx No Mark Found.");
+    sendError(400, "Bad Request", NULL, "022 No Mark Found.");
     return OKAY;
   }
 
@@ -1739,13 +1800,30 @@ int cResponseMemBlk::parseFiles(vector<sFileEntry> *entries, string prefix, stri
 	entries->push_back(sFileEntry(dir_name, pathbuf, start, "video/mpeg"));
       }
       else {
-	// regular file
+	// regular folder
 	parseFiles(entries, prefix + de->d_name + "~", dir_comp, de->d_name, statbuf);
       }
     }
     else {
       if ((de->d_name)[0] != '.' ) {
-	entries->push_back(sFileEntry(prefix+de->d_name, pathbuf, 1, getMimeType(de->d_name)));
+	// regular folder
+	string mime = getMimeType(de->d_name);
+	if ((mime == "video/mp4") || (mime == "video/3gp")) {
+	    *(mLog->log()) << DEBUGPREFIX << " mp4 fn= " << de->d_name 
+			   << " base= " << dir_base
+			   << " dir= " << dir_name
+			   << " comp= " << dir_comp
+			   << " size= " << statbuf->st_size
+			   << " pathbuf= " << pathbuf
+			   << endl;
+	    cMp4Metadata meta(pathbuf, statbuf->st_size);
+	    meta.parseMetadata();
+	    entries->push_back(sFileEntry(prefix+de->d_name, pathbuf, meta.mCreationTime, mime, 
+					  (meta.mHaveTitle) ? meta.mTitle : prefix+de->d_name, 
+					  meta.mShortDesc, meta.mLongDesc, meta.mDuration));
+	}
+	else
+	  entries->push_back(sFileEntry(prefix+de->d_name, pathbuf, statbuf->st_mtime, mime));
       }
     }
   }
@@ -1796,10 +1874,18 @@ int cResponseMemBlk::sendMediaXml (struct stat *statbuf) {
     
     snprintf(pathbuf, sizeof(pathbuf), "http://%s:%d%s", own_ip.c_str(), mRequest->mServerPort, 
     	     cUrlEncode::doUrlSaveEncode(entries[i].sPath).c_str());
-    if (writeXmlItem(cUrlEncode::doXmlSaveEncode(entries[i].sName), pathbuf, "NA", "NA", 
-		     cUrlEncode::doUrlSaveEncode(entries[i].sPath).c_str(), 
-		     -1, entries[i].sStart, -1, -1, -1, -1, entries[i].sMime) == ERROR) 
-      return ERROR;
+    if (entries[i].sHaveMeta) {
+      if (writeXmlItem(cUrlEncode::doXmlSaveEncode(entries[i].sTitle), pathbuf, 
+		       cUrlEncode::doXmlSaveEncode(entries[i].sLongDesc), "NA", 
+		       cUrlEncode::doUrlSaveEncode(entries[i].sPath).c_str(), 
+		       -1, entries[i].sStart, entries[i].sDuration, -1, -1, -1, entries[i].sMime) == ERROR) 
+	return ERROR;
+    }
+    else 
+      if (writeXmlItem(cUrlEncode::doXmlSaveEncode(entries[i].sName), pathbuf, "NA", "NA", 
+		       cUrlEncode::doUrlSaveEncode(entries[i].sPath).c_str(), 
+		       -1, entries[i].sStart, -1, -1, -1, -1, entries[i].sMime) == ERROR) 
+	return ERROR;
 
   }
      

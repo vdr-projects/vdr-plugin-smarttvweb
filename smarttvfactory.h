@@ -1,7 +1,7 @@
 /*
  * smarttvfactory.h: VDR on Smart TV plugin
  *
- * Copyright (C) 2012 - 2014 T. Lohmar
+ * Copyright (C) 2012 - 2015 T. Lohmar
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -47,8 +47,8 @@ class cStatus {
 
 using namespace std;
 
-#define PLG_VERSION "1.0.1"
-#define SERVER "SmartTvWeb/1.0.1" 
+#define PLG_VERSION "1.0.2"
+#define SERVER "SmartTvWeb/1.0.2" 
 class cLiveRelay;
 
 struct sClientEntry {

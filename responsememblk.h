@@ -35,13 +35,24 @@
 using namespace std;
 
 struct sFileEntry {
+  bool sHaveMeta;
   string sName;
   string sPath;
   int sStart;
   string sMime;
+  
+  string sTitle;
+  string sShortDesc;
+  string sLongDesc;
+  float sDuration;
 
-sFileEntry(string n, string l, int s, string m) : sName(n), sPath(l), sStart(s), sMime(m) {
-  };
+sFileEntry(string n, string l, int s, string m) : sHaveMeta(false), sName(n), sPath(l), 
+    sStart(s), sMime(m), sTitle(""), sShortDesc("NA"), sLongDesc("NA"), sDuration(0.0) {
+};
+
+sFileEntry(string n, string l, int s, string m, string t, string desc, string ldes, float dur) : sHaveMeta(true), 
+    sName(n), sPath(l), sStart(s), sMime(m), sTitle(t), sShortDesc(desc), sLongDesc(ldes), sDuration(dur) {
+};
 };
 
 
@@ -66,6 +77,7 @@ class cResponseMemBlk : public cResponseBase {
   int sendYtBookmarkletJs();
   int sendBmlInstHtml();
 
+  int sendMp4Covr();
   int sendEpgXml (struct stat *statbuf);
   int sendUrlsXml ();
   int sendMediaXml (struct stat *statbuf);

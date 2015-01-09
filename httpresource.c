@@ -426,6 +426,12 @@ int cHttpResource::processRequest() {
     return OKAY;
   }
 
+  if (mPath.compare("/mp4covr") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->sendMp4Covr();
+    return OKAY;
+  }
+
   if (mPath.compare("/widget.conf") == 0) {
     mPath = mFactory->getConfigDir() + "/widget.conf";
 
