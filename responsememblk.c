@@ -489,7 +489,7 @@ int cResponseMemBlk::sendMp4Covr() {
 
   *mResponseMessage = string(meta.mCovr, meta.mCovrSize) ;
   // read bytestream
-  sendHeaders(200, "OK", NULL, "image/png", mResponseMessage->size(), -1);
+  sendHeaders(200, "OK", NULL, (meta.mCovrType == 14) ? "image/png" : "image/jpg" , mResponseMessage->size(), -1);
 
 #endif
   return OKAY;
