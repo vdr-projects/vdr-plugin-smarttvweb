@@ -47,6 +47,7 @@ class cSmartTvConfig {
 
   string mLogFile;
   string mMediaFolder;
+  bool mHaveMediaFolder;
   unsigned int mSegmentDuration;
   int mHasMinBufferTime;
   float mHasBitrateCorrection;
@@ -71,6 +72,7 @@ class cSmartTvConfig {
 
   string getLogFile() { return mLogFile; };
   string getMediaFolder() { return mMediaFolder; };
+  bool haveMediaFolder() { return mHaveMediaFolder; };
   unsigned int getSegmentDuration() {return mSegmentDuration; };
   int getHasMinBufferTime() { return mHasMinBufferTime; };
   float getHasBitrateCorrection() { return mHasBitrateCorrection; };

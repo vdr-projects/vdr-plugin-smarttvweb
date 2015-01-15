@@ -203,12 +203,17 @@ bool cMp4Metadata::parseMovieHeader (FILE* ifd, uint64_t s) {
   if (m_box.mFlags == 1) {
     uint32_t ts;
     uint64_t dur;
+    uint64_t ct;
+
     read_size += 28;
     res = fread (p, 1, 28, ifd);
     if (res < 28) 
       return false;
 
-    mCreationTime = parseUInt64(p) - 2082844800;
+    ct = parseUInt64(p);
+    if (ct != 0) {
+      mCreationTime = ct - 2082844800;
+    }
     ts = parseUInt32 (&(p[16]));
     dur = parseUInt64 (&(p[20]));
 
@@ -219,16 +224,17 @@ bool cMp4Metadata::parseMovieHeader (FILE* ifd, uint64_t s) {
   else {
     uint32_t ts;
     uint32_t dur;
-    uint32_t c;
+    uint32_t ct;
 
     read_size += 16;
     res = fread (p, 1, 16, ifd);
     if (res < 16) 
       return false;
 
-    c = parseUInt32(p) - 2082844800;
-    mCreationTime = c;
-
+    ct = parseUInt32(p) ;
+    if (ct != 0) {
+      mCreationTime = ct- 2082844800;
+    }
     ts= parseUInt32(&(p[8]));
     dur= parseUInt32(&(p[12]));
 

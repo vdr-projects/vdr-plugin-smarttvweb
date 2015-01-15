@@ -50,6 +50,14 @@ cSmartTvConfig::cSmartTvConfig(string d): mConfigDir(d), mLog(NULL), mCfgFile(NU
   mLiveChannels = 30;
 
   readConfig();
+
+  struct stat statbuf;
+  mHaveMediaFolder = false;
+  if (stat(mMediaFolder.c_str(), &statbuf) != -1) {
+    if (S_ISDIR(statbuf.st_mode)) {
+      mHaveMediaFolder = true;
+    }
+  } 
 }
 
 cSmartTvConfig::~cSmartTvConfig() {

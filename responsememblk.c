@@ -1818,7 +1818,9 @@ int cResponseMemBlk::parseFiles(vector<sFileEntry> *entries, string prefix, stri
 			   << endl;
 	    cMp4Metadata meta(pathbuf, statbuf->st_size);
 	    meta.parseMetadata();
-	    entries->push_back(sFileEntry(prefix+de->d_name, pathbuf, meta.mCreationTime, mime, 
+	    entries->push_back(sFileEntry(prefix+de->d_name, pathbuf, 
+					  ((meta.mCreationTime != 0) ? meta.mCreationTime : statbuf->st_mtime), 
+					  mime, 
 					  (meta.mHaveTitle) ? meta.mTitle : prefix+de->d_name, 
 					  meta.mShortDesc, meta.mLongDesc, meta.mDuration));
 	}
@@ -1925,6 +1927,9 @@ void cResponseMemBlk::sendServerNameXml () {
   *mResponseMessage += "<ipaddress>" + own_host.str() +"</ipaddress>\n";
 
   snprintf(f, sizeof(f), "<cmds>%s</cmds>\n", ((mRequest->mFactory->getConfig()->getCmds()) ? "true" : "false"));
+  *mResponseMessage += f;
+
+  snprintf(f, sizeof(f), "<mf>%s</mf>\n", ((mRequest->mFactory->getConfig()->haveMediaFolder()) ? "true" : "false"));
   *mResponseMessage += f;
 
   *mResponseMessage += "</servername>\n";
