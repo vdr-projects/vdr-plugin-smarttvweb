@@ -1822,7 +1822,7 @@ int cResponseMemBlk::parseFiles(vector<sFileEntry> *entries, string prefix, stri
 					  ((meta.mCreationTime != 0) ? meta.mCreationTime : statbuf->st_mtime), 
 					  mime, 
 					  (meta.mHaveTitle) ? meta.mTitle : prefix+de->d_name, 
-					  meta.mShortDesc, meta.mLongDesc, meta.mDuration));
+					  meta.mShortDesc, (meta.mHaveLongDesc) ? meta.mLongDesc : meta.mShortDesc, meta.mDuration));
 	}
 	else
 	  entries->push_back(sFileEntry(prefix+de->d_name, pathbuf, statbuf->st_mtime, mime));
@@ -1878,7 +1878,7 @@ int cResponseMemBlk::sendMediaXml (struct stat *statbuf) {
     	     cUrlEncode::doUrlSaveEncode(entries[i].sPath).c_str());
     if (entries[i].sHaveMeta) {
       if (writeXmlItem(cUrlEncode::doXmlSaveEncode(entries[i].sTitle), pathbuf, 
-		       cUrlEncode::doXmlSaveEncode(entries[i].sLongDesc), "NA", 
+		       "NA", cUrlEncode::doXmlSaveEncode(entries[i].sLongDesc),  
 		       cUrlEncode::doUrlSaveEncode(entries[i].sPath).c_str(), 
 		       -1, entries[i].sStart, entries[i].sDuration, -1, -1, -1, entries[i].sMime) == ERROR) 
 	return ERROR;

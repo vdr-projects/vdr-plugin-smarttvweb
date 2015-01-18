@@ -54,7 +54,7 @@ DEFINES += -DPLUGIN_NAME_I18N='"$(PLUGIN)"'
 
 ### The object files (add further files here):
 
-OBJS = $(PLUGIN).o smarttvfactory.o httpresource.o httpclient.o mngurls.o log.o url.o stvw_cfg.o responsebase.o responsefile.o responsevdrdir.o responsememblk.o responselive.o httpresource_base.o
+OBJS = $(PLUGIN).o smarttvfactory.o httpresource.o httpclient.o mngurls.o log.o url.o stvw_cfg.o responsebase.o responsefile.o responsevdrdir.o responsememblk.o responselive.o httpresource_base.o mp4.o
 
 ### The main target:
 
