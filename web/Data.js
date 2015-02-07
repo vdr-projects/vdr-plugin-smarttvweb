@@ -1,14 +1,6 @@
 //Diff: 
 // getNumString
 // createJQMDomTree
-var Main = {};
-Main.log = function (msg) {
-    console.log(msg);
-};
-
-var Config = {};
-Config.sortType = 0;
-
 
 var Data =
 {
@@ -17,7 +9,7 @@ var Data =
 	createAccessMap : false,
 	directAccessMap : {},
 	sortType : 0,
-	maxSort : 3
+	maxSort : 4
 };
 
 Array.prototype.remove = function(from, to) {
@@ -39,7 +31,7 @@ Data.reset = function() {
 
 Data.completed= function(sort) {
 	if (sort == true) {
-		this.assets.sortPayload(Data.sortType);
+		Data.assets.sortPayload(Data.sortType);
 		if (this.createAccessMap == true) {
 			Main.log("ERROR: access map does not match anymore");
 		}
@@ -58,18 +50,18 @@ Data.nextSortType = function () {
 
 Data.selectFolder = function (idx, first_idx) {
 	this.folderList.push({item : this.getCurrentItem().childs[idx], id: idx, first:first_idx});
-//	Main.log("Data.selectFolder: folderList.push. this.folderList.length= " + this.folderList.length);
+	Main.log("Data.selectFolder: folderList.push. this.folderList.length= " + this.folderList.length);
 };
 
 Data.folderUp = function () {
 	itm = this.folderList.pop();
-//	Main.log("Data.folderUp: folderList.pop. this.folderList.length= " + this.folderList.length);
+	Main.log("Data.folderUp: folderList.pop. this.folderList.length= " + this.folderList.length);
 	return itm;
 //	return itm.id;
 };
 
 Data.isRootFolder = function() {
-//	Main.log("Data.isRootFolder: this.folderList.length= " + this.folderList.length);
+	Main.log("Data.isRootFolder: this.folderList.length= " + this.folderList.length);
 	if (this.folderList.length == 1)
 		return true;
 	else
@@ -89,12 +81,21 @@ Data.dumpFolderStruct = function(){
     Main.log("---------- dumpFolderStruct Done -------");    
 };
 
-Data.createJQMDomTree = function () {
-    return this.assets.createJQMDomTree(0);
+Data.dumpDirectAccessMap = function(){
+    Main.log("---------- dumpDirectAccessMap ------------");    
+	for(var prop in this.directAccessMap) {
+		var s = "";
+		for (var i = 0; i < this.directAccessMap[prop].length; i++)
+			s = s + "i= " + i + " = " + this.directAccessMap[prop][i] + " ";
+		Main.log(prop + ": " + s);
+	} 
+	Main.log("---------- dumpDirectAccessMap Done -------");    
+
 };
 
 Data.findEpgUpdateTime = function() {
-	return this.assets.findEpgUpdateTime(Display.GetEpochTime() + 10000, "", 0);
+	return this.assets.findEpgUpdateTime(Display.GetUtcTime() + 10000, "", 0);
+//	return this.assets.findEpgUpdateTime((new MyDate()).getTimeSec() + 10000, "", 0);
 	// min, guid, level
 };
 
@@ -193,6 +194,7 @@ RecCmds.getCurrentItem = function () {
 RecCmds.getVideoCount = function() {
 	return this.folderList[this.folderList.length-1].item.childs.length;
 };
+
 //-----------------------------------------
 function Item() {
     this.title = "root";
@@ -232,13 +234,11 @@ Item.prototype.addChild = function (key, pyld, level) {
 		//	this.titles.push({title: pyld.startstr + " - " + key , pyld : pyld});
 		}
 		var folder = new Item;
-//		folder.title = pyld.startstr + " - " + key;
 		folder.title = key[0];
 		folder.payload = pyld;
 		folder.isFolder = false;
 		this.childs.push(folder);
-//	this.titles.push({title: pyld.startstr + " - " + key , pyld : pyld});
-    }
+	}
     else {
     	if (level > 20) {
     		Main.log(" too many levels");
@@ -337,14 +337,9 @@ Item.prototype.print = function(level) {
 };
 
 Item.prototype.sortPayload = function(sel) {
-	for (var i = 0; i < this.childs.length; i++) {
-		if (this.childs[i].isFolder == true) {
-			this.childs[i].sortPayload(sel);
-		}
-	}
 
 	switch (sel) {
-	case 1:
+	case 2:
 		// Dy Date
 		this.childs.sort(function(a,b) { 
 			if (a.payload.start == b.payload.start) {
@@ -355,7 +350,7 @@ Item.prototype.sortPayload = function(sel) {
 			}
 		});
 		break;
-	case 2:
+	case 3:
 		// Dy Date
 		this.childs.sort(function(a,b) { 
 			if (a.payload.start == b.payload.start) {
@@ -366,7 +361,7 @@ Item.prototype.sortPayload = function(sel) {
 			}
 		});
 		break;
-	case 3:
+	case 1:
 	    this.childs.sort(function(a,b) { 
 	    	if (a.title == b.title) {
 	    		return (b.payload.start -a.payload.start);
@@ -391,61 +386,11 @@ Item.prototype.sortPayload = function(sel) {
 
 		break;
 	}
-};
-
-Item.prototype.createJQMDomTree = function(level) {
-	var mydiv = $('<ul />');
-//	if (level == 0) {
-		mydiv.attr('data-role', 'listview');
-		mydiv.attr('data-inset', 'true');
-//	};
-//, id:'dyncreated'
-    for (var i = 0; i < this.childs.length; i++) {
-    	if (this.childs[i].isFolder == true) {
-			var myh = $('<div>', {text: this.childs[i].title});
-			var myli = $('<li>');
-			myli.append(myh);
-			var mycount = $('<p>', {class: 'ui-li-count', text: this.childs[i].childs.length});
-			myli.append(mycount);
-            myli.append(this.childs[i].createJQMDomTree(level+1));
-			mydiv.append(myli);
-    	}
-	else {
-		// Links
-		var digi = new Date(this.childs[i].payload['start'] *1000);
-		var mon = Data.getNumString ((digi.getMonth()+1), 2);
-        var day = Data.getNumString (digi.getDate(), 2);
-        var hour = Data.getNumString (digi.getHours(), 2);
-        var min = Data.getNumString (digi.getMinutes(), 2);
-		
-		var d_str = mon + "/" + day + " " + hour + ":" + min;
- 		var mya = $('<a>', { text: d_str +  " - " + this.childs[i].title, 
-							 href: this.childs[i].payload['link'], 
-							 rel: 'external'}  );
-		var myli = $('<li class="item"/>');
-		myli.attr('data-icon', 'false');
-		myli.attr('data-theme', 'c');
-		
-		myli.append(mya);
-		mydiv.append(myli);
+	
+	for (var i = 0; i < this.childs.length; i++) {
+		if (this.childs[i].isFolder == true) {
+			this.childs[i].sortPayload(sel);
 		}
-    }  
-    return mydiv;
-};
+	}
 
-Item.prototype.sortPayload = function() {
-    for (var i = 0; i < this.childs.length; i++) {
-    	if (this.childs[i].isFolder == true) {
-        	this.childs[i].sortPayload();
-    	}
-    }
-    this.childs.sort(function(a,b) { 
-    	if (a.title == b.title) {
-    		return (b.payload.start - a.payload.start);
-    	}
-    	else {
-    		return ((a.title < b.title) ? -1 : 1);
-    	}		
-    });
 };
-

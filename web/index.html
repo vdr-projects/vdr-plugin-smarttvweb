@@ -1,72 +1,196 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="http://code.jquery.com/mobile/1.2.0/jquery.mobile-1.2.0.min.css" />
-<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
-<script src="http://code.jquery.com/mobile/1.2.0/jquery.mobile-1.2.0.min.js"></script>
-<script language="javascript" type="text/javascript" src="Server.js"></script>
-<script language="javascript" type="text/javascript" src="Data.js"></script>
-<script>
-$(document).ready(function(){
-	var state = 'rec'; // Rec
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="http://code.jquery.com/mobile/1.2.0/jquery.mobile-1.2.0.min.css" />
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+    <script src="http://code.jquery.com/mobile/1.2.0/jquery.mobile-1.2.0.min.js"></script>
+    <script language="javascript" type="text/javascript" src="Server.js"></script>
+    <script language="javascript" type="text/javascript" src="Data.js"></script>
+    <script>
 	
-	Server.init();
+	var Main = {};
 
-	Server.dataReceivedCallback = function() {
-		console.log("Loaded");
-		$("#anchor").append(Data.createJQMDomTree()).trigger('create');
-		$.mobile.loading('hide');
-		//http://jquerymobile.com/
-		
-		// end of dataReceivedCallBack
-		};
-	Server.errorCallback = function (msg) {
-		alert (msg);
-                buttonHandler('rec');
+	Main.log = function (msg) {
+		console.log(msg);
 	};
 
-	$.mobile.loading('show');
+	Main.state = 'rec';
+	Main.sortType = 'name';
+	
+ 	var Config = {};
+	Config.sortType = 0;
+
+
+	Data.createJQMDomTree = function () {
+		console.log("Data.createJQMDomTree ");
+		return this.assets.createJQMDomTree(0);
+	};
+
+	Item.prototype.createJQMDomTree = function(level) {
+		var mydiv = $('<ul />');
+		mydiv.attr('data-role', 'listview');
+		mydiv.attr('data-inset', 'true');
+		for (var i = 0; i < this.childs.length; i++) {
+			if (this.childs[i].isFolder == true) {
+				var myh = $('<div>', {text: this.childs[i].title});
+				var myli = $('<li>');
+				myli.append(myh);
+				var mycount = $('<p>', {class: 'ui-li-count', text: this.childs[i].childs.length});
+				myli.append(mycount);
+				myli.append(this.childs[i].createJQMDomTree(level+1));
+				mydiv.append(myli);
+			}
+			else {
+				// Links
+				var digi = new Date(this.childs[i].payload['start'] *1000);
+				var mon = Data.getNumString ((digi.getMonth()+1), 2);
+				var day = Data.getNumString (digi.getDate(), 2);
+				var hour = Data.getNumString (digi.getHours(), 2);
+				var min = Data.getNumString (digi.getMinutes(), 2);
+	    
+				var d_str = mon + "/" + day + " " + hour + ":" + min;
+				var mya = $('<a>', { text: d_str +  " - " + this.childs[i].title, 
+						href: this.childs[i].payload['link'], 
+						rel: 'external'}  );
+				var myd = $('<div>', {text: this.childs[i].desc});
+
+				var myinner = $('<div>');
+				myinner.append(mya);
+				myinner.append(myd);
+
+				var myli = $('<li class="item"/>');
+				myli.attr('data-icon', 'false');
+				myli.attr('data-theme', 'c');
+	    
+				myli.append(mya);
+				mydiv.append(myli);
+			}
+		}  
+		return mydiv;
+	};
+
+
+	$(document).ready(function(){
+	
+	Server.init();
+	
+	Server.dataReceivedCallback = function() {
+		console.log("Loaded");
+		createDomTree();
+	};
+
+    Server.errorCallback = function (msg) {
+	alert (msg);
+        buttonHandler('rec');
+    };
+
+    gRecordingsUrl= "/recordings.xml?mode=nodesc";
+//    gRecordingsUrl= "/recordings.xml";
+    gMediaUrl= "/media.xml";
+    gLiveUrl= "/channels.xml?channels=300";
+
+    $.mobile.loading('show');
 	Server.setSort(true);
-	Server.fetchVideoList("/recordings.xml?mode=nodesc");
+	Server.fetchVideoList(gRecordingsUrl);
+
+	createDomTree = function () {
+		console.log("createDomTree sortType= " + Data.sortType);
+		$("#anchor").append(Data.createJQMDomTree()).trigger('create');
+		$.mobile.loading('hide');
+        //http://jquerymobile.com/
+      
+        // end of dataReceivedCallBack
+		console.log("createDomTree - done");
+	};
 
 	removeDomTree = function () {
 	// parent should not be deleted.
 		$("#anchor").children().remove();
 	};
 		
-	buttonHandler = function(btn) {
+    buttonHandler = function(btn) {
 		console.log("Click: " + btn);
-		if (state == btn) {
+		if (Main.state == btn) {
 			console.log("No Change");
 		};
 		$.mobile.loading('show');
 		Data.reset();
 		removeDomTree();
+		if (Main.state == 'chn') {
+			resetSortBtn();
+		}
+		
 		switch (btn) {
 		case 'rec':
-			state = 'rec';
+			Main.state = 'rec';
 			$('#recbtn').addClass('ui-btn-active');
 			$('#medbtn').removeClass('ui-btn-active');
 			$('#chnbtn').removeClass('ui-btn-active');
 			Server.setSort(true);
-			Server.fetchVideoList("/recordings.xml?mode=nodesc");
+			Server.fetchVideoList(gRecordingsUrl);
 			break;
 		case 'med':
-			state = 'med';
+			Main.state = 'med';
 			$('#medbtn').addClass('ui-btn-active');
 			$('#recbtn').removeClass('ui-btn-active');
 			$('#chnbtn').removeClass('ui-btn-active');
 			Server.setSort(true);
-			Server.fetchVideoList("/media.xml");
+			Server.fetchVideoList(gMediaUrl);
 			break;
 		case 'chn':
-			state = 'chn';
+			resetSortBtn();
+			disableSortBtn();
+			Data.sortType = 0;
+			Main.state = 'chn';
 			$('#chnbtn').addClass('ui-btn-active');
 			$('#medbtn').removeClass('ui-btn-active');
 			$('#recbtn').removeClass('ui-btn-active');
 			Server.setSort(false);
-			Server.fetchVideoList("/channels.xml?mode=nodesc");
+			Server.fetchVideoList(gLiveUrl);
+			break;
+		};
+	};
+
+	resetSortBtn = function() {
+		Main.state = 'rec';
+		Main.sortType = 'name';
+		$('#namesortbtn').addClass('ui-btn-active');
+		$('#datesortbtn').removeClass('ui-btn-active');
+	};
+
+	disableSortBtn = function() {
+		$('#namesortbtn').removeClass('ui-btn-active');
+		$('#datesortbtn').removeClass('ui-btn-active');
+	};
+
+	
+    sortBtnHandler = function(btn) {
+		console.log("Click: " + btn);
+		if (Main.sortType == btn) {
+			console.log("No Change");
+		};
+		if (Main.state == 'chn')
+			return;
+		$.mobile.loading('show');
+//		Data.reset();
+		removeDomTree();
+		switch (btn) {
+		case 'name':
+			Main.sortType = 'name';
+			Data.sortType = 0;
+			$('#namesortbtn').addClass('ui-btn-active');
+			$('#datesortbtn').removeClass('ui-btn-active');
+			Data.assets.sortPayload(Data.sortType);
+			createDomTree ();
+			break;
+		case 'date':
+			Main.sortType = 'date';
+			Data.sortType = 3;
+			$('#datesortbtn').addClass('ui-btn-active');
+			$('#namesortbtn').removeClass('ui-btn-active');
+			Data.assets.sortPayload(Data.sortType);
+			createDomTree ();
 			break;
 		};
 	};
@@ -88,17 +212,31 @@ h2 { margin:1.2em 0 .4em 0; }
 
 		<div data-role="content">
 			<div class="content-primary" >	
-
-			<div data-role="controlgroup" data-type="horizontal" data-mini="true">
-				<a href="#" id="recbtn" data-role="button" data-transition="fade" class="ui-btn-active" onclick="return buttonHandler('rec')">Recordings</a>
-				<a href="#" id="medbtn" data-role="button" data-transition="fade" onclick="return buttonHandler('med')">Media</a>
-				<a href="#" id="chnbtn" data-role="button" data-transition="fade" onclick="return buttonHandler('chn')">Channels</a>
-			</div>	
-
-			<div id="anchor"/>
+				<table>
+				<tr>
+				<td>
+				
+				<div data-role="controlgroup" data-type="horizontal" data-mini="true">
+					<a href="#" id="recbtn" data-role="button" data-transition="fade" class="ui-btn-active" onclick="return buttonHandler('rec')">Recordings</a>
+					<a href="#" id="medbtn" data-role="button" data-transition="fade" onclick="return buttonHandler('med')">Media</a>
+					<a href="#" id="chnbtn" data-role="button" data-transition="fade" onclick="return buttonHandler('chn')">Channels</a>
+				</div>
+				</td>
+				<td>
+				Sorting:
+				</td>
+				<td>
+					 <div data-role="controlgroup" data-type="horizontal" data-mini="true">
+					<a href="#" id="namesortbtn" data-role="button" data-transition="fade" class="ui-btn-active" onclick="return sortBtnHandler('name')">Name</a>
+					<a href="#" id="datesortbtn" data-role="button" data-transition="fade" onclick="return sortBtnHandler('date')">Date</a>
+				</div>
+				</td>
+				</tr>
+				</table>
+				<div id="anchor"/>
 			</div> 
-	</div> 
-</div>
+		</div> 
+	</div>
 	</body>
 </html>
 
