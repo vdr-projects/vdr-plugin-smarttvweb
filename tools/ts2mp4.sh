@@ -3,7 +3,7 @@
 
 # Adjustments for your system
 out_folder=/hd2/mpeg
-app_metadata=/multimedia/Ordner-Thorsten/vdr/vdr-2.0.2/PLUGINS/src/smarttvweb/tools/append_metadata.py
+app_metadata=<abs_path>/append_metadata.py
 
 #####
 
