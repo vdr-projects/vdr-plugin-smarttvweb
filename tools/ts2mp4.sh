@@ -3,7 +3,7 @@
 
 # Adjustments for your system
 out_folder=/hd2/mpeg
-app_metadata=<abs_path>/append_metadata.py
+app_metadata=`dirname "$0"`/append_metadata.py
 
 #####
 
