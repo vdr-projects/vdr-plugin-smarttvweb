@@ -36,8 +36,13 @@
 #define DEBUG
 
 
+#if APIVERSNUM > 20300
+cLiveRelay::cLiveRelay(const cChannel* channel, cDevice* device, string chan_id, int req_id, cHttpResource* req) : cReceiver(channel, 0), 
+  mChannelId(chan_id), mRingBuffer(), mReqId(req_id), mRequest(req), mNotifFd(0), mNotifRequired(true)
+#else
 cLiveRelay::cLiveRelay(cChannel* channel, cDevice* device, string chan_id, int req_id, cHttpResource* req) : cReceiver(channel, 0), 
   mChannelId(chan_id), mRingBuffer(), mReqId(req_id), mRequest(req), mNotifFd(0), mNotifRequired(true)
+#endif
 {
 
   mLog = Log::getInstance();
@@ -87,7 +92,11 @@ void cLiveRelay::detachLiveRelay() {
   Detach();
 }
 
+#if APIVERSNUM >= 20300
+void cLiveRelay::Receive(const uchar* data, int length) {
+#else
 void cLiveRelay::Receive(uchar* data, int length) {
+#endif
   
   if (length != 188) {
     *(Log::getInstance()->log()) << "ERROR: ******* ts packet unequal 188 Byte Length= " << length << endl;
@@ -155,7 +164,12 @@ cResponseLive::~cResponseLive() {
 }
 
 bool cResponseLive::InitRelay(string channel_id) {
+#if APIVERSNUM > 20300
+  LOCK_CHANNELS_READ;
+  const cChannel * channel = Channels->GetByChannelID(tChannelID::FromString(channel_id.c_str()));
+#else
   cChannel * channel = Channels.GetByChannelID(tChannelID::FromString(channel_id.c_str()));
+#endif
 
   if (!channel ){
     *(mLog->log()) << DEBUGPREFIX 

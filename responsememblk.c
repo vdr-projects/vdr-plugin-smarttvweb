@@ -339,7 +339,12 @@ int cResponseMemBlk::receiveResume() {
   }
 
 #ifndef STANDALONE
+#if APIVERSNUM > 20300
+  LOCK_RECORDINGS_READ;
+  const cRecording* rec = Recordings->GetByName(entry.mFilename.c_str());
+#else
   cRecording *rec = Recordings.GetByName(entry.mFilename.c_str());
+#endif
   if (rec == NULL) {
     //Error 400
     *(mLog->log())<< DEBUGPREFIX 
@@ -400,8 +405,12 @@ int cResponseMemBlk::sendResumeXml () {
 		   << endl;
   }
 
-
+#if APIVERSNUM > 20300
+  LOCK_RECORDINGS_READ;
+  const cRecording* rec = Recordings->GetByName(entry.mFilename.c_str());
+#else
   cRecording *rec = Recordings.GetByName(entry.mFilename.c_str());
+#endif
   if (rec == NULL) {
     *(mLog->log())<< DEBUGPREFIX
 		  << " ERROR in sendResume: recording not found - filename= " << entry.mFilename << endl;
@@ -527,7 +536,12 @@ int cResponseMemBlk::sendMarksXml () {
 		   << endl;
   }
 
+#if APIVERSNUM > 20300
+  LOCK_RECORDINGS_READ;
+  const cRecording* rec = Recordings->GetByName(entry.mFilename.c_str());
+#else
   cRecording *rec = Recordings.GetByName(entry.mFilename.c_str());
+#endif
   if (rec == NULL) {
     *(mLog->log())<< DEBUGPREFIX
 		  << " ERROR in sendResume: recording not found - filename= " << entry.mFilename << endl;
@@ -585,7 +599,13 @@ int cResponseMemBlk::receiveDelRecReq() {
   }
   mRequest->mPath = cUrlEncode::doUrlSaveDecode(id);
 
+#if APIVERSNUM > 20300
+  LOCK_RECORDINGS_WRITE;
+  cRecording* rec = Recordings->GetByName(mRequest->mPath.c_str());
+#else
   cRecording* rec = Recordings.GetByName(mRequest->mPath.c_str());
+#endif
+
   if (rec == NULL) {
     *(mLog->log())<< DEBUGPREFIX
 		  << " ERROR: Recording not found. Deletion failed: mPath= " << mRequest->mPath
@@ -594,7 +614,12 @@ int cResponseMemBlk::receiveDelRecReq() {
     return OKAY;
   }
   if ( rec->Delete() ) {
+#if APIVERSNUM > 20300
+    LOCK_RECORDINGS_WRITE;
+    Recordings->DelByName(rec->FileName());
+#else
     Recordings.DelByName(rec->FileName());
+#endif
     //    Recordings.DelByName(mPath.c_str());
   }
   else {
@@ -744,8 +769,13 @@ int cResponseMemBlk::sendManifest (struct stat *statbuf, bool is_hls) {
   
   float seg_dur = mRequest->mFactory->getConfig()->getSegmentDuration() *1.0;
 
-  cRecordings* recordings = &Recordings;
-  cRecording* rec = recordings->GetByName(mRequest->mDir.c_str());  
+#if APIVERSNUM > 20300
+  LOCK_RECORDINGS_READ;
+  const cRecording* rec = Recordings->GetByName(mRequest->mDir.c_str());  
+#else  
+  cRecording* rec = Recordings.GetByName(mRequest->mDir.c_str());  
+#endif
+
   double duration = rec->NumFrames() / rec->FramesPerSecond();
 
   int bitrate = (int)((getVdrFileSize() *8.0 * mRequest->mFactory->getConfig()->getHasBitrateCorrection()/ duration) +0.5);
@@ -910,13 +940,22 @@ void cResponseMemBlk::receiveActTimerReq() {
     }
   }
   
-  if (Timers.BeingEdited()) {
+
+#if APIVERSNUM > 20300
+  LOCK_TIMERS_WRITE;
+  cTimers& timers = *Timers;
+#else
+  cTimers& timers = Timers;
+
+  if (timers.BeingEdited()) {
     *(mLog->log()) << DEBUGPREFIX << " cResponseMemBlk::receiveActTimerReq: Timers are being edited. returning "   << endl;
     sendError(503, "Service Unavailable", NULL, "001 Timers are being edited.");
     return;
   }
+#endif
 
-  cTimer *to_act = Timers.Get(index);
+  //  cTimer *to_act = Timers.Get(index);
+  cTimer *to_act = timers.Get(index);
   if (to_act == NULL) {
     sendError(400, "Bad Request", NULL, "010 No Timer found.");
     return;
@@ -930,10 +969,10 @@ void cResponseMemBlk::receiveActTimerReq() {
     t.ClrFlags(tfActive);
   }
   *to_act = t;
-  Timers.SetModified();
+  //  Timers.SetModified();
+  timers.SetModified();
 
   sendHeaders(200, "OK", NULL, "text/plain", 0, -1);
-
 }
 
 void cResponseMemBlk::receiveAddTimerReq() {
@@ -997,11 +1036,16 @@ void cResponseMemBlk::receiveAddTimerReq() {
     *(mLog->log()) << DEBUGPREFIX << " sp= " << stop  << endl;
   }
 
+#if APIVERSNUM > 20300
+  LOCK_TIMERS_WRITE;
+#else
+  cTimers& timers = Timers;
   if (Timers.BeingEdited()) {
     *(mLog->log()) << DEBUGPREFIX << " cResponseMemBlk::receiveAddTimerReq: Timers are being edited. returning "   << endl;
     sendError(503, "Service Unavailable", NULL, "001 Timers are being edited.");
     return;
   }
+#endif
 
   // create the timer...
 
@@ -1020,8 +1064,13 @@ void cResponseMemBlk::receiveAddTimerReq() {
 
   const cEvent *ev = NULL;
 
+#if APIVERSNUM > 20300
+  LOCK_SCHEDULES_READ;
+  const cSchedules *schedules = Schedules;
+#else
   cSchedulesLock * lock = new cSchedulesLock(false, 500);
   const cSchedules *schedules = cSchedules::Schedules(*lock);
+#endif
   
   const cSchedule *schedule = schedules->GetSchedule(chan_id);
   if (schedule == NULL) {
@@ -1029,7 +1078,9 @@ void cResponseMemBlk::receiveAddTimerReq() {
 		  << "ERROR: Schedule is zero for guid= " << guid
 		  << endl;
     delete mResponseMessage;
+#if APIVERSNUM <= 20300
     delete lock;
+#endif
     mResponseMessage = NULL;
     sendError(500, "Internal Server Error", NULL, "001 Schedule is zero.");
     return;
@@ -1039,7 +1090,7 @@ void cResponseMemBlk::receiveAddTimerReq() {
     // no event id: Use the current running event
 
     time_t now = time(NULL);
-    for(cEvent* e = schedule->Events()->First(); e; e = schedule->Events()->Next(e)) {
+    for(const cEvent* e = schedule->Events()->First(); e; e = schedule->Events()->Next(e)) {
       if ( (e->StartTime() <= now) && (e->EndTime() > now)) {
 	ev = e;
 	
@@ -1053,7 +1104,9 @@ void cResponseMemBlk::receiveAddTimerReq() {
 		    << "ERROR: Event is zero for guid= " << guid
 		    << endl;
       delete mResponseMessage;
+#if APIVERSNUM <= 20300
       delete lock;
+#endif
 
       mResponseMessage = NULL;
       sendError(500, "Internal Server Error", NULL, "002 Event is zero.");
@@ -1072,7 +1125,9 @@ void cResponseMemBlk::receiveAddTimerReq() {
 		    << " and ev_id= " << ev_id
 		    << endl;
       delete mResponseMessage;
+#if APIVERSNUM <= 20300
       delete lock;
+#endif
       mResponseMessage = NULL;
       sendError(500, "Internal Server Error", NULL, "002 Event is zero.");
       return;
@@ -1085,7 +1140,11 @@ void cResponseMemBlk::receiveAddTimerReq() {
   eTimerMatch ma ;
 #endif
 
+#if APIVERSNUM > 20300
+  if (Timers->GetMatch(ev, &ma) != NULL) {
+#else
   if (Timers.GetMatch(ev, &ma) != NULL) {
+#endif
     if(ma == tmFull) {
 
     *(mLog->log())<< DEBUGPREFIX
@@ -1094,7 +1153,10 @@ void cResponseMemBlk::receiveAddTimerReq() {
 		  << endl;
 
       delete mResponseMessage;
+#if APIVERSNUM <= 20300
       delete lock;
+#endif
+
       mResponseMessage = NULL;
       sendError(400, "Bad Request", NULL, "014 Timer already defined.");
       return;
@@ -1109,17 +1171,26 @@ void cResponseMemBlk::receiveAddTimerReq() {
 		  << endl;
 
     delete mResponseMessage;
+#if APIVERSNUM <= 20300
     delete lock;
+#endif
     mResponseMessage = NULL;
     sendError(500, "Internal Server Error", NULL, "007 Title is zero.");
     return;
   }
 
+#if APIVERSNUM <= 20300
   delete lock;
+#endif
   //now
   cTimer *t = new cTimer(ev);
+#if APIVERSNUM > 20300
+  Timers->Add(t);
+  Timers->SetModified();
+#else
   Timers.Add(t);
   Timers.SetModified();
+#endif
 
   *(mLog->log())<< DEBUGPREFIX
 		<< " timer created for guid= " << guid 
@@ -1207,15 +1278,23 @@ void cResponseMemBlk::receiveDelTimerReq() {
     *(mLog->log()) << DEBUGPREFIX << " sp= " << stop  << endl;
   }
 
+#if APIVERSNUM > 20300
+  LOCK_TIMERS_WRITE;
+  cTimer *to_del = Timers->Get(index);
+#else
   if (Timers.BeingEdited()) {
     *(mLog->log()) << DEBUGPREFIX << " cResponseMemBlk::receiveDelTimerReq: Timers are being edited. returning "   << endl;
     sendError(503, "Service Unavailable", NULL, "001 Timers are being edited.");
     return;
   }
-
   cTimer *to_del = Timers.Get(index);
+#endif
   if (to_del == NULL) {
+#if APIVERSNUM > 20300
+    for (cTimer * ti = Timers->First(); ti; ti = Timers->Next(ti)){
+#else
     for (cTimer * ti = Timers.First(); ti; ti = Timers.Next(ti)){
+#endif
       ti->Matches();
       if ((guid.compare(*(ti->Channel()->GetChannelID()).ToString()) == 0)  &&
 	  ((ti->WeekDays() && (ti->WeekDays() == weekdays)) || (!ti->WeekDays() && (ti->Day() == day))) &&
@@ -1233,10 +1312,17 @@ void cResponseMemBlk::receiveDelTimerReq() {
 
     if (to_del->Recording()) {
       to_del->Skip();
+#if APIVERSNUM <= 20300
       cRecordControls::Process(time(NULL));
+#endif
     }
+#if APIVERSNUM > 20300
+    Timers->Del(to_del);
+    Timers->SetModified();
+#else
     Timers.Del(to_del);
     Timers.SetModified();
+#endif
     sendHeaders(200, "OK", NULL, NULL, 0, -1);
     *(mLog->log()) << DEBUGPREFIX << " found a timer to delete: " << f << " - done" <<  endl;
   }
@@ -1320,7 +1406,12 @@ void cResponseMemBlk::sendTimersXml() {
   s_timers.Sort(timerCompare);
 #endif
 #else
+#if APIVERSNUM > 20300
+  LOCK_TIMERS_READ;
+  cSortedTimers s_timers(Timers);
+#else
   cSortedTimers s_timers;
+#endif
 #endif
   
   for (uint i =0; i< s_timers.Size(); i++) {
@@ -2176,11 +2267,17 @@ int cResponseMemBlk::sendChannelsXml (struct stat *statbuf) {
   int count = mRequest->mFactory->getConfig()->getLiveChannels();
   if (no_channels > 0)
     count = no_channels +1;
-  
+
+
+#if APIVERSNUM > 20300
+  LOCK_SCHEDULES_READ  
+  LOCK_CHANNELS_READ;
+  for (const cChannel *channel = Channels->First(); channel; channel = Channels->Next(channel)) {
+#else
   cSchedulesLock * lock = new cSchedulesLock(false, 500);
   const cSchedules *schedules = cSchedules::Schedules(*lock); 
-
   for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel)) {
+#endif
     if (channel->GroupSep()) {
       if (mRequest->mFactory->getConfig()->getGroupSep() != IGNORE) {
 	// if emtpyFolderDown, always.
@@ -2203,7 +2300,11 @@ int cResponseMemBlk::sendChannelsXml (struct stat *statbuf) {
     
     string link = f;
 
+#if APIVERSNUM > 20300
+    const cSchedule *schedule = Schedules->GetSchedule(channel->GetChannelID());
+#else
     const cSchedule *schedule = schedules->GetSchedule(channel->GetChannelID());
+#endif
     string desc = "No description available";
     string title = "Not available"; 
     time_t start_time = 0;
@@ -2246,7 +2347,9 @@ int cResponseMemBlk::sendChannelsXml (struct stat *statbuf) {
   hdr += "</rss>\n";
   
   *mResponseMessage += hdr;
+#if APIVERSNUM <= 20300
   delete lock;
+#endif
   sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), statbuf->st_mtime);
 
 #endif
@@ -2307,9 +2410,13 @@ int cResponseMemBlk::sendEpgXml (struct stat *statbuf) {
     sendError(400, "Bad Request", NULL, "012 Invalid Channel ID.");
     return OKAY;
   }
-
+#if APIVERSNUM > 20300
+  LOCK_SCHEDULES_READ;
+  const cSchedules *schedules = Schedules;
+#else
   cSchedulesLock * lock = new cSchedulesLock(false, 500);
   const cSchedules *schedules = cSchedules::Schedules(*lock);
+#endif
  
   const cSchedule *schedule = schedules->GetSchedule(chan_id);
   if (schedule == NULL) {
@@ -2317,7 +2424,9 @@ int cResponseMemBlk::sendEpgXml (struct stat *statbuf) {
 		  << "ERROR: Schedule is zero for guid= " << id
 		  << endl;
     delete mResponseMessage;
+#if APIVERSNUM <= 20300
     delete lock;
+#endif
     mResponseMessage = NULL;
     sendError(500, "Internal Server Error", NULL, "001 Schedule is zero.");
     return OKAY;
@@ -2325,7 +2434,11 @@ int cResponseMemBlk::sendEpgXml (struct stat *statbuf) {
 
   time_t now = time(NULL);
   const cEvent *ev = NULL;
+#if APIVERSNUM > 20300
+  for(const cEvent* e = schedule->Events()->First(); e; e = schedule->Events()->Next(e)) {
+#else
   for(cEvent* e = schedule->Events()->First(); e; e = schedule->Events()->Next(e)) {
+#endif
     if ( (e->StartTime() <= now) && (e->EndTime() > now)) {
       ev = e;
 	
@@ -2341,7 +2454,9 @@ int cResponseMemBlk::sendEpgXml (struct stat *statbuf) {
 		  << "ERROR: Event is zero for guid= " << id
 		  << endl;
     delete mResponseMessage;
+#if APIVERSNUM <= 20300
     delete lock;
+#endif
 
     mResponseMessage = NULL;
     sendError(500, "Internal Server Error", NULL, "002 Event is zero.");
@@ -2367,7 +2482,9 @@ int cResponseMemBlk::sendEpgXml (struct stat *statbuf) {
     hdr += "<title>Empty</title>\n";
 
     delete mResponseMessage;
+#if APIVERSNUM <= 20300
     delete lock;
+#endif
 
     mResponseMessage = NULL;
     sendError(500, "Internal Server Error", NULL, "003 Title is zero.");
@@ -2397,7 +2514,9 @@ int cResponseMemBlk::sendEpgXml (struct stat *statbuf) {
 		    << " ERROR: description is zero for guid= " << id << endl;
       
       delete mResponseMessage;
+#if APIVERSNUM <= 20300
       delete lock;
+#endif
       mResponseMessage = NULL;
       sendError(500, "Internal Server Error", NULL, "004 Description is zero.");
       return OKAY;
@@ -2422,7 +2541,9 @@ int cResponseMemBlk::sendEpgXml (struct stat *statbuf) {
   
   *mResponseMessage += hdr;
 
+#if APIVERSNUM <= 20300
   delete lock;
+#endif
 
   sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), -1);
 
@@ -2539,7 +2660,12 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
 #endif
   // looking for recordings with active timer in order to determine, whether the recording is currently running
   // the recording length needs to be determined from the EPG data in that case.
-  for (cTimer * ti = Timers.First(); ti; ti = Timers.Next(ti)){
+#if APIVERSNUM > 20300
+  LOCK_TIMERS_READ;
+  for (const cTimer * ti = Timers->First(); ti; ti = Timers->Next(ti)){
+#else
+    for (cTimer * ti = Timers.First(); ti; ti = Timers.Next(ti)){
+#endif
     ti->Matches();
 
     if (ti->HasFlags(tfRecording) ) {
@@ -2570,6 +2696,16 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
 
   int item_count = 0;
   int rec_dur = 0;
+#if APIVERSNUM > 20300
+  LOCK_RECORDINGS_READ;
+  //  const cRecordings *recordings = Recordings;
+  const cRecording *recording = (single_item) ? Recordings->GetByName(guid.c_str()) : Recordings->First();
+  if (single_item && (recording == NULL)) {
+    *(mLog->log())<< DEBUGPREFIX << " WARNING in sendRecordingsXml: recording " << guid << " not found" << endl;
+    sendError(400, "Bad Request", NULL, "007 Failed to find the recording.");
+    return OKAY;
+  }
+#else
   cRecording *recording = NULL;
   if (single_item) {
     recording = Recordings.GetByName(guid.c_str());
@@ -2578,11 +2714,12 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
       sendError(400, "Bad Request", NULL, "007 Failed to find the recording.");
       return OKAY;
     }
-
   }
   else {
     recording = Recordings.First();
   }
+#endif
+
   while (recording != NULL) {
     hdr = "";
 
@@ -2622,7 +2759,11 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
       return OKAY;
     }
     item_count ++;
+#if APIVERSNUM > 20300
+    recording = (!single_item) ? Recordings->Next(recording) : NULL;
+#else
     recording = (!single_item) ? Recordings.Next(recording) : NULL;
+#endif
   }
 
   hdr = "</channel>\n";

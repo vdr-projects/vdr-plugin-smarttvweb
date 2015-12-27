@@ -62,7 +62,11 @@ class cPatPmtGenerator;
 
 class cLiveRelay : public cReceiver {
  public:
+#if APIVERSNUM > 20300
+  cLiveRelay(const cChannel* channel, cDevice* device, string chan_id, int req_id, cHttpResource*);
+#else
   cLiveRelay(cChannel* channel, cDevice* device, string chan_id, int req_id, cHttpResource*);
+#endif
   ~cLiveRelay();
   //  static cLiveRelay *create(string channel_id, int req_id, cHttpResource*);
 
@@ -76,7 +80,11 @@ class cLiveRelay : public cReceiver {
 
 protected:
   virtual void Activate(bool On);
+#if APIVERSNUM >= 20300
+  virtual void Receive(const uchar *Data, int Length);
+#else
   virtual void Receive(uchar *Data, int Length);
+#endif
   void detachLiveRelay();
   // cThread
   //  virtual void Action(void);
