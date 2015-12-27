@@ -117,7 +117,14 @@ bool cResponseVdrDir::isTimeRequest(struct stat *statbuf) {
 		<< endl;
 
   mRequest->mDir = mRequest->mPath;
+#if APIVERSNUM > 20300
+  LOCK_RECORDINGS_READ;
+  const cRecording* rec = Recordings->GetByName(mRequest->mPath.c_str());
+#else
+  cThreadLock RecordingsLock(&Recordings);
   cRecording *rec = Recordings.GetByName(mRequest->mPath.c_str());
+#endif
+
   if (rec == NULL) {
     *(mLog->log())<< DEBUGPREFIX
 		  << " Error: Did not find recording= " << mRequest->mPath << endl;
@@ -289,13 +296,19 @@ void cResponseVdrDir::checkRecording() {
   time_t now = time(NULL);
 
   //  cRecordings* recordings = mFactory->getRecordings();
-  cRecordings* recordings = &Recordings;
+#if APIVERSNUM > 20300
+  LOCK_RECORDINGS_READ;
+  const cRecording* rec = Recordings->GetByName((mRequest->mPath).c_str());  
+#else
+  cRecording* rec = Recordings.GetByName((mRequest->mPath).c_str());  
+#endif
+
 #ifndef DEBUG
   *(mLog->log())<< DEBUGPREFIX 
 		<< " GetByName(" <<(mRequest->mPath).c_str() << ")"
 		<< endl;
 #endif
-  cRecording* rec = recordings->GetByName((mRequest->mPath).c_str());  
+
   if (rec != NULL) {
     const cEvent *ev = rec->Info()->GetEvent();
     if (ev != NULL) {
@@ -536,8 +549,13 @@ int cResponseVdrDir::sendMediaSegment (struct stat *statbuf) {
   //FIXME: Do some consistency checks on the seg_number 
   //* Does the segment exist 
 
-  cRecordings* recordings = &Recordings;
-  cRecording* rec = recordings->GetByName((mRequest->mDir).c_str());  
+#if APIVERSNUM > 20300
+  LOCK_RECORDINGS_READ;
+  const cRecording* rec = Recordings->GetByName((mRequest->mDir).c_str());  
+#else
+  cRecording* rec = Recordings.GetByName((mRequest->mDir).c_str());  
+#endif
+
   if (rec != NULL) {
     frames_per_seg = seg_dur * rec->FramesPerSecond();
   }

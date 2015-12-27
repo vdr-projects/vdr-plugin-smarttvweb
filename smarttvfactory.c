@@ -399,7 +399,14 @@ void SmartTvServer::Recording(const cDevice *Device, const char *Name, const cha
       *(mLog.log()) << mLog.getTimeString() << ": WARNING in SmartTvServer::Recording: Name and FileName are NULL. Return.  " << endl;
       return;
     }
+    //    cRecording* rec = Recordings.GetByName(FileName);
+#if APIVERSNUM > 20300
+    LOCK_RECORDINGS_READ;
+    const cRecording* rec = Recordings->GetByName(FileName);
+#else
+    cThreadLock RecordingsLock(&Recordings);
     cRecording* rec = Recordings.GetByName(FileName);
+#endif
     if (rec == NULL) {
       *(mLog.log()) << mLog.getTimeString() << ": WARNING in SmartTvServer::Recording: No Recording Entry found. Return.  " << endl;
       return;
