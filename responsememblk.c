@@ -1593,7 +1593,9 @@ uint64_t cResponseMemBlk::getVdrFileSize() {
 
 
 // common for all create xml file modules
-int cResponseMemBlk::writeXmlItem(string name, string link, string programme, string desc, string guid, int no, time_t start, int dur, double fps, int is_pes, int is_new, string mime) {
+int cResponseMemBlk::writeXmlItem(string name, string link, string programme, bool add_desc, string desc, 
+				  string guid, int no, time_t start, int dur, double fps, int is_pes, 
+				  int is_new, string mime) {
   string hdr = "";
   char f[400];
 
@@ -1878,13 +1880,13 @@ int cResponseMemBlk::sendMediaXml (struct stat *statbuf) {
     	     cUrlEncode::doUrlSaveEncode(entries[i].sPath).c_str());
     if (entries[i].sHaveMeta) {
       if (writeXmlItem(cUrlEncode::doXmlSaveEncode(entries[i].sTitle), pathbuf, 
-		       "NA", cUrlEncode::doXmlSaveEncode(entries[i].sLongDesc),  
+		       "NA", true, cUrlEncode::doXmlSaveEncode(entries[i].sLongDesc),  
 		       cUrlEncode::doUrlSaveEncode(entries[i].sPath).c_str(), 
 		       -1, entries[i].sStart, entries[i].sDuration, -1, -1, -1, entries[i].sMime) == ERROR) 
 	return ERROR;
     }
     else 
-      if (writeXmlItem(cUrlEncode::doXmlSaveEncode(entries[i].sName), pathbuf, "NA", "NA", 
+      if (writeXmlItem(cUrlEncode::doXmlSaveEncode(entries[i].sName), pathbuf, "NA", false, "NA", 
 		       cUrlEncode::doUrlSaveEncode(entries[i].sPath).c_str(), 
 		       -1, entries[i].sStart, -1, -1, -1, -1, entries[i].sMime) == ERROR) 
 	return ERROR;
@@ -2237,7 +2239,8 @@ int cResponseMemBlk::sendChannelsXml (struct stat *statbuf) {
     string c_name = (group_sep != "") ? (group_sep + "~" + cUrlEncode::doXmlSaveEncode(channel->Name())) 
       : cUrlEncode::doXmlSaveEncode(channel->Name()); 
     //    if (writeXmlItem(channel->Name(), link, title, desc, *(channel->GetChannelID()).ToString(), start_time, duration) == ERROR) 
-    if (writeXmlItem(c_name, link, title, desc, *(channel->GetChannelID()).ToString(), channel->Number(), start_time, duration, -1, -1, -1, "video/mpeg") == ERROR) 
+    if (writeXmlItem(c_name, link, title, add_desc, desc, *(channel->GetChannelID()).ToString(), 
+		     channel->Number(), start_time, duration, -1, -1, -1, "video/mpeg") == ERROR) 
       return ERROR;
 
   }
@@ -2431,6 +2434,173 @@ int cResponseMemBlk::sendEpgXml (struct stat *statbuf) {
 }
 
 
+int cResponseMemBlk::GetRecordings( ) {
+  if (isHeadRequest())
+    return OKAY;
+#ifndef STANDALONE
+
+  mResponseMessage = new string();
+  *mResponseMessage = "";
+  mResponseMessagePos = 0;
+
+  mRequest->mConnState = SERVING;
+
+  string own_ip = mRequest->getOwnIp();
+  *(mLog->log()) << " OwnIP= " << own_ip << endl;
+
+  vector<sQueryAVP> avps;
+  mRequest->parseQueryLine(&avps);
+  string guid = "";
+  string dir = "";
+  bool single_item = false;
+  string link_ext = ""; 
+  string type = "";
+  bool add_desc = false;
+
+  char f[600];
+  int item_count = 0;
+  int rec_dur = 0;
+
+  list<string> dir_list;
+
+  if (mRequest->getQueryAttributeValue(&avps, "dir", dir) == OKAY){
+    dir = cUrlEncode::doUrlSaveDecode(dir);
+    *(mLog->log())<< DEBUGPREFIX
+		  << " Found a dir Parameter: " << dir
+		  << endl;
+    
+    size_t pos = 0;
+    size_t l_pos = 0;
+    //    for (int i = 0; i <= l; i++) {
+    for (;;) {
+      pos = dir.find('~', l_pos );
+      string d = dir.substr(l_pos, (pos -l_pos));
+
+      *(mLog->log()) << " (p= " << pos
+		     << " l= " << l_pos
+		     << " d= " << d
+		     << ")"
+		     << endl; 
+
+      dir_list.push_back(d);
+
+      if (pos == string::npos) {
+	*(mLog->log()) << mLog->getTimeString()
+		       << " Done " 
+		       << endl;
+	break;
+      }
+    
+      l_pos = pos +1;
+    } 
+    *(mLog->log()) << endl; 
+  }
+
+
+  cRecFolder* rec_db = mRequest->mFactory->GetRecDb();
+  cRecFolder* rec_dir;
+  if (dir_list.size() == 0) 
+    rec_dir = rec_db;
+  else
+    rec_dir = rec_db->GetFolder(&dir_list);
+
+  // find folder
+  if (rec_dir != NULL) {
+    int res = rec_dir->writeXmlFolder(mResponseMessage, own_ip, mRequest->mServerPort);
+    sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), -1);
+    return res;
+  }
+  else {
+    *mResponseMessage = "";
+    sendError(400, "Bad Request", NULL, "00x Folder not found");
+    return OKAY;
+  }
+
+  // ------------------------------
+  // allows requesting the recordings information for a single file only
+  if (mRequest->getQueryAttributeValue(&avps, "guid", guid) == OKAY){
+    guid = cUrlEncode::doUrlSaveDecode(guid);
+    *(mLog->log())<< DEBUGPREFIX
+		  << " Found a guid Parameter: " << guid
+		  << endl;
+    
+    single_item = true;
+  }
+
+  // allows requesting Urls with HLS or HAS type of manifest
+  if (mRequest->getQueryAttributeValue(&avps, "type", type) == OKAY){
+    *(mLog->log())<< DEBUGPREFIX
+		  << " Found a Type Parameter: " << type
+		  << endl;
+    if (type == "hls") { 
+      link_ext = "/manifest-seg.m3u8";
+    }
+    if (type == "has") {
+      link_ext = "/manifest-seg.mpd";
+    }
+  }
+
+
+  *(mLog->log())<< DEBUGPREFIX
+		<< " generating /GetRecordings" 
+		<< endl;
+
+  string hdr = "";
+  hdr += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+  hdr += "<rss version=\"2.0\">\n";
+  hdr+= "<channel>\n";
+  hdr+= "<title>VDR Recordings List</title>\n";
+
+  *mResponseMessage += hdr;
+  cRecording *recording = NULL;
+  recording = Recordings.First();
+
+  while (recording != NULL) {
+    hdr = "";
+
+    if (recording->IsPesRecording() ) 
+      snprintf(f, sizeof(f), "http://%s:%d%s", own_ip.c_str(), mRequest->mServerPort, 
+	       cUrlEncode::doUrlSaveEncode(recording->FileName()).c_str());
+    else
+      snprintf(f, sizeof(f), "http://%s:%d%s%s", own_ip.c_str(), mRequest->mServerPort, 
+	       cUrlEncode::doUrlSaveEncode(recording->FileName()).c_str(), link_ext.c_str());
+
+    string link = f;
+    string desc = "No description available";
+    rec_dur = recording->LengthInSeconds();
+
+    string name = recording->Name();
+
+    if (recording->Info() != NULL) {
+      if ((recording->Info()->Description() != NULL) && add_desc) {
+	desc = cUrlEncode::doXmlSaveEncode(recording->Info()->Description());
+      }
+    }
+
+    if (writeXmlItem(cUrlEncode::doXmlSaveEncode(recording->Name()), link, "NA", add_desc, desc, 
+		     cUrlEncode::doUrlSaveEncode(recording->FileName()).c_str(),
+		     -1, 
+		     recording->Start(), rec_dur, recording->FramesPerSecond(), 
+		     (recording->IsPesRecording() ? 0: 1), (recording->IsNew() ? 0: 1), "video/mpeg") == ERROR) {
+      *mResponseMessage = "";
+      sendError(500, "Internal Server Error", NULL, "005 writeXMLItem returned an error");
+      return OKAY;
+    }
+    item_count ++;
+    recording = (!single_item) ? Recordings.Next(recording) : NULL;
+  }
+
+  hdr = "</channel>\n";
+  hdr += "</rss>\n";
+  
+  *mResponseMessage += hdr;
+
+  *(mLog->log())<< DEBUGPREFIX << " Recording Count= " <<item_count<< endl;
+
+#endif
+  sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), -1);
+  return OKAY;
+}
 
 int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
   if (isHeadRequest())
@@ -2612,7 +2782,7 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
       }
     }
 
-    if (writeXmlItem(cUrlEncode::doXmlSaveEncode(recording->Name()), link, "NA", desc, 
+    if (writeXmlItem(cUrlEncode::doXmlSaveEncode(recording->Name()), link, "NA", add_desc, desc, 
 		     cUrlEncode::doUrlSaveEncode(recording->FileName()).c_str(),
 		     -1, 
 		     recording->Start(), rec_dur, recording->FramesPerSecond(), 

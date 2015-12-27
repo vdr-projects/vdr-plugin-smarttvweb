@@ -1,4 +1,4 @@
-/*
+ /*
  * smarttvfactory.c: VDR on Smart TV plugin
  *
  * Copyright (C) 2012 - 2014 T. Lohmar
@@ -110,17 +110,269 @@ void cCmd::trim(string &t) {
 }
 
 
+void cRecEntryBase::print(string pref) {
+  *(mLog->log()) << pref 
+		 << ": l= " << mLevel 
+    		 << " B= " << mName 
+		 << endl;
+};
+
+void cRecEntry::print(string pref) {
+  *(mLog->log()) << pref 
+		 << ": l= " << mLevel 
+		 << " sfs= " << mSubfolders.size()
+		 << " E= " << mTitle
+		 << endl;
+};
+
+void cRecFolder::print(string pref) {
+  *(mLog->log()) << pref 
+		 << ": l= " << mLevel 
+		 << " es= " << mEntries.size()
+		 << " F= " << mName 
+		 << endl;
+  for (list<cRecEntryBase*>::iterator iter = mEntries.begin(); iter != mEntries.end(); ++iter)
+    (*iter)->print(pref + "+" + mName);
+    
+};
+
+cRecEntry::cRecEntry(string n, int l, Log* lg, cRecording* r) : cRecEntryBase(n, l, false, lg), mRec(r), mSubfolders(), 
+  mError(false), mTitle(n)  {
+
+  size_t pos = 0;
+  size_t l_pos = 0;
+  for (int i = 0; i <= l; i++) {
+    if (l_pos == string::npos) {
+      *(mLog->log()) << mLog->getTimeString()
+		     << " ERROR: " 
+		     << " Name= " << n
+		     << endl;
+      mError = true;
+      break;
+    }
+    pos = n.find('~', l_pos);
+    string dir = n.substr(l_pos, (pos -l_pos));
+
+    /*
+    *(mLog->log()) << " (p= " << pos
+		   << " l= " << l_pos
+		   << " d= " << dir
+		   << ")"; 
+*/
+    mSubfolders.push_back(dir);
+    
+    l_pos = pos +1;
+  } 
+  //  *(mLog->log()) << endl; 
+
+  *(mLog->log()) << mLog->getTimeString()
+		 << " L= " << mLevel << " " << l
+		 << " SFs= " << mSubfolders.size()
+		 << " FName= " << mName
+		 << endl;
+
+  int idx = mSubfolders.size() -1;
+  if (idx != l) {
+    *(mLog->log()) << mLog->getTimeString()
+		   << " ERROR: mName= " << mName
+		   << " Level (" << l
+		   << ") missmatches subfolders (" << mSubfolders.size()
+		   << ")"
+		   << endl;
+  }
+  else
+    mName = mSubfolders[idx];
+}
+
+int cRecEntry::writeXmlItem(string * msg, string own_ip, int own_port) {
+  string hdr = "";
+  char f[400];
+
+  hdr += "<item>\n";
+  hdr += "<title>" + mTitle +"</title>\n";
+  hdr += "<isfolder>false</isfolder>\n";
+  //  mRec->IsPesRecording();
+
+  snprintf(f, sizeof(f), "http://%s:%d%s", own_ip.c_str(), own_port,
+	   cUrlEncode::doUrlSaveEncode(mRec->FileName()).c_str());
+
+  string mime = "video/mpeg";
+  string programme = "NA";
+  string desc = "NA";
+  int no = -1;
+
+  hdr += "<enclosure url=\"";
+  hdr += f;
+  hdr += "\" type=\""+mime+"\" />\n";
+
+  hdr += "<guid>" + cUrlEncode::doUrlSaveEncode(mRec->FileName()) + "</guid>\n";
+  
+  snprintf(f, sizeof(f), "%d", no);
+  hdr += "<number>";
+  hdr += f;
+  hdr += "</number>\n";
+  hdr += "<programme>" + programme +"</programme>\n";
+  hdr += "<description>" + desc + "</description>\n";
+
+  snprintf(f, sizeof(f), "%ld", mRec->Start());
+  hdr += "<start>";
+  hdr += f;
+  hdr += "</start>\n";
+
+  snprintf(f, sizeof(f), "%d", mRec->LengthInSeconds());
+  hdr += "<duration>";
+
+  hdr += f;
+  hdr += "</duration>\n";
+
+  snprintf(f, sizeof(f), "<fps>%.2f</fps>\n", mRec->FramesPerSecond());
+  hdr += f;
+  
+  if (mRec->IsPesRecording())
+    hdr += "<ispes>true</ispes>\n";
+  else
+    hdr += "<ispes>false</ispes>\n";
+
+  if (mRec->IsNew()) 
+    hdr += "<isnew>true</isnew>\n";
+  else
+    hdr += "<isnew>false</isnew>\n";
+
+  hdr += "</item>\n";
+
+  *msg += hdr;
+  return 0;
+}
+
+int cRecFolder::writeXmlItem(string * msg, string own_ip, int own_port) {
+  string hdr = "";
+
+  hdr += "<item>\n";
+  hdr += "<title>" + mName +"</title>\n";
+  hdr += "<guid>" + cUrlEncode::doUrlSaveEncode(mPath) + "</guid>\n";
+
+  hdr += "<isfolder>true</isfolder>\n";
+  hdr += "</item>\n";
+
+  *msg += hdr;
+  return 0;
+}
+
+int cRecFolder::writeXmlFolder(string* msg, string own_ip, int own_port) {
+  string hdr = "";
+  hdr += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+  hdr += "<rss version=\"2.0\">\n";
+  hdr+= "<channel>\n";
+  hdr+= "<title>VDR Recordings List</title>\n";
+
+  *msg += hdr;
+
+  //iter over all items
+  for (list<cRecEntryBase*>::iterator iter = mEntries.begin(); iter != mEntries.end(); ++iter) {
+    (*iter)->writeXmlItem(msg, own_ip, own_port);
+  }
+
+  hdr = "</channel>\n";
+  hdr += "</rss>\n";
+  
+  *msg += hdr;
+
+  //  *(mLog->log())<< DEBUGPREFIX << " Recording Count= " <<item_count<< endl;
+
+  return OKAY;
+
+}
+
+void cRecFolder::appendEntry(cRecFolder* entry) {
+  *(mLog->log()) << mLog->getTimeString() << " appendEntry "
+		 << " mName= " << mName
+		 << " ol= " << mLevel
+		 << " Folder" 
+		 << " l= " << entry->mLevel
+		<< " Name= " << entry->mName  
+		<< endl;
+  mEntries.push_back(entry);
+}
+
+
+void cRecFolder::appendEntry(cRecEntry* entry) {
+
+  // root: append to mEntries
+  if (entry->mLevel == mLevel) {
+    *(mLog->log()) << mLog->getTimeString() << " appendEntry "
+		   << " mName= " << mName
+		   << " ol= " << mLevel
+		   << " Entry" 
+		   << " l= " << entry->mLevel
+		   << " Name= " << entry->mName  
+		   << endl;
+
+    mEntries.push_back(entry);
+    return;
+  }
+
+  *(mLog->log()) << mLog->getTimeString() << " - appendEntry "
+		 << " mName= " << mName
+		 << " ol= " << mLevel
+		 << " Entry" 
+		 << " l= " << entry->mLevel
+		 << " sf= " << (entry->mSubfolders).size()
+		 << " f= " << entry->mSubfolders[mLevel]
+		 << " Name= " << entry->mName  
+		 << endl;
+  
+  // find needed subfolder
+  bool found = false;
+  for (list<cRecEntryBase*>::iterator iter= mEntries.begin(); iter != mEntries.end(); ++iter) {
+    if (((*iter)->mName == entry->mSubfolders[mLevel]) && ((*iter)->mIsFolder)) {
+      ((cRecFolder*)(*iter))->appendEntry(entry);
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    string p = ((mPath == "") ? entry->mSubfolders[mLevel] : mPath + "~" + entry->mSubfolders[mLevel]);
+    cRecFolder* folder = new cRecFolder(entry->mSubfolders[mLevel], p, mLevel +1, mLog);
+    appendEntry(folder);
+    folder->appendEntry(entry);
+  }
+  // check, if a subfolder is needed
+}
+
+cRecFolder* cRecFolder::GetFolder(list<string> *folder_list) {
+  string name = folder_list->front();
+  cRecFolder* dir = NULL;
+  *(mLog->log()) << mLog->getTimeString() 
+		 << " GetFolder name= " << name << endl;
+  for (list<cRecEntryBase*>::iterator iter= mEntries.begin(); iter != mEntries.end(); ++iter) {
+    if (((*iter)->mName == name) && ((*iter)->mIsFolder)) {
+      dir = (cRecFolder*)(*iter);
+      break;
+    }
+  }  
+  if (dir != NULL) {
+    folder_list->pop_front();
+    if (folder_list->size() != 0)
+      return dir->GetFolder(folder_list);
+    else 
+      return dir;
+  }
+  return NULL;
+}
 
 
 SmartTvServer::SmartTvServer(): cStatus(), mRequestCount(0), isInited(false), serverPort(PORT), mServerFd(-1),
   mSegmentDuration(10), mHasMinBufferTime(40),  mLiveChannels(20), 
   clientList(), mConTvClients(), mRecCmds(), mCmdCmds(), mRecMsg(), mCmdMsg(), mActiveSessions(0), mHttpClientId(0), 
   mConfig(NULL), mMaxFd(0),
-  mManagedUrls(NULL) {
+  mManagedUrls(NULL), mActRecordings(), mRecordings(NULL), mRecState(0) {
+
 }
 
 
 SmartTvServer::~SmartTvServer() {
+
+  delete mRecordings;
 
   if (mConfig != NULL)
     delete mConfig;
@@ -158,6 +410,15 @@ void SmartTvServer::Recording(const cDevice *Device, const char *Name, const cha
     name = Name;
 
   string method = (On) ? "RECSTART" : "RECSTOP";
+
+  // keep track of active recordings
+  if (FileName != NULL) {
+    if (On)
+      AddActRecording(name, FileName);
+    else
+      DelActRecording(name, FileName);
+  }
+
   string guid = (FileName == NULL) ? "" : cUrlEncode::doUrlSaveEncode(FileName);
 
   msg << "{\"type\":\""+method+"\",\"name\":\"" << name << "\",\"guid\":\""+guid+"\"}";
@@ -179,6 +440,46 @@ void SmartTvServer::Recording(const cDevice *Device, const char *Name, const cha
     }
   }
 };
+
+  //TODO: Store active recordings in a Database
+  // The database should contain only active recordings
+  // database for active recordings: entry is FileName (i.e. guid)
+  // store only, when FileName is not NULL 
+
+void SmartTvServer::AddActRecording(string n, string fn) {
+  mActRecordings.push_back(new cActiveRecording(n, fn));
+  *(mLog.log()) << mLog.getTimeString()
+		<< " AddActRecording fn= " << fn
+		<< " CurListSize= " << mActRecordings.size()
+		<< endl;    
+}
+
+void SmartTvServer::DelActRecording(string n, string fn) {  
+  int del_count =0;
+  for (list<cActiveRecording*>::iterator itr = mActRecordings.begin(); itr != mActRecordings.end(); /*nothing*/) {
+    if ((*itr)->mFilename == fn) {
+        itr = mActRecordings.erase(itr);
+	del_count ++;
+    }
+    else
+      ++itr;
+  }
+
+  *(mLog.log()) << mLog.getTimeString()
+		<< " DelActRecording Deleted " << n
+		<< " Occurances= " << del_count
+		<< " CurListSize= " << mActRecordings.size()
+		<< endl;
+}
+
+bool SmartTvServer::IsActRecording(string fn) {
+  for (list<cActiveRecording*>::iterator itr = mActRecordings.begin(); itr != mActRecordings.end(); ++itr) {
+    if ((*itr)->mFilename == fn) {
+      return true;
+    }
+  }
+  return false;
+}
 
 //thlo: Try to clean up
 void SmartTvServer::pushToClients(cHttpResourceBase* resource) {
@@ -527,6 +828,53 @@ void SmartTvServer::acceptHttpResource(int &req_id) {
   
 }
 
+
+cRecFolder* SmartTvServer::GetRecDb() {
+  bool changed = Recordings.StateChanged(mRecState);
+  *(mLog.log()) << mLog.getTimeString()
+		<< " GetRecDb Changed= " << ((changed) ? "Yes" : "No")
+		<< endl;
+  if (changed) {
+    
+    delete mRecordings;
+    mRecordings = new cRecFolder(".", "", 0, &mLog);
+    CreateRecDb();
+  }  
+  return mRecordings;
+}
+
+void SmartTvServer::CreateRecDb() {
+  cRecording *recording = Recordings.First();
+  *(mLog.log()) << mLog.getTimeString() << ": CreateRecDb "
+		<< " NewState= " << mRecState
+		<< endl;
+  
+  while (recording != NULL) {
+    string name = recording->Name();
+
+    //    (mRecordings->mEntries).push_back(new cRecEntry(recording->Name(), recording->HierarchyLevels()));
+    cRecEntry* entry = new cRecEntry(recording->Name(), recording->HierarchyLevels(), &mLog, recording);
+    mRecordings->appendEntry(entry);
+    //    (mRecordings->mEntries).appendEntry(entry, 0);
+
+    /*
+    *(mLog.log()) << mLog.getTimeString() 
+		  << " L= " << recording->HierarchyLevels()
+      		  << " FName= " << recording->Name() 
+		  << endl;
+*/    
+    recording = Recordings.Next(recording);
+  }
+
+
+  *(mLog.log()) << " Summary " << endl;
+  mRecordings->print("");
+  
+  
+  *(mLog.log()) << " Summary -done " << endl;
+
+}
+
 void SmartTvServer::loop() {
   int req_id = 0;
   int ret = 0;
@@ -730,9 +1078,10 @@ void SmartTvServer::initServer(string dir) {
   cout << "SmartTvWeb: Listening on port= " << PORT << endl;
 
 #endif
-  
-  mConfig->printConfig();
 
+  mRecordings = new cRecFolder(".", "", 0, &mLog);
+
+  mConfig->printConfig();
 
   mSegmentDuration= mConfig->getSegmentDuration();
   mHasMinBufferTime= mConfig->getHasMinBufferTime();
