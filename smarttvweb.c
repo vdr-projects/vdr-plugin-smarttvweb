@@ -60,6 +60,10 @@ public:
   virtual bool Initialize(void);
   virtual bool Start(void);
   virtual bool SetupParse(const char *Name, const char *Value);
+
+  virtual const char **SVDRPHelpPages(void);
+  virtual cString SVDRPCommand(const char *Command, const char *Option, int &ReplyCode);
+
 #if VDRVERSNUM > 10300
   virtual cString Active(void);
 #endif
@@ -124,6 +128,35 @@ bool cPluginSmartTvWeb::SetupParse(const char *Name, const char *Value)
   // Parse your own setup parameters and store their values.
   return false;
 }
+
+const char **cPluginSmartTvWeb::SVDRPHelpPages(void) {
+  static const char *HelpPages[] = {
+    "SESSIONS\n"
+    "    Print the number of active sessions.",
+    NULL
+    };
+  return HelpPages;
+}
+
+cString cPluginSmartTvWeb::SVDRPCommand(const char *Command, const char *Option, int &ReplyCode) {
+  if (strcasecmp(Command, "SESSIONS") == 0) {
+    return cString::sprintf("%d Active HTTP Sessions", mServer.getActiveHttpSessions()); 
+  }
+  else if (strcasecmp(Command, "TIME") == 0) {
+     ReplyCode = 901;
+     if (*Option) {
+        if (strcasecmp(Option, "RAW") == 0)
+           return cString::sprintf("%ld\nThis is the number of seconds since the epoch\nand a demo of a multi-line reply", time(NULL));
+        else {
+           ReplyCode = 504;
+           return cString::sprintf("Unknown option: \"%s\"", Option);
+           }
+        }
+     return TimeString(time(NULL));
+     }
+  return NULL;
+}
+
 
 #if VDRVERSNUM > 10300
 
