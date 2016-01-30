@@ -40,6 +40,8 @@ cResponseBase::cResponseBase(cHttpResource* req): mBlkData(NULL), mBlkPos(0), mB
     mLog = Log::getInstance();
 
     mBlkData = new char[MAXLEN];
+
+    gettimeofday(&mResponseStart,0); 
     
 }
 

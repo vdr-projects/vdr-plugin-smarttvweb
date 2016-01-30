@@ -83,9 +83,6 @@ int timerCompare(const void* i, const void *j) {
 #endif
 
 cResponseMemBlk::cResponseMemBlk(cHttpResource* req) : cResponseBase(req), mResponseMessage(NULL), mResponseMessagePos(0) {
-
-  gettimeofday(&mResponseStart,0); 
-  
 }
 
 cResponseMemBlk::~cResponseMemBlk() {
@@ -103,6 +100,7 @@ cResponseMemBlk::~cResponseMemBlk() {
 
   *(mLog->log())<< DEBUGPREFIX
 		<< " cResponseMemBlk: Response duration= " << diff/1000.0 << " ms"
+		<< " RemoteIP= " << mRequest->mRemoteAddr
 		<< endl;
 
 }

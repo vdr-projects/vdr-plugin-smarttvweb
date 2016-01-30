@@ -39,7 +39,7 @@
 
 #define DEBUGPREFIX mLog->getTimeString() << ": mClient= " << mReqId << " fd= " << mFd
 
-cHttpClientBase::cHttpClientBase(int f, int id, int port, SmartTvServer* factory, string peer) : cHttpResourceBase(f, id, port, factory),
+cHttpClientBase::cHttpClientBase(int f, int id, int port, SmartTvServer* factory, string peer) : cHttpResourceBase(f, id, port, "-", factory),
   mLog(), mRequestMessage(""), mRequestMessagePos(0), mConnState(0), mResponseHdr(), mRespBdyLen(-1), 
   mStatus(-1), mIsChunked(false), mResponseBdy(), 
   mPeer(peer), mTransCount(0) {

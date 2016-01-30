@@ -28,6 +28,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <cstring>
+#include <sys/time.h>
 
 //#define MAXLEN 4096
 #define DEBUGPREFIX mLog->getTimeString() << ": mReqId= " << mRequest->mReqId << " fd= " << mRequest->mFd 
@@ -40,10 +41,23 @@ cResponseFile::cResponseFile(cHttpResource* req) : cResponseBase(req), mFile(NUL
 }
 
 cResponseFile::~cResponseFile() {
+  timeval now;
+  gettimeofday(&now, 0);
+
   if (mFile != NULL) {
     fclose(mFile);
     mFile = NULL;
   }  
+
+  long long diff; // in sec
+  diff = (now.tv_sec - mResponseStart.tv_sec);
+  diff += (now.tv_usec - mResponseStart.tv_usec) /1000000.0;
+
+  *(mLog->log())<< DEBUGPREFIX
+                << " cResponseFile: Response duration= " << diff << " s"
+		<< " RemoteIP= " << mRequest->mRemoteAddr
+                << endl;
+  
 }
 
 

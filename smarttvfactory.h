@@ -47,8 +47,9 @@ class cStatus {
 
 using namespace std;
 
-#define PLG_VERSION "1.0.2"
-#define SERVER "SmartTvWeb/1.0.2" 
+#define PLG_VERSION "1.0.3"
+#define SERVER "SmartTvWeb/1.0.3" 
+
 class cLiveRelay;
 
 struct sClientEntry {
@@ -68,6 +69,84 @@ class cCmd {
   bool mConfirm;
 };
 
+class cActiveRecording {
+ public:
+  string mName;
+  string mFilename;
+
+ cActiveRecording(string n, string fn) : mName(n), mFilename(fn) {};
+};
+
+class cRecEntryBase {
+ public:
+  cRecEntryBase (string n, int l, bool i, Log* lg) : mLevel(l), mName(n), mIsFolder(i), mLog(lg) {};
+  virtual ~cRecEntryBase() {};
+
+  //  virtual void appendEntry(cRecEntryBase*, int ) {};
+
+  int mLevel;
+  string mName;
+  bool mIsFolder;
+  virtual void print(string pref);
+  virtual int writeXmlItem(string *, string own_ip, int own_port) { return -1; };
+
+  Log *mLog;
+  friend ostream &operator<< (ostream &ofd, cRecEntryBase b) { return ofd; };
+};
+
+class cRecEntry;
+
+class cRecFolder : public cRecEntryBase {
+ public:
+  list<cRecEntryBase*> mEntries; // only when folder
+  string               mPath;    // full path (incl mName)
+
+ cRecFolder(string n, string p, int l, Log* lg) : cRecEntryBase(n, l, true, lg), mEntries(), mPath(p) {};
+  virtual ~cRecFolder() {
+    for (list<cRecEntryBase*>::iterator iter = mEntries.begin(); iter != mEntries.end(); ++iter)
+      delete *iter;
+  };
+  void appendEntry(cRecEntry*);
+  void appendEntry(cRecFolder*);
+
+  cRecFolder* GetFolder(list<string> *folder_list);
+  void print(string pref);
+  int writeXmlItem(string *, string own_ip, int own_port);
+  int writeXmlFolder(string*, string own_ip, int own_port);
+
+  friend ostream &operator<< (ostream &ofd, cRecFolder b) { 
+    ofd << "Folder " << b.mName << " l= " << b.mLevel;
+    
+    return ofd; 
+  };
+
+};
+
+class cRecEntry : public cRecEntryBase {
+  cRecording* mRec;
+  //  bool mIsFolder ;
+ public:
+  vector<string> mSubfolders;
+  bool mError;
+  //  int mLevel;
+  string mTitle;
+  //  list<cRecEntry*> mEntries; // only when folder
+
+  cRecEntry(string mName, int l, Log* lg, cRecording*);
+  virtual ~cRecEntry() {};
+
+  int writeXmlItem(string *, string own_ip, int own_port);
+  void print(string pref);
+
+  friend ostream &operator<< (ostream &ofd, cRecEntry b) {
+    ofd << "Entry " << b.mName << " l= " << b.mLevel << " s= " << b.mSubfolders.size() << " E= ";
+    for (uint i = 0; i < b.mSubfolders.size(); i++)
+      ofd << b.mSubfolders[i] << " ";
+    return ofd;
+  };
+};
+
+
 class SmartTvServer : public cStatus {
 
   public:
@@ -84,6 +163,7 @@ class SmartTvServer : public cStatus {
 
     void readRecordings();
     int  isServing();
+    int getActiveHttpSessions();
 
     string getConfigDir() { return mConfigDir; };
     cSmartTvConfig* getConfig() { return mConfig; };
@@ -109,6 +189,8 @@ class SmartTvServer : public cStatus {
     void clrWriteFlag(int fd);
     void setWriteFlag(int fd);
     int openPipe();
+
+    cRecFolder* GetRecDb();
 
  private:
     void addHttpResource(int fd, cHttpResourceBase* resource);
@@ -165,6 +247,15 @@ class SmartTvServer : public cStatus {
     string mCmdCmdMsg;
     vector<string> mRecCmdList;
     vector<string> mCmdCmdList;
+
+    list<cActiveRecording*> mActRecordings;
+    void AddActRecording(string, string);
+    void DelActRecording(string, string);
+    bool IsActRecording(string);
+
+    cRecFolder* mRecordings;
+    int mRecState;
+    void CreateRecDb();
 };
 
 

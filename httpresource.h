@@ -67,7 +67,7 @@ class cResponseBase;
 class cHttpResource : public cHttpResourceBase {
 
  public:
-  cHttpResource(int, int, int, SmartTvServer*);
+  cHttpResource(int, int, int, string, SmartTvServer*);
   virtual ~cHttpResource();
 
   int handleRead();

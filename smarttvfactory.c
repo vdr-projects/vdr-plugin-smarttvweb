@@ -807,10 +807,27 @@ void SmartTvServer::logActiveSessionIds() {
 void SmartTvServer::acceptHttpResource(int &req_id) {
   int rfd = 0;
   sockaddr_in sadr;
-  socklen_t addr_size = 0;
+  char ipstr[INET6_ADDRSTRLEN + 1];
+  socklen_t addr_size = sizeof(sadr);
+
+  string ip_ver = "ipv6";
 
   if((rfd = accept(mServerFd, (sockaddr*)&sadr, &addr_size))!= -1){
     req_id ++;
+
+    switch (sadr.sin_family) {
+    case AF_INET:
+      ip_ver = "ip_v4";
+      inet_ntop(AF_INET, &(sadr.sin_addr), ipstr, sizeof ipstr);      
+      break;
+    case AF_INET6:
+      inet_ntop(AF_INET6, &(sadr.sin_addr), ipstr, sizeof ipstr);      
+      break;
+    default:
+      ip_ver = "Unknown";
+      break;
+    }
+
     
 #ifndef DEBUG
     *(mLog.log()) << mLog.getTimeString() << ": fd= " << rfd
@@ -824,9 +841,12 @@ void SmartTvServer::acceptHttpResource(int &req_id) {
       mMaxFd = rfd;
     }
     
-    clientList.push_back(new cHttpResource(rfd, req_id, serverPort, this));
+    clientList.push_back(new cHttpResource(rfd, req_id, serverPort, ipstr, this));
     mActiveSessions ++;
-    *(mLog.log()) << mLog.getTimeString() << ": + New Session mReqId= " << req_id << endl;
+    *(mLog.log()) << mLog.getTimeString() << ": + New Session mReqId= " << req_id 
+		  << " ver= " << ip_ver << " " << sadr.sin_family
+		  << " IP= " << ipstr
+		  << endl;
     logActiveSessionIds();
   }
   else{
@@ -1012,6 +1032,9 @@ int SmartTvServer::isServing() {
   return (mActiveSessions != 0 ? true : false) or connected_tv;
 }
 
+int SmartTvServer::getActiveHttpSessions() {
+  return mActiveSessions;
+}
 
 string SmartTvServer::processNestedItemList(string pref, cList<cNestedItem> *cmd, vector<cCmd*> *cmd_list) {
   char f[400];

@@ -25,6 +25,7 @@
 
 #include <ctime>
 #include <stdint.h>
+#include <sys/time.h>
 
 class cHttpResource;
 class Log;
@@ -56,6 +57,8 @@ class cResponseBase {
   cHttpResource* mRequest;
   uint64_t mRemLength;
   bool mError;
+
+  timeval mResponseStart;
 };
 
 

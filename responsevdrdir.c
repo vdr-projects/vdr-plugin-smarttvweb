@@ -26,6 +26,7 @@
 #include "smarttvfactory.h"
 #include <vector>
 #include <cstdlib>
+#include <sys/time.h>
 
 #ifndef STANDALONE
 #include <vdr/recording.h>
@@ -71,22 +72,37 @@ struct tIndexTs {
   int reserved:7; // reserved for future use
   int independent:1; // marks frames that can be displayed by themselves (for trick modes)
   uint16_t number:16; // up to 64K files per recording
-  };
+};
 
 
 cResponseVdrDir::cResponseVdrDir(cHttpResource* req) : cResponseBase(req), mIsRecording(false), 
   mStreamToEnd(false), mRecProgress(0.0), mVdrIdx(0), mFile(NULL), mFileStructure()  {
+
 }
 
 cResponseVdrDir::~cResponseVdrDir() {
+  timeval now;
+  gettimeofday(&now, 0);
+
   if (mFile != NULL) {
-    *(mLog->log())<< DEBUGPREFIX
-		  << " ERROR: mFile still open. Closing now..." << endl;
+#ifdef DEBUG
+    *(mLog->log())<< DEBUGPREFIX << " mFile still open. Closing now..." << endl;
+#endif
     fclose(mFile);
     mFile = NULL;
   } 
-}
 
+  double diff; // in sec
+  diff = (now.tv_sec - mResponseStart.tv_sec);
+  diff += (now.tv_usec - mResponseStart.tv_usec) /1000000;
+
+  char f[20];
+  snprintf(f, sizeof(f), "%.02f", diff);
+  *(mLog->log())<< DEBUGPREFIX
+                << " cResponseVdrDir: Response duration= " << f << " s"
+		<< " RemoteIP= " << mRequest->mRemoteAddr
+                << endl;
+}
 
 bool cResponseVdrDir::isTimeRequest(struct stat *statbuf) {
 
@@ -146,8 +162,6 @@ bool cResponseVdrDir::isTimeRequest(struct stat *statbuf) {
 
   if (is_pes){
     idx_file = fopen(((mRequest->mDir) +"/index.vdr").c_str(), "r");
-    //    sendError(400, "Bad Request", NULL, "PES not yet supported.");
-    //    return true;
   }
   else {
     idx_file = fopen(((mRequest->mDir) +"/index").c_str(), "r");

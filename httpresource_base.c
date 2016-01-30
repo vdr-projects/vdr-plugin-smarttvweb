@@ -28,7 +28,7 @@ int cHttpResourcePipe::mPipeId = 0;
 
 #define MEMBUFLEN 1000
 
-cHttpResourcePipe::cHttpResourcePipe(int f, SmartTvServer* fac) : cHttpResourceBase(f, mPipeId++, 0, fac), mLog(NULL), mBuf(NULL) {   
+cHttpResourcePipe::cHttpResourcePipe(int f, SmartTvServer* fac) : cHttpResourceBase(f, mPipeId++, 0, "-", fac), mLog(NULL), mBuf(NULL) {   
 
   mLog = Log::getInstance();
   mBuf = new char[MEMBUFLEN];

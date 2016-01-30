@@ -79,7 +79,7 @@ using namespace std;
 
 
 
-cHttpResource::cHttpResource(int f, int id, int port, SmartTvServer* factory): cHttpResourceBase(f, id, port, factory),
+cHttpResource::cHttpResource(int f, int id, int port, string a, SmartTvServer* factory): cHttpResourceBase(f, id, port, a, factory),
   mLog(), mConnTime(0), mHandleReadCount(0),  
   mConnected(true), mConnState(WAITING), mReadBuffer(), mMethod(),  
 									       //  mBlkData(NULL), mBlkPos(0), mBlkLen(0), 
@@ -298,6 +298,12 @@ int cHttpResource::processRequest() {
   if (mPath.compare("/recordings.xml") == 0) {
     mResponse = new cResponseMemBlk(this);
     ((cResponseMemBlk*)mResponse)->sendRecordingsXml( &statbuf);
+    return OKAY;
+  }
+
+  if (mPath.compare("/getrecordings") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->GetRecordings();
     return OKAY;
   }
 

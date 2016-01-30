@@ -23,12 +23,17 @@
 #ifndef __HTTPREQUEST_base_H__
 #define __HTTPREQUEST_base_H__
 
+#include <string>
+
+using namespace std;
+
 class SmartTvServer;
 
 class cHttpResourceBase {
 
  public:
- cHttpResourceBase(int f, int id, int port, SmartTvServer* fac): mFd(f), mReqId(id), mFactory(fac), mServerPort(port) {};
+ cHttpResourceBase(int f, int id, int port, string addr, SmartTvServer* fac): mFd(f), mReqId(id), mFactory(fac), mServerPort(port),
+    mRemoteAddr (addr) {};
   virtual ~cHttpResourceBase() {};
 
   virtual int handleRead() =0;
@@ -39,6 +44,8 @@ class cHttpResourceBase {
   int mReqId;
   SmartTvServer* mFactory;
   int mServerPort;
+
+  string mRemoteAddr;
 };
 
 

@@ -27,7 +27,6 @@
 #include <sys/stat.h>
 #include <string>
 #include <vector>
-#include <sys/time.h>
 #include "responsebase.h"
 
 #include <vdr/config.h>
@@ -69,6 +68,8 @@ class cResponseMemBlk : public cResponseBase {
   int fillDataBlk();
 
   int sendRecordingsXml (struct stat *statbuf);
+  int GetRecordings ();
+
   int sendChannelsXml (struct stat *statbuf);
   int sendResumeXml ();
   int sendMarksXml ();
@@ -110,14 +111,14 @@ class cResponseMemBlk : public cResponseBase {
   int parseResume(cResumeEntry &entry, string &id);
   int parseFiles(vector<sFileEntry> *entries, string prefix, string dir_base, string dir_name, struct stat *statbuf);
   int sendDir(struct stat *statbuf);
-  int writeXmlItem(string title, string link, string programme, string desc, string guid, int no, time_t start, int dur, double fps, int is_pes, int is_new, string mime);
+  int writeXmlItem(string title, string link, string programme, bool add_desc, string desc, string guid, 
+		   int no, time_t start, int dur, double fps, int is_pes, int is_new, string mime);
   uint64_t getVdrFileSize();
 
  private:
   string *mResponseMessage;
   int mResponseMessagePos;
 
-  timeval mResponseStart;
 };
 
 #endif
