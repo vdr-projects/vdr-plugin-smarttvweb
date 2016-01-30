@@ -39,6 +39,9 @@ string cUrlEncode::doUrlSaveEncode(string in) {
     }
     num = in[idx];
     switch (num) {
+    case ' ':
+      res += "%20";
+      break;
     case '"':
       res += "%22";
       break;
