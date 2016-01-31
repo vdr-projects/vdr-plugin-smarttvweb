@@ -34,7 +34,8 @@
 cSmartTvConfig::cSmartTvConfig(string d): mConfigDir(d), mLog(NULL), mCfgFile(NULL),
   mLogFile(), mMediaFolder(), mSegmentDuration(), mHasMinBufferTime(), mHasBitrateCorrection(),
   mLiveChannels(), mGroupSep(IGNORE), mServerAddress(""), mServerPort(8000), mCmds(false), mUseStreamDev4Live(true),
-  mBuiltInLiveStartMode (4), mBuiltInLivePktBuf4Hd(150), mBuiltInLivePktBuf4Sd(75), mBuiltInLiveBufDur(0.6) {
+  mBuiltInLiveStartMode (4), mBuiltInLivePktBuf4Hd(150), mBuiltInLivePktBuf4Sd(75), mBuiltInLiveBufDur(0.6), 
+  mAddCorsHeader(false), mCorsHeaderPyld() {
 
 #ifndef STANDALONE
   mLogFile= "";
@@ -82,6 +83,7 @@ void cSmartTvConfig::printConfig() {
   //  *(mLog->log()) << " BuiltInLivePktBuf4Hd: " << mBuiltInLivePktBuf4Hd << endl;
   //  *(mLog->log()) << " BuiltInLivePktBuf4Sd: " << mBuiltInLivePktBuf4Sd << endl;
   *(mLog->log()) << " BuiltInLiveBufDur: " << mBuiltInLiveBufDur << endl;
+  *(mLog->log()) << " CorsHdrPyld: " << mCorsHeaderPyld << endl;
 }
 
 
@@ -195,6 +197,12 @@ void cSmartTvConfig::readConfig() {
       mBuiltInLiveBufDur = atoi(value) /1000.0;
       if (mBuiltInLiveBufDur <= 0.0)
 	mBuiltInLiveBufDur = 0.5;
+      continue;
+    }
+
+    if (strcmp(attr, "CorsHeader") == 0) {
+      mAddCorsHeader = true;
+      mCorsHeaderPyld = value;
       continue;
     }
     

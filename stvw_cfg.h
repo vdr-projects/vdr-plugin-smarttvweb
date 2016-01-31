@@ -63,6 +63,9 @@ class cSmartTvConfig {
   int mBuiltInLivePktBuf4Sd;
   double mBuiltInLiveBufDur;
 
+  bool mAddCorsHeader;
+  string mCorsHeaderPyld;
+
  public:
   cSmartTvConfig(string dir);
   ~cSmartTvConfig();
@@ -87,6 +90,8 @@ class cSmartTvConfig {
   int getBuiltInLivePktBuf4Sd() { return mBuiltInLivePktBuf4Sd; };
   double getBuiltInLiveBufDur() { return mBuiltInLiveBufDur; };
 
+  bool addCorsHeader() { return mAddCorsHeader; };
+  string getCorsHeader() {return mCorsHeaderPyld; };
 };
 
 #endif

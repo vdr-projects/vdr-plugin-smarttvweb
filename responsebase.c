@@ -87,6 +87,12 @@ void cResponseBase::sendHeaders(int status, const char *title, const char *extra
   hdr += f;
   snprintf(f, sizeof(f), "Server: %s\r\n", SERVER);
   hdr += f;
+
+  if (mRequest->mFactory->getConfig()->addCorsHeader()) {
+    snprintf(f, sizeof(f), "Access-Control-Allow-Origin: %s\r\n", (mRequest->mFactory->getConfig()->getCorsHeader().c_str()));
+  hdr += f;
+  }
+
   now = time(NULL);
   strftime(timebuf, sizeof(timebuf), RFC1123FMT, gmtime(&now));
   snprintf(f, sizeof(f), "Date: %s\r\n", timebuf);
