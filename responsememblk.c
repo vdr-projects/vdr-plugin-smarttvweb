@@ -1954,10 +1954,18 @@ int cResponseMemBlk::sendMediaXml (struct stat *statbuf) {
     return OKAY;
   }
     
+  char f[400];
   string hdr = "";
+  gethostname(f, sizeof(f));
   hdr += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
   hdr += "<rss version=\"2.0\">\n";
   hdr+= "<channel>\n";
+  hdr+= "<title>VDR Media List ";
+  hdr += f;
+  hdr += "</title>\n";
+  hdr+= "<description>";
+  hdr+= f;
+  hdr+= "</description>\n";
 
   *mResponseMessage += hdr;
 
@@ -2256,10 +2264,17 @@ int cResponseMemBlk::sendChannelsXml (struct stat *statbuf) {
 
   
   string hdr = "";
+  gethostname(f, sizeof(f));
   hdr += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
   hdr += "<rss version=\"2.0\">\n";
   hdr+= "<channel>\n";
-  hdr+= "<title>VDR Channels List</title>\n";
+  hdr+= "<title>VDR Channels List ";
+  hdr += f;
+  hdr += "</title>\n";
+
+  hdr+= "<description>";
+  hdr+= f;
+  hdr+= "</description>\n";
 
 
   *mResponseMessage += hdr;
@@ -2855,10 +2870,16 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
 #endif
 
   string hdr = "";
+  gethostname(f, sizeof(f));
   hdr += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
   hdr += "<rss version=\"2.0\">\n";
   hdr+= "<channel>\n";
-  hdr+= "<title>VDR Recordings List</title>\n";
+  hdr+= "<title>VDR Recordings List ";
+  hdr += f;
+  hdr += "</title>\n";
+  hdr+= "<description>";
+  hdr+= f;
+  hdr+= "</description>\n";
 
   *mResponseMessage += hdr;
 
