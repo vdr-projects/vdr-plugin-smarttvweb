@@ -39,12 +39,43 @@ enum eGroupSep {
   EMPTYFOLDERDOWN
 };
 
+class cWidgetConfigBase {
+ private:
+  bool mUseDefaultBuffer;
+  int mTotalBufferSize;
+  int mInitialBufferSize;
+  int mPendingBufferSize;
+  int mSkipDuration;
+  bool mUsePdlForRecordings;
+  string mFormat;
+  int mLiveChannels;
+  int mDirectAccessTimeout;
+  int mSortType;
+  int mPlayKeyBehavior;
+  bool mShowInfoMsgs;
+  bool mWidgetdebug;
+
+  char f[400];
+
+  string BoolLine(string name, bool val);
+  string IntLine(string name, int val);
+
+ public:
+  cWidgetConfigBase();
+
+  string GetWidgetConf();
+
+};
+
+class cPlugin;
+
 class cSmartTvConfig {
  private:
   string mConfigDir;
   Log* mLog;
   FILE *mCfgFile;
 
+  bool mUseVdrSetupConf;
   string mLogFile;
   string mMediaFolder;
   bool mHaveMediaFolder;
@@ -66,11 +97,18 @@ class cSmartTvConfig {
   bool mAddCorsHeader;
   string mCorsHeaderPyld;
 
+  //  cPlugin* mPlugin;
+  cWidgetConfigBase mWidgetConfigBase;
  public:
-  cSmartTvConfig(string dir);
+  cSmartTvConfig();
   ~cSmartTvConfig();
 
+  bool SetupParse(const char *Name, const char *Value);
+  void Store(cPlugin *mPlugin);
+
+  void Initialize(string dir);
   void readConfig();
+  //  void readPluginConfig();
   void printConfig();
 
   string getLogFile() { return mLogFile; };
@@ -92,6 +130,9 @@ class cSmartTvConfig {
 
   bool addCorsHeader() { return mAddCorsHeader; };
   string getCorsHeader() {return mCorsHeaderPyld; };
+
+  string GetWidgetConf() { return mWidgetConfigBase.GetWidgetConf(); };
 };
+
 
 #endif

@@ -153,7 +153,7 @@ class SmartTvServer : public cStatus {
     SmartTvServer();
     virtual ~SmartTvServer();
 
-    void initServer(string c_dir);
+    void initServer(string c_dir, cSmartTvConfig* cfg);
     void loop();
     void cleanUp();
     int  runAsThread();

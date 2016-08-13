@@ -59,6 +59,7 @@ public:
   virtual bool ProcessArgs(int argc, char *argv[]);
   virtual bool Initialize(void);
   virtual bool Start(void);
+  virtual void Stop(void);
   virtual bool SetupParse(const char *Name, const char *Value);
 
   virtual const char **SVDRPHelpPages(void);
@@ -71,6 +72,7 @@ public:
 private:
   SmartTvServer mServer;
   string mConfigDir;
+  cSmartTvConfig * mConfig;
 };
 
 cPluginSmartTvWeb::cPluginSmartTvWeb(void)  {
@@ -78,6 +80,13 @@ cPluginSmartTvWeb::cPluginSmartTvWeb(void)  {
   // DON'T DO ANYTHING ELSE THAT MAY HAVE SIDE EFFECTS, REQUIRE GLOBAL
   // VDR OBJECTS TO EXIST OR PRODUCE ANY OUTPUT!
   mConfigDir = "";
+  mConfig = new cSmartTvConfig(); 
+
+  esyslog("SmartTvWeb: Constructor ConfigName= %s", cPlugin::ConfigDirectory(Name()));
+}
+
+void cPluginSmartTvWeb::Stop(void) {
+  //  mConfig->Store(this);
 }
 
 bool cPluginSmartTvWeb::Start(void) {
@@ -92,7 +101,7 @@ bool cPluginSmartTvWeb::Start(void) {
       mConfigDir = string(dir_name);
   }
 
-  mServer.initServer(mConfigDir);
+  mServer.initServer(mConfigDir, mConfig);
   int success = mServer.runAsThread();
 
   esyslog("SmartTvWeb: started %s", (success == 1) ? "sucessfully" : "failed!!!!");
@@ -123,10 +132,12 @@ bool cPluginSmartTvWeb::Initialize(void) {
   return true;
 }
 
-bool cPluginSmartTvWeb::SetupParse(const char *Name, const char *Value)
-{
+bool cPluginSmartTvWeb::SetupParse(const char *Name, const char *Value) {
   // Parse your own setup parameters and store their values.
-  return false;
+  esyslog("SmartTvWeb: SetupParse K= %s V= %s", Name, Value);
+  return mConfig->SetupParse(Name, Value);
+
+  //  return false;
 }
 
 const char **cPluginSmartTvWeb::SVDRPHelpPages(void) {
@@ -167,6 +178,7 @@ cString cPluginSmartTvWeb::Active(void) {
   else
     return NULL;
 }
+
 
 #endif
 

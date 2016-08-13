@@ -1078,17 +1078,20 @@ void SmartTvServer::initCmdCmds() {
 }
 
 
-void SmartTvServer::initServer(string dir) {
+void SmartTvServer::initServer(string dir, cSmartTvConfig* cfg) {
   /* This function initialtes the listening socket for the server
    * and sets isInited to true
    */
+  esyslog("SmartTvWeb: initServer dir= %s", dir.c_str());
   mConfigDir = dir;
   int ret;
   struct sockaddr_in sock;
   int yes = 1;
 
 #ifndef STANDALONE
-  mConfig = new cSmartTvConfig(dir); 
+  //  mConfig = new cSmartTvConfig(dir); 
+  mConfig = cfg;
+  mConfig->Initialize(dir);
   serverPort = mConfig->getServerPort();
   mLog.init(mConfig->getLogFile());
 
@@ -1104,8 +1107,8 @@ void SmartTvServer::initServer(string dir) {
 #else
   mConfig = new cSmartTvConfig("."); 
   mLog.init(mConfig->getLogFile());
-  cout << "SmartTvWeb: Logfile created" << endl;
-  cout << "SmartTvWeb: Listening on port= " << PORT << endl;
+  esyslog ("SmartTvWeb: Logfile created");
+  esyslog ("SmartTvWeb: Listening on port= %d", PORT);
 
 #endif
 
