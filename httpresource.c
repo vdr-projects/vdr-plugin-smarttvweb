@@ -438,6 +438,12 @@ int cHttpResource::processRequest() {
     return OKAY;
   }
 
+  if (mPath.compare("/widget_vdr.conf") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->sendWidgetConf();
+    return OKAY;
+  }
+
   if (mPath.compare("/widget.conf") == 0) {
     mPath = mFactory->getConfigDir() + "/widget.conf";
 
