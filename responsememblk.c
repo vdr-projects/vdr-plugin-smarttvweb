@@ -442,6 +442,7 @@ int cResponseMemBlk::sendResumeXml () {
   return OKAY;
 }
 
+
 int cResponseMemBlk::sendMp4Covr() {
   if (isHeadRequest())
     return OKAY;
@@ -501,6 +502,26 @@ int cResponseMemBlk::sendMp4Covr() {
 #endif
   return OKAY;
 }
+
+void cResponseMemBlk::sendWidgetConf() {
+  if (isHeadRequest())
+    return;
+#ifndef STANDALONE
+  mResponseMessage = new string();
+  *mResponseMessage = "";
+  mResponseMessagePos = 0;
+  
+  mRequest->mConnState = SERVING;
+
+  //  cWidgetConfigBase widget_conf;
+  //  *mResponseMessage = widget_conf.GetWidgetConf();
+  *mResponseMessage = mRequest->mFactory->getConfig()->GetWidgetConf();
+
+  sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), -1);
+
+#endif
+}
+
 
 int cResponseMemBlk::sendMarksXml () {
   if (isHeadRequest())
@@ -1993,7 +2014,7 @@ int cResponseMemBlk::sendMediaXml (struct stat *statbuf) {
   hdr = "</channel>\n";
   hdr += "</rss>\n";
   *mResponseMessage += hdr;
-  sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), statbuf->st_mtime);
+  sendHeaders(200, "OK", "Cache-Control: no-cache, must-revalidate", "application/xml", mResponseMessage->size(), statbuf->st_mtime);
 
   return OKAY;
 }
@@ -2963,7 +2984,7 @@ int cResponseMemBlk::sendRecordingsXml(struct stat *statbuf) {
   *(mLog->log())<< DEBUGPREFIX << " Recording Count= " <<item_count<< endl;
 
 #endif
-  sendHeaders(200, "OK", NULL, "application/xml", mResponseMessage->size(), statbuf->st_mtime);
+  sendHeaders(200, "OK", "Cache-Control: no-cache, must-revalidate", "application/xml", mResponseMessage->size(), statbuf->st_mtime);
   return OKAY;
 }
 

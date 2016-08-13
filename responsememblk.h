@@ -79,6 +79,8 @@ class cResponseMemBlk : public cResponseBase {
   int sendBmlInstHtml();
 
   int sendMp4Covr();
+  void sendWidgetConf();
+
   int sendEpgXml (struct stat *statbuf);
   int sendUrlsXml ();
   int sendMediaXml (struct stat *statbuf);
