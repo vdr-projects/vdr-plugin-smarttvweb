@@ -25,6 +25,7 @@
 #include <time.h>
 #include <sys/time.h> 
 #include <cstring>
+#include <vdr/tools.h>
 
 Log* Log::instance = NULL;
 
@@ -48,13 +49,16 @@ int Log::init(string fileName) {
   strftime(timebuf, sizeof(timebuf), "%a, %d %b %Y %H:%M:%S (%Z)", localtime(&now));
 
   if (fileName != "") {
+    esyslog("SmartTvWeb: Creating LogFile: %s", fileName.c_str() );
     mLogFile = new ofstream();
 
     mLogFile->open(fileName.c_str(), ios::out); // | ios::app
     *mLogFile << "Log Created: " << timebuf << endl;
   }
-  else
+  else {
+    esyslog("SmartTvWeb: Creating LogFile: /dev/null");
     mLogFile = new ofstream("/dev/null");
+  }
   return 0;
 }
 
@@ -65,12 +69,15 @@ int Log::init(char* fileName) {
   strftime(timebuf, sizeof(timebuf), "%a, %d %b %Y %H:%M:%S GMT", gmtime(&now));
 
   if (strcmp(fileName, "") !=0) {
+    esyslog("SmartTvWeb: Creating LogFile: %s", fileName);
     mLogFile = new ofstream();
     mLogFile->open(fileName, ios::out );
     *mLogFile << "Log Created: " << timebuf << endl;
   }
-  else
+  else {
+    esyslog("SmartTvWeb: Creating LogFile: /dev/null");
     mLogFile = new ofstream("/dev/null");
+  }
   return 0;
 }
 

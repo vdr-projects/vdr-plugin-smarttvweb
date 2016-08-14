@@ -1095,10 +1095,6 @@ void SmartTvServer::initServer(string dir, cSmartTvConfig* cfg) {
   serverPort = mConfig->getServerPort();
   mLog.init(mConfig->getLogFile());
 
-  if (mConfig->getLogFile() != "") {
-    string msg = "SmartTvWeb: Logfile created File= " + mConfig->getLogFile();
-    esyslog("%s", msg.c_str());
-  }
   *(mLog.log()) << mLog.getTimeString() << ": LogFile= " << mConfig->getLogFile() << endl;
 
   initRecCmds();
