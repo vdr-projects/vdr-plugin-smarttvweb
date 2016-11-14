@@ -1692,10 +1692,65 @@ uint64_t cResponseMemBlk::getVdrFileSize() {
   }
   return total_file_size;
 }
+ 
+ void cResponseMemBlk::post_addToBlacklist() {
+   if (isHeadRequest())
+    return;
+   
+  vector<sQueryAVP> avps;
+  string ip_addr;
+  mRequest->parseQueryLine(&avps);
+
+  if (mRequest->getQueryAttributeValue(&avps, "ip_addr", ip_addr) != OKAY) {
+    sendError(400, "Bad Request", NULL, "00x ip_addr attrib is mandatory.");
+    return ;
+  }
+
+  *(mLog->log())<< DEBUGPREFIX
+		<< " post_addToBlacklist ip= " << ip_addr << endl;
+
+  mRequest->mFactory->addToBlackList(ip_addr);
+  sendHeaders(200, "OK", NULL, NULL, 0, -1);
+  return;
+}
+
+void cResponseMemBlk::get_blacklist() {
+  mResponseMessage = new string();
+  mResponseMessagePos = 0;
+  *mResponseMessage = "";
+
+  list<string> * l = mRequest->mFactory->getBlackList();
+  for (list<string>::iterator it=l->begin(); it != l->end(); ++it) {
+    *mResponseMessage += *it;
+    *mResponseMessage += "\n";
+  }
+
+  sendHeaders(200, "OK", NULL, "text/plain", mResponseMessage->size(), -1);
+  return;
+}
+
+void cResponseMemBlk::post_removeFromBlacklist(){
+  if (isHeadRequest())
+    return;
+
+  vector<sQueryAVP> avps;
+  string ip_addr;
+  mRequest->parseQueryLine(&avps);
+
+  if (mRequest->getQueryAttributeValue(&avps, "ip_addr", ip_addr) != OKAY){
+    sendError(400, "Bad Request", NULL, "00x ip_addr attrib is mandatory.");
+    return;
+  }
+
+  *(mLog->log())<< DEBUGPREFIX
+		<< " post_removeFromBlacklist ip= " << ip_addr << endl;
+
+  mRequest->mFactory->removeFromBlackList(ip_addr);
+  sendHeaders(200, "OK", NULL, NULL, 0, -1);
+  return;
+}
 
 // - Manifest End
-
-
 
 // --------------------
 // GET Resources

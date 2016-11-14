@@ -284,6 +284,11 @@ int cHttpResource::processRequest() {
   struct stat statbuf;
   bool ok_to_serve = false;
 
+  if (mFactory->isBlackListed (mRemoteAddr)) {
+    mResponse = new cResponseError(this, 400, "Bad Request", NULL, "00x Blacklisted.");
+    return OKAY;
+  }
+  
   if (mMethod.compare("POST")==0) {
     return handlePost();
   }
@@ -389,6 +394,12 @@ int cHttpResource::processRequest() {
   if (mPath.compare("/addTimer") == 0) {
     mResponse = new cResponseMemBlk(this);
     ((cResponseMemBlk*)mResponse)->receiveAddTimerReq();
+    return OKAY;
+  }
+
+  if (mPath.compare("/getBlacklist") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->get_blacklist();
     return OKAY;
   }
 
@@ -730,6 +741,17 @@ int cHttpResource::handlePost() {
   if (mPath.compare("/addTimer.xml") == 0) {
     mResponse = new cResponseMemBlk(this);
     ((cResponseMemBlk*)mResponse)->receiveAddTimerReq();
+    return OKAY;
+  }
+
+  if (mPath.compare("/addToBlacklist") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->post_addToBlacklist();
+    return OKAY;
+  }
+  if (mPath.compare("/removeFromBlacklist") == 0) {
+    mResponse = new cResponseMemBlk(this);
+    ((cResponseMemBlk*)mResponse)->post_removeFromBlacklist();
     return OKAY;
   }
 

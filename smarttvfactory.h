@@ -192,6 +192,12 @@ class SmartTvServer : public cStatus {
 
     cRecFolder* GetRecDb();
 
+    void addToBlackList(string);
+    void removeFromBlackList(string);
+
+    bool isBlackListed(string);
+    list<string> *getBlackList();
+
  private:
     void addHttpResource(int fd, cHttpResourceBase* resource);
     void pushToClients(cHttpResourceBase* resource);
@@ -256,6 +262,8 @@ class SmartTvServer : public cStatus {
     cRecFolder* mRecordings;
     int mRecState;
     void CreateRecDb();
+
+    list<string> mClientBlackList;
 };
 
 

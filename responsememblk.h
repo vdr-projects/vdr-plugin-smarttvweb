@@ -117,6 +117,10 @@ class cResponseMemBlk : public cResponseBase {
 		   int no, time_t start, int dur, double fps, int is_pes, int is_new, string mime);
   uint64_t getVdrFileSize();
 
+  void post_addToBlacklist();
+  void post_removeFromBlacklist();
+  void get_blacklist();
+
  private:
   string *mResponseMessage;
   int mResponseMessagePos;

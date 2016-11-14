@@ -365,7 +365,7 @@ SmartTvServer::SmartTvServer(): cStatus(), mRequestCount(0), isInited(false), se
   mSegmentDuration(10), mHasMinBufferTime(40),  mLiveChannels(20), 
   clientList(), mConTvClients(), mRecCmds(), mCmdCmds(), mRecMsg(), mCmdMsg(), mActiveSessions(0), mHttpClientId(0), 
   mConfig(NULL), mMaxFd(0),
-  mManagedUrls(NULL), mActRecordings(), mRecordings(NULL), mRecState(0) {
+  mManagedUrls(NULL), mActRecordings(), mRecordings(NULL), mRecState(0), mClientBlackList() {
 
 }
 
@@ -1164,6 +1164,38 @@ void SmartTvServer::initServer(string dir, cSmartTvConfig* cfg) {
   }
 
   isInited = true;
+}
+
+
+void SmartTvServer::addToBlackList(string c) {
+  if (isBlackListed(c))
+    return;
+  mClientBlackList.push_back(c);
+  *(mLog.log()) << mLog.getTimeString() << " addToBlackList IpAddr= " << c << endl;
+}
+
+void SmartTvServer::removeFromBlackList(string c) {
+  for (list<string>::iterator it=mClientBlackList.begin(); it != mClientBlackList.end(); ++it) {
+    if (*it == c) {
+      mClientBlackList.erase(it);
+      *(mLog.log()) << mLog.getTimeString() << " removeFromBlackList IpAddr= " << c << endl;
+      break;
+    }
+  }  
+  *(mLog.log()) << mLog.getTimeString() << " removeFromBlackList IpAddr= " << c  << " Failed" << endl;
+}
+
+bool SmartTvServer::isBlackListed(string c) {
+  for (list<string>::iterator it=mClientBlackList.begin(); it != mClientBlackList.end(); ++it) {
+    if (*it == c) {
+      return true;
+    }
+  }
+  return false;
+}
+
+list<string> *SmartTvServer::getBlackList() {
+  return &mClientBlackList;
 }
 
 
