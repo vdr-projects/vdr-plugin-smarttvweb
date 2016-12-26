@@ -1,7 +1,7 @@
 /*
  * smarttvfactory.h: VDR on Smart TV plugin
  *
- * Copyright (C) 2012 - 2015 T. Lohmar
+ * Copyright (C) 2012 - 2016 T. Lohmar
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -47,8 +47,8 @@ class cStatus {
 
 using namespace std;
 
-#define PLG_VERSION "1.0.3"
-#define SERVER "SmartTvWeb/1.0.3" 
+#define PLG_VERSION "1.0.4"
+#define SERVER "SmartTvWeb/1.0.4" 
 
 class cLiveRelay;
 
@@ -146,6 +146,32 @@ class cRecEntry : public cRecEntryBase {
   };
 };
 
+//----------------------------
+struct sUsageStatsEntry {
+  string ipAddr;
+  double usage;
+  int    count;
+sUsageStatsEntry() : ipAddr(""), usage(0.0), count (0) {};
+sUsageStatsEntry(string ip, double d) : ipAddr(ip), usage(d), count(1) {};
+};
+
+class sUsageStatistics {
+ private:
+  //  struct tm collectionDay; // once the collectionDay is changed, the stats are written
+  time_t collectionDay; // once the collectionDay is changed, the stats are written
+  vector<sUsageStatsEntry> clientEntry;
+  bool enabled;
+  int collectionWindow;
+
+  string usageStatLogFilename;
+  Log *mLog;
+
+  void checkDay();
+
+ public:
+  sUsageStatistics(string fn, Log* mLog);
+  void addUsageInfo (string ip, double dur);
+};
 
 class SmartTvServer : public cStatus {
 
@@ -264,6 +290,8 @@ class SmartTvServer : public cStatus {
     void CreateRecDb();
 
     list<string> mClientBlackList;
+ public:
+    sUsageStatistics *mUsageStatistics;
 };
 
 

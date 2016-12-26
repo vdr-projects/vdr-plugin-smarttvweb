@@ -1,7 +1,7 @@
 /*
  * stvw_cfg.h: VDR on Smart TV plugin
  *
- * Copyright (C) 2012, 2013 T. Lohmar
+ * Copyright (C) 2012 - 2016 T. Lohmar
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -35,7 +35,7 @@ cSmartTvConfig::cSmartTvConfig(): mConfigDir(""), mLog(NULL), mCfgFile(NULL), mU
   mLogFile(), mMediaFolder(), mSegmentDuration(), mHasMinBufferTime(), mHasBitrateCorrection(),
   mLiveChannels(), mGroupSep(IGNORE), mServerAddress(""), mServerPort(8000), mCmds(false), mUseStreamDev4Live(true),
   mBuiltInLiveStartMode (4), mBuiltInLivePktBuf4Hd(150), mBuiltInLivePktBuf4Sd(75), mBuiltInLiveBufDur(0.6), 
-  mAddCorsHeader(false), mCorsHeaderPyld() {
+  mAddCorsHeader(false), mCorsHeaderPyld(), mUsageStatsLogFile("") {
 
 #ifndef STANDALONE
   mLogFile= "";
@@ -79,6 +79,8 @@ void cSmartTvConfig::Store(cPlugin *mPlugin) {
     mPlugin->SetupStore("CorsHeader", mCorsHeaderPyld.c_str());  
   else
     mPlugin->SetupStore("CorsHeader");  
+  if (mUsageStatsLogFile.length() != 0)
+    mPlugin->SetupStore("UsageStatsLogFile", mUsageStatsLogFile.c_str());
 }
 
 bool cSmartTvConfig::SetupParse(const char *name, const char *value) {  
@@ -124,6 +126,9 @@ bool cSmartTvConfig::SetupParse(const char *name, const char *value) {
   else if (strcmp(name, "CorsHeader") == 0) {
     mAddCorsHeader = true;
     mCorsHeaderPyld = value;
+  }
+  else if (strcmp(name, "UsageStatsLogFile") == 0) {
+    mUsageStatsLogFile = value;
   }
   else 
     return false;
@@ -301,6 +306,11 @@ void cSmartTvConfig::readConfig() {
     if (strcmp(attr, "CorsHeader") == 0) {
       mAddCorsHeader = true;
       mCorsHeaderPyld = value;
+      continue;
+    }
+
+    if (strcmp(attr, "UsageStatsLogFile") == 0) {
+      mUsageStatsLogFile = value;
       continue;
     }
     

@@ -98,6 +98,7 @@ cResponseVdrDir::~cResponseVdrDir() {
 
   char f[20];
   snprintf(f, sizeof(f), "%.02f", diff);
+  (mRequest->mFactory->mUsageStatistics)->addUsageInfo(mRequest->mRemoteAddr, diff);
   *(mLog->log())<< DEBUGPREFIX
                 << " cResponseVdrDir: Response duration= " << f << " s"
 		<< " RemoteIP= " << mRequest->mRemoteAddr

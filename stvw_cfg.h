@@ -97,6 +97,7 @@ class cSmartTvConfig {
   bool mAddCorsHeader;
   string mCorsHeaderPyld;
 
+  string mUsageStatsLogFile;
   //  cPlugin* mPlugin;
   cWidgetConfigBase mWidgetConfigBase;
  public:
@@ -131,6 +132,7 @@ class cSmartTvConfig {
   bool addCorsHeader() { return mAddCorsHeader; };
   string getCorsHeader() {return mCorsHeaderPyld; };
 
+  string getUsageStatsLogFile() { return mUsageStatsLogFile; };
   string GetWidgetConf() { return mWidgetConfigBase.GetWidgetConf(); };
 };
 

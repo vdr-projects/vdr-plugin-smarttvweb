@@ -1,7 +1,7 @@
  /*
  * smarttvfactory.c: VDR on Smart TV plugin
  *
- * Copyright (C) 2012 - 2014 T. Lohmar
+ * Copyright (C) 2012 - 2016 T. Lohmar
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -93,7 +93,7 @@ cCmd::cCmd(string t) :mTitle(), mCommand(), mConfirm(false) {
 
 void cCmd::trim(string &t) {
   int m=0;
-  for (int i=0; i<t.size(); i++) 
+  for (uint i=0; i<t.size(); i++) 
     if (!((t[i] == 32) || (t[i] == 9)) ) {
       m =i;
       break;
@@ -191,7 +191,6 @@ int cRecEntry::writeXmlItem(string * msg, string own_ip, int own_port) {
   hdr += "<item>\n";
   hdr += "<title>" + mTitle +"</title>\n";
   hdr += "<isfolder>false</isfolder>\n";
-  //  mRec->IsPesRecording();
 
   snprintf(f, sizeof(f), "http://%s:%d%s", own_ip.c_str(), own_port,
 	   cUrlEncode::doUrlSaveEncode(mRec->FileName()).c_str());
@@ -360,12 +359,101 @@ cRecFolder* cRecFolder::GetFolder(list<string> *folder_list) {
   return NULL;
 }
 
+sUsageStatistics::sUsageStatistics(string fn, Log* l) : collectionDay(), clientEntry(), enabled(true), collectionWindow(3600), 
+  usageStatLogFilename(fn), mLog(l) { 
+
+  time_t rawtime; 
+  time (&rawtime);
+  struct tm * now = localtime (&rawtime);
+
+  now->tm_sec = 0;
+  collectionDay = mktime(now);
+  
+  if (fn.length() == 0)
+    enabled = false;
+
+  if (enabled) 
+    *(mLog->log()) << mLog->getTimeString()
+		   << ": UsageStats is enabled, StatsFile= "
+		   << usageStatLogFilename
+		   << " collectionWindow=" << collectionWindow
+		   << endl;
+  else
+    *(mLog->log()) << mLog->getTimeString()
+                   << ": UsageStats is disabled "
+                   << endl;
+};
+
+void sUsageStatistics::checkDay() {
+  time_t rawtime;
+  struct tm * now;
+
+  time (&rawtime);
+  now = localtime (&rawtime);
+
+  if ((collectionDay + collectionWindow ) > rawtime) {
+    *(mLog->log()) << mLog->getTimeString()
+		   << ": UsageStats - check: Still not time to write time left= " 
+		   << (collectionDay + collectionWindow ) - rawtime
+		   << endl;
+    return;
+  }
+
+  ofstream ofs;
+  ofs.open(usageStatLogFilename.c_str(), ios::out | ios::app);
+
+  *(mLog->log()) << mLog->getTimeString()
+		 << ": UsageStats: appending " << clientEntry.size() << " entries to log" << endl;
+  now->tm_sec = 0;
+
+  for (uint i = 0; i < clientEntry.size(); i++) {
+    ofs << mLog->getTimeString() << " client " << clientEntry[i].ipAddr 
+	<< " Dur= " << clientEntry[i].usage 
+	<< " sec Count= " << clientEntry[i].count 
+	<< endl;
+  }
+  
+  ofs.close();
+
+  while (collectionDay < rawtime) {
+      collectionDay += collectionWindow;
+  }
+
+  // Flush and reset
+  clientEntry.clear();
+}
+
+void sUsageStatistics::addUsageInfo (string ip, double dur) {
+  if (!enabled)
+    return;
+
+  checkDay();
+
+  bool found = false;
+  for (uint i = 0; i < clientEntry.size(); i++) {
+    if (clientEntry[i].ipAddr == ip) {
+      found = true;
+      clientEntry[i].usage += dur;
+      clientEntry[i].count += 1;
+      *(mLog->log()) << mLog->getTimeString() 
+		     << ": UsageStats: adding info for " << ip << " dur= " << dur << " sec to existing record" << endl;
+      break;
+    }
+  }
+  if (!found) {
+    sUsageStatsEntry elm (ip, dur);
+    *(mLog->log()) << mLog->getTimeString() 
+		   << ": UsageStats: adding info for " << ip << " dur= " << dur << " sec to a new record" << endl;
+    clientEntry.push_back(sUsageStatsEntry(ip, dur));
+  }
+}
 
 SmartTvServer::SmartTvServer(): cStatus(), mRequestCount(0), isInited(false), serverPort(PORT), mServerFd(-1),
   mSegmentDuration(10), mHasMinBufferTime(40),  mLiveChannels(20), 
   clientList(), mConTvClients(), mRecCmds(), mCmdCmds(), mRecMsg(), mCmdMsg(), mActiveSessions(0), mHttpClientId(0), 
   mConfig(NULL), mMaxFd(0),
-  mManagedUrls(NULL), mActRecordings(), mRecordings(NULL), mRecState(0), mClientBlackList() {
+  mManagedUrls(NULL), mActRecordings(), mRecordings(NULL), mRecState(0), mClientBlackList(), 
+  mUsageStatistics(NULL){
 
 }
 
@@ -399,7 +487,7 @@ void SmartTvServer::Recording(const cDevice *Device, const char *Name, const cha
       *(mLog.log()) << mLog.getTimeString() << ": WARNING in SmartTvServer::Recording: Name and FileName are NULL. Return.  " << endl;
       return;
     }
-    //    cRecording* rec = Recordings.GetByName(FileName);
+
 #if APIVERSNUM > 20300
     LOCK_RECORDINGS_READ;
     const cRecording* rec = Recordings->GetByName(FileName);
@@ -1115,6 +1203,9 @@ void SmartTvServer::initServer(string dir, cSmartTvConfig* cfg) {
   mSegmentDuration= mConfig->getSegmentDuration();
   mHasMinBufferTime= mConfig->getHasMinBufferTime();
   mLiveChannels = mConfig->getLiveChannels();
+
+  //mUsageStatistics = new sUsageStatistics("/multimedia/video/usage.txt", &mLog);
+  mUsageStatistics = new sUsageStatistics(mConfig->getUsageStatsLogFile(), &mLog);
 
   *(mLog.log()) << mLog.getTimeString() <<": HTTP server listening on port " <<  serverPort << endl;
 

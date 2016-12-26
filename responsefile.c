@@ -23,6 +23,7 @@
 
 #include "responsefile.h"
 #include "httpresource.h"
+#include "smarttvfactory.h"
 
 #include <vector>
 #include <sys/stat.h>
@@ -53,6 +54,7 @@ cResponseFile::~cResponseFile() {
   diff = (now.tv_sec - mResponseStart.tv_sec);
   diff += (now.tv_usec - mResponseStart.tv_usec) /1000000.0;
 
+  (mRequest->mFactory->mUsageStatistics)->addUsageInfo(mRequest->mRemoteAddr, diff);
   *(mLog->log())<< DEBUGPREFIX
                 << " cResponseFile: Response duration= " << diff << " s"
 		<< " RemoteIP= " << mRequest->mRemoteAddr
