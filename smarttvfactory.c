@@ -366,6 +366,7 @@ sUsageStatistics::sUsageStatistics(string fn, Log* l) : collectionDay(), clientE
   time (&rawtime);
   struct tm * now = localtime (&rawtime);
 
+  now->tm_min = 0;
   now->tm_sec = 0;
   collectionDay = mktime(now);
   
@@ -384,12 +385,13 @@ sUsageStatistics::sUsageStatistics(string fn, Log* l) : collectionDay(), clientE
                    << endl;
 };
 
+sUsageStatistics::~sUsageStatistics() {
+  writeEntries();
+}
+
 void sUsageStatistics::checkDay() {
   time_t rawtime;
-  struct tm * now;
-
   time (&rawtime);
-  now = localtime (&rawtime);
 
   if ((collectionDay + collectionWindow ) > rawtime) {
     *(mLog->log()) << mLog->getTimeString()
@@ -399,21 +401,7 @@ void sUsageStatistics::checkDay() {
     return;
   }
 
-  ofstream ofs;
-  ofs.open(usageStatLogFilename.c_str(), ios::out | ios::app);
-
-  *(mLog->log()) << mLog->getTimeString()
-		 << ": UsageStats: appending " << clientEntry.size() << " entries to log" << endl;
-  now->tm_sec = 0;
-
-  for (uint i = 0; i < clientEntry.size(); i++) {
-    ofs << mLog->getTimeString() << " client " << clientEntry[i].ipAddr 
-	<< " Dur= " << clientEntry[i].usage 
-	<< " sec Count= " << clientEntry[i].count 
-	<< endl;
-  }
-  
-  ofs.close();
+  writeEntries();
 
   while (collectionDay < rawtime) {
       collectionDay += collectionWindow;
@@ -421,6 +409,26 @@ void sUsageStatistics::checkDay() {
 
   // Flush and reset
   clientEntry.clear();
+}
+
+void sUsageStatistics::writeEntries() {
+  ofstream ofs;
+  ofs.open(usageStatLogFilename.c_str(), ios::out | ios::app);
+
+  char timebuf [80];
+  strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", localtime(&collectionDay));
+
+  *(mLog->log()) << mLog->getTimeString()
+		 << ": UsageStats: "<< timebuf << " appending " << clientEntry.size() << " entries to log" << endl;
+
+  for (uint i = 0; i < clientEntry.size(); i++) {
+    ofs << timebuf << " client " << clientEntry[i].ipAddr 
+	<< " Dur= " << clientEntry[i].usage 
+	<< " sec Count= " << clientEntry[i].count 
+	<< endl;
+  }
+  
+  ofs.close();
 }
 
 void sUsageStatistics::addUsageInfo (string ip, double dur) {
@@ -470,6 +478,9 @@ SmartTvServer::~SmartTvServer() {
 
   for (uint i =0; i < mCmdCmds.size(); i++)
     delete mCmdCmds[i];
+
+  if (mUsageStatistics != NULL)
+    delete mUsageStatistics;
 }
 
 // Status methods

@@ -167,9 +167,11 @@ class sUsageStatistics {
   Log *mLog;
 
   void checkDay();
+  void writeEntries();
 
  public:
   sUsageStatistics(string fn, Log* mLog);
+  ~sUsageStatistics();
   void addUsageInfo (string ip, double dur);
 };
 
