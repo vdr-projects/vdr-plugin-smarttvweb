@@ -136,8 +136,13 @@ void cRecFolder::print(string pref) {
     
 };
 
+#if APIVERSNUM > 20300
+cRecEntry::cRecEntry(string n, int l, Log* lg, const cRecording* r) : cRecEntryBase(n, l, false, lg), mRec(r), mSubfolders(), 
+  mError(false), mTitle(n)  {
+#else
 cRecEntry::cRecEntry(string n, int l, Log* lg, cRecording* r) : cRecEntryBase(n, l, false, lg), mRec(r), mSubfolders(), 
   mError(false), mTitle(n)  {
+#endif
 
   size_t pos = 0;
   size_t l_pos = 0;
@@ -956,7 +961,12 @@ void SmartTvServer::acceptHttpResource(int &req_id) {
 
 
 cRecFolder* SmartTvServer::GetRecDb() {
+#if APIVERSNUM > 20300
+  static cStateKey RecordingsStateKey;
+  bool changed = cRecordings::GetRecordingsRead(RecordingsStateKey);
+#else  
   bool changed = Recordings.StateChanged(mRecState);
+#endif
   *(mLog.log()) << mLog.getTimeString()
 		<< " GetRecDb Changed= " << ((changed) ? "Yes" : "No")
 		<< endl;
@@ -970,7 +980,12 @@ cRecFolder* SmartTvServer::GetRecDb() {
 }
 
 void SmartTvServer::CreateRecDb() {
+#if APIVERSNUM > 20300
+  LOCK_RECORDINGS_READ
+  const cRecording *recording = Recordings->First();
+#else
   cRecording *recording = Recordings.First();
+#endif
   *(mLog.log()) << mLog.getTimeString() << ": CreateRecDb "
 		<< " NewState= " << mRecState
 		<< endl;
@@ -989,7 +1004,11 @@ void SmartTvServer::CreateRecDb() {
       		  << " FName= " << recording->Name() 
 		  << endl;
 */    
+#if APIVERSNUM > 20300
+    recording = Recordings->Next(recording);
+#else
     recording = Recordings.Next(recording);
+#endif
   }
 
 

@@ -123,7 +123,11 @@ class cRecFolder : public cRecEntryBase {
 };
 
 class cRecEntry : public cRecEntryBase {
+#if APIVERSNUM > 20300
+  const cRecording* mRec;
+#else
   cRecording* mRec;
+#endif
   //  bool mIsFolder ;
  public:
   vector<string> mSubfolders;
@@ -132,7 +136,11 @@ class cRecEntry : public cRecEntryBase {
   string mTitle;
   //  list<cRecEntry*> mEntries; // only when folder
 
+#if APIVERSNUM > 20300
+  cRecEntry(string mName, int l, Log* lg, const cRecording*);
+#else
   cRecEntry(string mName, int l, Log* lg, cRecording*);
+#endif
   virtual ~cRecEntry() {};
 
   int writeXmlItem(string *, string own_ip, int own_port);

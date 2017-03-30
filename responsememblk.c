@@ -2762,9 +2762,14 @@ int cResponseMemBlk::GetRecordings( ) {
   hdr+= "<title>VDR Recordings List</title>\n";
 
   *mResponseMessage += hdr;
+#if APIVERSNUM > 20300
+  LOCK_RECORDINGS_READ;
+  const cRecording *recording = NULL;
+  recording = Recordings->First();
+#else  
   cRecording *recording = NULL;
   recording = Recordings.First();
-
+#endif
   while (recording != NULL) {
     hdr = "";
 
@@ -2797,7 +2802,11 @@ int cResponseMemBlk::GetRecordings( ) {
       return OKAY;
     }
     item_count ++;
+#if APIVERSNUM > 20300
+    recording = (!single_item) ? Recordings->Next(recording) : NULL;
+#else
     recording = (!single_item) ? Recordings.Next(recording) : NULL;
+#endif
   }
 
   hdr = "</channel>\n";
