@@ -166,15 +166,15 @@ int cHttpResource::handleRead() {
 #endif  
 
   char buf[MAXLEN];
-  int buflen = sizeof(buf);
+  //int buflen = sizeof(buf);
 
   int line_count = 0;
   //  bool is_req = true;
   string rem_hdr = "";
 
-  buflen = read(mFd, buf, sizeof(buf));
+  int nread = read(mFd, buf, sizeof(buf));
 
-  if (buflen == -1) {
+  if (nread <0) {
     *(mLog->log())<< " Some Error, no data received" << endl;
     return ERROR; // Nothing to read
   }
@@ -189,12 +189,12 @@ int cHttpResource::handleRead() {
     return ERROR; // Nothing to read 
   }
 
-  if (buflen == 0) {
+  if (!nread) {
     return OKAY; // Nothing to read
   }
 
   if (mConnState == READPAYLOAD) {
-    mPayload += string(buf, buflen);
+    mPayload += string(buf, nread);
     if (mPayload.size() == mReqContentLength) {
       //Done
       mConnState = SERVING;
@@ -207,8 +207,8 @@ int cHttpResource::handleRead() {
     mConnState = READHDR;
   }
 
-  string req_line = mReadBuffer + string(buf, buflen);
-  buflen += rem_hdr.size();
+  std::string req_line = mReadBuffer + std::string(buf, nread);  
+ size_t buflen = nread + rem_hdr.size();
 
   size_t last_pos = 0;
   // Parse http header lines

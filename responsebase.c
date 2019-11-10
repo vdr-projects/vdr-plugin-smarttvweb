@@ -167,6 +167,7 @@ int cResponseBase::fillDataBlk() {
     mRequest->mConnState = TOCLOSE;
     return ERROR;
   }
+  return OKAY;
 }
 
 bool cResponseBase::isBlkWritten() {

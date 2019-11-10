@@ -290,7 +290,7 @@ bool cResponseVdrDir::isTimeRequest(struct stat *statbuf) {
 		 << endl;
 
   if ((mRequest->rangeHdr).isRangeRequest) {
-    snprintf(pathbuf, sizeof(pathbuf), "Content-Range: bytes 0-%lld/%lld", (mRemLength -1), mRemLength);
+    snprintf(pathbuf, sizeof(pathbuf), "Content-Range: bytes 0-%zu/%zu", (mRemLength -1), mRemLength);
     sendHeaders(206, "Partial Content", pathbuf, "video/mpeg", mRemLength, statbuf->st_mtime);
   }
   else {

@@ -50,7 +50,7 @@ void cManageUrls::appendEntry(string type, string url) {
   if (type.compare("YT") !=0) {
     return;
   }
-  for (int i = 0; i < mEntries.size(); i ++) {
+  for (size_t i = 0; i < mEntries.size(); i ++) {
     if (url.compare(mEntries[i]->mEntry) == 0) {
       found = true;
       break;
@@ -73,7 +73,7 @@ bool cManageUrls::deleteEntry(string type, string url) {
     return false;
   }
   
-  for (int i = 0; i < mEntries.size(); i ++) {
+  for (size_t i = 0; i < mEntries.size(); i ++) {
     if (url.compare(mEntries[i]->mEntry) == 0) {
       // delete the entry here
       *(mLog->log()) << " cManageUrls::deleteEntry ... " << endl;
@@ -91,7 +91,7 @@ bool cManageUrls::deleteEntry(string type, string url) {
     }
     mFile = new ofstream(mFilename.c_str(), ios::out);  
     
-    for (int i = 0; i < mEntries.size(); i ++) {
+    for (size_t i = 0; i < mEntries.size(); i ++) {
       appendToFile(mEntries[i]->mType+"|"+mEntries[i]->mEntry);
     }
 

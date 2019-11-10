@@ -69,6 +69,8 @@ void cSmartTvConfig::Store(cPlugin *mPlugin) {
   case EMPTYFOLDERDOWN:
     mPlugin->SetupStore("GroupSeparators", "EmptyFolderDown");  
     break;
+  case IGNORE:
+    break;
   }
   mPlugin->SetupStore("ServerAddress", mServerAddress.c_str());  
   mPlugin->SetupStore("ServerPort", mServerPort);  

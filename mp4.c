@@ -104,9 +104,9 @@ void cBoxHdr::reset() {
 
 bool cBoxHdr::readFullHdr (FILE* ifd) {
   uint8_t p[4];
-  size_t res;
+  //size_t res;
 
-  res = fread (p, 1, 4, ifd);
+  fread (p, 1, 4, ifd);
   mVersion = p[0];
   mFlags = (((uint32_t) p[1]) << 16) |
     (((uint32_t) p[2]) << 8) |
@@ -284,7 +284,7 @@ bool cMp4Metadata::findMetadata(FILE* ifd, eBoxes parent) {
       *(mLog->log())<< DEBUGPREFIX << " end reached" << endl;
     return false;
   }
-  if (pos >= mFilesize) {
+  if (pos >= (ssize_t)mFilesize) {
       *(mLog->log())<< DEBUGPREFIX << " end reached. pos larger filesize - done" << endl;
       return true;
   }
@@ -414,7 +414,7 @@ bool cMp4Metadata::findMetadata(FILE* ifd, eBoxes parent) {
 		      << " size= " << mCovrSize << endl;
 	mCovr = new char[mCovrSize];
 	res = fread (mCovr, 1, m_box.mSize - m_box.mHdrLen -8, ifd);
-	if (res < (m_box.mSize - m_box.mHdrLen -8)) {
+	if (res < (ssize_t)(m_box.mSize - m_box.mHdrLen -8)) {
 	  *(mLog->log())<< DEBUGPREFIX << " covr read ERROR. res= " << res << endl;
 	}
 	break;

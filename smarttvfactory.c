@@ -1168,7 +1168,7 @@ string SmartTvServer::processNestedItemList(string pref, cList<cNestedItem> *cmd
       cCmd *itm = new cCmd(c->Text());
 
       cmd_list->push_back(itm);
-      snprintf(f, sizeof(f), "<item cmd=\"%d\" confirm=\"%s\">%s</item>\n", cmd_list->size()-1, ((itm->mConfirm)?"true":"false"), 
+      snprintf(f, sizeof(f), "<item cmd=\"%zu\" confirm=\"%s\">%s</item>\n", cmd_list->size()-1, ((itm->mConfirm)?"true":"false"), 
 	       (pref + itm->mTitle).c_str());
       msg += f;
     }

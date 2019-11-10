@@ -453,7 +453,7 @@ int cResponseMemBlk::sendMp4Covr() {
 
   mRequest->mConnState = SERVING;
 
-  char f[400];
+  //char f[400];
 
   cResumeEntry entry;
   string id;
@@ -743,7 +743,7 @@ int cResponseMemBlk::sendDir(struct stat *statbuf) {
     hdr += f;
       
     if (strlen(de->d_name) < 32) {
-      snprintf(f, sizeof(f), "%*s", 32 - strlen(de->d_name), "");
+      snprintf(f, sizeof(f), "%*s", 32 - (int)strlen(de->d_name), "");
       hdr += f;
     }
     if (S_ISDIR(statbuf->st_mode)) {
@@ -1433,7 +1433,7 @@ void cResponseMemBlk::sendTimersXml() {
 #endif
 #endif
   
-  for (uint i =0; i< s_timers.Size(); i++) {
+  for (int i =0; i< s_timers.Size(); i++) {
     //  for (cTimer * ti = Timers.First(); ti; ti = Timers.Next(ti)){
     //    ti->Matches();
     const cTimer *ti = s_timers[i];
@@ -1566,7 +1566,7 @@ void cResponseMemBlk::receiveExecRecCmdReq() {
 		<< " guid= " << guid
 		<< endl;
   vector<cCmd*>* r_cmds =  mRequest->mFactory->getRecCmds();
-  if ((cmdid <0 ) || ( cmdid > r_cmds->size())) {
+  if ( cmdid > r_cmds->size()) { // TODO (cmdid <0)?
     *(mLog->log())<< DEBUGPREFIX
 		  << " ERROR: cmd value out of range." << endl;
       sendError(400, "Bad Request", NULL, "016 Command (cmd) value out of range.");
@@ -1631,7 +1631,7 @@ void cResponseMemBlk::receiveExecCmdReq() {
 		<< endl;
   vector<cCmd*>* r_cmds =  mRequest->mFactory->getCmdCmds();
 
-  if ((cmdid <0 ) || ( cmdid > r_cmds->size())) {
+  if ( cmdid > r_cmds->size()) { // TODO ((cmdid <0 ) || ?
     *(mLog->log())<< DEBUGPREFIX
 		  << " ERROR: cmd value out of range." << endl;
       sendError(400, "Bad Request", NULL, "016 Command (cmd) value out of range.");
@@ -2260,7 +2260,7 @@ int cResponseMemBlk::sendBmlInstHtml() {
 	 << mRequest->getOwnIp()
 	 << ":" << mRequest->mServerPort;
 
-  *(mLog->log()) << " Ownhost= " << own_host << endl;
+  *(mLog->log()) << " Ownhost= " << own_host.str() << endl;
 
   *mResponseMessage = "<html><head>"
     "<title>SmartTVWeb Bookmarklets</title>"

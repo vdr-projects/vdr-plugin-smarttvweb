@@ -322,7 +322,7 @@ int cHttpClientBase::checkTransactionCompletion() {
     return ERROR;
   }
   
-  if ((mRespBdyLen <= mResponseBdy.size()) || (mRespBdyLen == 0)) {
+  if ((mRespBdyLen <= (int)mResponseBdy.size()) || (mRespBdyLen == 0)) {
     
     *(mLog->log()) << DEBUGPREFIX
 		   << " Transaction completed. mTransCount= " << mTransCount

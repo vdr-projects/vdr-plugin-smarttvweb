@@ -255,15 +255,15 @@ string cUrlEncode::removeEtChar(string line, bool xml) {
       res += line.substr(cur_pos);
       break;
     }
-    if (pos >= 0) {
-      if (xml)
-	res += line.substr(cur_pos, (pos-cur_pos)) + "&#38;";  // xml save encoding
-      else
-	res += line.substr(cur_pos, (pos-cur_pos)) + "%26";  // url save encoding
-      //      cur_pos = cur_pos+ pos +1;
-      cur_pos = pos +1;
-      end_after_done ++;
-    }
+    //if (pos >= 0) {
+    if (xml)
+      res += line.substr(cur_pos, (pos-cur_pos)) + "&#38;";  // xml save encoding
+    else
+      res += line.substr(cur_pos, (pos-cur_pos)) + "%26";  // url save encoding
+    //      cur_pos = cur_pos+ pos +1;
+    cur_pos = pos +1;
+    end_after_done ++;
+    //}
   }
   return res;
 }
@@ -274,7 +274,7 @@ string cUrlEncode::hexDump(char *line, int line_len) {
   char buf[10];
 
   int line_count = 0;
-  for (unsigned int i = 0; i < line_len; i++) {
+  for (int i = 0; i < line_len; i++) {
     unsigned char num = line[i];
     sprintf (buf, "%02hhX", num);
     res += buf;
